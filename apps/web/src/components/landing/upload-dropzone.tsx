@@ -22,10 +22,10 @@ export function UploadDropzone({
     <label
       htmlFor="video-upload"
       className={cn(
-        "group relative block cursor-pointer overflow-hidden rounded-[1.6rem] border border-dashed p-5 transition duration-200",
+        "group relative block cursor-pointer overflow-hidden rounded-[1.45rem] border p-4 transition duration-200",
         isDragging
           ? "border-[var(--accent)] bg-[var(--accent-soft)]"
-          : "border-[var(--line-strong)] bg-white/[0.03] hover:border-[var(--accent)] hover:bg-white/[0.045]"
+          : "border-[var(--line)] bg-white/[0.03] hover:border-[var(--accent)] hover:bg-white/[0.045]"
       )}
       onDragEnter={(event) => {
         event.preventDefault();
@@ -46,8 +46,8 @@ export function UploadDropzone({
         onSelectFile(event.dataTransfer.files?.[0] ?? null);
       }}
     >
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(94,234,212,0.12),transparent_28%)] opacity-70" />
-      <div className="flex min-h-72 flex-col justify-between gap-6">
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(99,216,247,0.12),transparent_28%)] opacity-70" />
+      <div className="app-grid flex min-h-72 flex-col justify-between gap-6 rounded-[1.2rem] border border-dashed border-[var(--line-strong)] bg-[var(--surface-overlay)] p-5">
         <div className="flex items-start justify-between gap-4">
           <div className="max-w-lg">
             <p className="metric-label text-[var(--muted)]">Source video</p>
@@ -59,7 +59,7 @@ export function UploadDropzone({
               on top of it.
             </p>
           </div>
-          <div className="inline-flex size-14 items-center justify-center rounded-full border border-[var(--accent-strong)] bg-[var(--accent-soft)] text-[var(--accent)] transition group-hover:-translate-y-0.5 group-hover:translate-x-0.5">
+          <div className="inline-flex size-14 items-center justify-center rounded-[1rem] border border-[var(--accent-strong)] bg-[var(--accent-soft)] text-[var(--accent)] transition group-hover:-translate-y-0.5 group-hover:translate-x-0.5">
             <Upload className="size-6" />
           </div>
         </div>
@@ -68,7 +68,7 @@ export function UploadDropzone({
           <Card tone="elevated" className="p-4">
             <p className="metric-label text-[var(--muted)]">Selected file</p>
             <div className="mt-3 flex flex-wrap items-center gap-3">
-              <div className="inline-flex size-10 items-center justify-center rounded-full border border-[var(--line)] bg-white/[0.04]">
+              <div className="inline-flex size-10 items-center justify-center rounded-[0.9rem] border border-[var(--line)] bg-white/[0.04]">
                 <Video className="size-4 text-[var(--accent)]" />
               </div>
               <div>
@@ -82,13 +82,13 @@ export function UploadDropzone({
             </div>
           </Card>
 
-          <div className="rounded-[1.3rem] border border-[var(--line)] bg-[var(--surface-overlay)] p-4 backdrop-blur-xl">
+          <div className="rounded-[1.2rem] border border-[var(--line)] bg-[var(--surface-overlay)] p-4 backdrop-blur-xl">
             <p className="metric-label text-[var(--muted)]">Accepted input</p>
             <div className="mt-3 flex flex-wrap gap-2">
               <Badge tone="neutral">.mp4</Badge>
               <Badge tone="neutral">.mov</Badge>
             </div>
-            <p className="mt-4 text-sm leading-6 text-[var(--muted)]">Uploads go directly to the processing API.</p>
+            <p className="mt-4 text-sm leading-6 text-[var(--muted)]">One file in, one stable workspace out.</p>
           </div>
         </div>
       </div>

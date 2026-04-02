@@ -139,18 +139,20 @@ export function UploadSection() {
         transition={{ duration: 0.55, ease: [0.16, 1, 0.3, 1] }}
       >
         <Card padded={false} className="overflow-hidden">
-          <div className="grid lg:grid-cols-[0.72fr_1.28fr]">
-            <div className="border-b border-[var(--line)] p-6 sm:p-8 xl:border-b-0 xl:border-r">
+          <div className="grid lg:grid-cols-[0.62fr_1.38fr]">
+            <div className="border-b border-[var(--line)] bg-[var(--surface-overlay)] p-6 sm:p-8 xl:border-b-0 xl:border-r">
               <SectionHeader
-                eyebrow="Upload"
-                title="Start with one source video"
-                description="The intake flow is intentionally simple: upload a file, move into a persistent workspace, and let the backend keep the processing state current."
+                eyebrow="Intake"
+                title="Start inside the upload bay"
+                description="The landing flow now behaves like an app surface: choose a file, watch transfer state, then move directly into a persistent review workspace."
               />
 
               <div className="mt-8 grid gap-px overflow-hidden rounded-[1.3rem] border border-[var(--line)] bg-[var(--line)]">
                 {uploadDetails.map(([title, description], index) => (
                   <div key={title} className="grid gap-3 bg-[var(--surface)] px-5 py-5 sm:grid-cols-[auto_1fr]">
-                    <div className="metric-label text-[var(--accent)]">{`0${index + 1}`}</div>
+                    <div className="inline-flex size-8 items-center justify-center rounded-[0.8rem] border border-[var(--line)] bg-white/[0.04] font-mono text-xs text-[var(--accent)]">
+                      {`0${index + 1}`}
+                    </div>
                     <div>
                       <h3 className="text-base font-semibold tracking-[-0.02em]">{title}</h3>
                       <p className="mt-1 text-sm leading-6 text-[var(--muted)]">{description}</p>
@@ -159,26 +161,46 @@ export function UploadSection() {
                 ))}
               </div>
 
-              <div className="mt-6 rounded-[1.3rem] border border-[var(--line)] bg-white/[0.03] px-5 py-5">
-                <div className="metric-label text-[var(--muted)]">Upload policy</div>
-                <div className="mt-4 flex flex-wrap gap-2">
-                  <span className="rounded-full border border-[var(--line)] px-3 py-1 text-sm text-[var(--muted-strong)]">
-                    .mp4
-                  </span>
-                  <span className="rounded-full border border-[var(--line)] px-3 py-1 text-sm text-[var(--muted-strong)]">
-                    .mov
-                  </span>
-                  <span className="rounded-full border border-[var(--line)] px-3 py-1 text-sm text-[var(--muted-strong)]">
+              <div className="mt-6 grid gap-3 sm:grid-cols-2">
+                <div className="rounded-[1.2rem] border border-[var(--line)] bg-white/[0.03] px-5 py-5">
+                  <div className="metric-label text-[var(--muted)]">Upload policy</div>
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    <span className="rounded-[0.85rem] border border-[var(--line)] px-3 py-1.5 text-sm text-[var(--muted-strong)]">
+                      .mp4
+                    </span>
+                    <span className="rounded-[0.85rem] border border-[var(--line)] px-3 py-1.5 text-sm text-[var(--muted-strong)]">
+                      .mov
+                    </span>
+                  </div>
+                </div>
+                <div className="rounded-[1.2rem] border border-[var(--line)] bg-white/[0.03] px-5 py-5">
+                  <div className="metric-label text-[var(--muted)]">Default limit</div>
+                  <div className="mt-4 text-2xl font-semibold tracking-[-0.05em] text-[var(--text)]">
                     {MAX_UPLOAD_MB >= 1024
                       ? `${Math.round(MAX_UPLOAD_MB / 1024)} GB default limit`
-                      : `${MAX_UPLOAD_MB} MB default limit`}
-                  </span>
+                      : `${MAX_UPLOAD_MB} MB`}
+                  </div>
+                  <p className="mt-2 text-sm leading-6 text-[var(--muted)]">Large uploads stay in one flow and keep the workspace URL stable.</p>
                 </div>
               </div>
             </div>
 
             <div className="p-6 sm:p-8">
               <form onSubmit={handleSubmit} className="space-y-5">
+                <div className="rounded-[1.2rem] border border-[var(--line)] bg-[var(--surface-overlay)] px-5 py-4">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                      <div className="metric-label text-[var(--accent)]">Upload bay</div>
+                      <p className="mt-2 text-sm text-[var(--muted)]">
+                        Use the dropzone below to start a new review job.
+                      </p>
+                    </div>
+                    <div className="rounded-[0.85rem] border border-[var(--line)] bg-white/[0.04] px-3 py-2 text-xs font-medium text-[var(--muted-strong)]">
+                      {uploadMode === "multipart" ? "Multipart transfer" : "Direct transfer"}
+                    </div>
+                  </div>
+                </div>
+
                 <UploadDropzone
                   selectedFile={selectedFile}
                   isDragging={isDragging}
@@ -223,12 +245,12 @@ export function UploadSection() {
                       </Button>
                     ) : null}
                     <Button type="submit" variant="primary" size="lg" disabled={isUploading}>
-                    {isUploading ? (
-                      <LoaderCircle className="size-4 animate-spin" />
-                    ) : (
-                      <ArrowUpRight className="size-4" />
-                    )}
-                    {isUploading ? "Processing" : "Upload video"}
+                      {isUploading ? (
+                        <LoaderCircle className="size-4 animate-spin" />
+                      ) : (
+                        <ArrowUpRight className="size-4" />
+                      )}
+                      {isUploading ? "Processing" : "Upload video"}
                     </Button>
                   </div>
                 </div>

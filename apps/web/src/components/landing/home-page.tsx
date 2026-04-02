@@ -74,24 +74,32 @@ export function HomePageView() {
             }
           />
 
-          <div className="grid gap-14 pb-18 pt-12 lg:min-h-[calc(100svh-7.25rem)] lg:grid-cols-[1.03fr_0.97fr] lg:items-center">
+          <div className="grid gap-14 pb-18 pt-10 lg:min-h-[calc(100svh-7.25rem)] lg:grid-cols-[0.98fr_1.02fr] lg:items-center">
             <motion.div
               initial={{ opacity: 0, y: 22 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
               className="space-y-8"
             >
-              <div className="space-y-5">
+              <div className="flex flex-wrap gap-2">
                 <Badge tone="accent" className="px-3 py-1.5 text-[0.7rem]">
                   Training-ready speech curation
                 </Badge>
-                <h1 className="max-w-5xl text-[3.35rem] font-semibold leading-[0.92] tracking-[-0.08em] sm:text-[4.3rem] lg:text-[5.6rem]">
-                  Find the best speech clips in a single video.
+                <Badge tone="neutral" className="px-3 py-1.5 text-[0.7rem]">
+                  Modern workspace
+                </Badge>
+              </div>
+
+              <div className="space-y-5">
+                <div className="rounded-[1.25rem] border border-[var(--line)] bg-[var(--surface-overlay)] px-4 py-3 text-sm text-[var(--muted)] shadow-[var(--shadow-soft)] sm:max-w-xl">
+                  Upload a talking-head video, inspect ranked clips, and export cleaner training signals from one app-like workspace.
+                </div>
+                <h1 className="max-w-5xl text-[3.15rem] font-semibold leading-[0.94] tracking-[-0.08em] sm:text-[4.2rem] lg:text-[5.15rem]">
+                  Review clips in a workspace, not a transcript dump.
                 </h1>
-                <p className="max-w-2xl text-lg leading-8 text-[var(--muted-strong)] sm:text-[1.15rem]">
-                  ClipMine AI helps dataset builders reduce manual review time by ranking 1 to 3 second speech
-                  segments, showing usefulness across the full source, and exporting structured clip data for
-                  annotation or training workflows.
+                <p className="max-w-2xl text-lg leading-8 text-[var(--muted-strong)] sm:text-[1.08rem]">
+                  ClipMine AI turns a single source video into a ranked review surface with clip scoring, timeline
+                  coverage, and export-ready metadata for training and annotation workflows.
                 </p>
               </div>
 
@@ -101,7 +109,7 @@ export function HomePageView() {
                   <ArrowDownRight className="size-4" />
                 </a>
                 <a href="#features" className={buttonClassName({ variant: "ghost", size: "lg" })}>
-                  See shipped features
+                  Explore workspace
                 </a>
               </div>
 
@@ -116,7 +124,9 @@ export function HomePageView() {
                       transition={{ duration: 0.45, delay: 0.12 + index * 0.06, ease: [0.16, 1, 0.3, 1] }}
                       className="bg-[var(--surface)] px-5 py-5"
                     >
-                      <p className="metric-label text-[var(--accent)]">{`0${index + 1}`}</p>
+                      <div className="inline-flex size-8 items-center justify-center rounded-[0.8rem] border border-[var(--line)] bg-white/[0.04] font-mono text-xs text-[var(--accent)]">
+                        {`0${index + 1}`}
+                      </div>
                       <h2 className="mt-3 text-lg font-semibold tracking-[-0.03em]">{item.title}</h2>
                       <p className="mt-2 text-sm leading-6 text-[var(--muted)]">{item.body}</p>
                     </motion.div>

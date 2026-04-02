@@ -26,7 +26,7 @@ export function Card({
   return (
     <div
       className={cn(
-        "rounded-[1.5rem] border border-[var(--line)] backdrop-blur-xl shadow-[var(--shadow-soft)] ring-1 ring-inset ring-white/[0.04]",
+        "rounded-[var(--radius-shell)] border border-[var(--line)] backdrop-blur-xl shadow-[var(--shadow-soft)] ring-1 ring-inset ring-white/[0.04]",
         toneClasses[tone],
         padded && "p-5 sm:p-6",
         className

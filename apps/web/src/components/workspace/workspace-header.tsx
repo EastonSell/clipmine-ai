@@ -41,7 +41,7 @@ export function WorkspaceHeader({
             {title}
           </h1>
           <p className="mt-3 text-sm leading-6 text-[var(--muted)] sm:text-[0.98rem]">
-            Review the source video, ranked clips, timeline, and export without leaving the current job.
+            Review the source video, ranked clips, timeline, and export inside one persistent session.
           </p>
         </div>
 
@@ -63,7 +63,7 @@ export function WorkspaceHeader({
       </div>
 
       {navigation ? (
-        <div className="border-t border-[var(--line)] px-5 py-4 sm:px-6">{navigation}</div>
+        <div className="border-t border-[var(--line)] bg-white/[0.02] px-5 py-4 sm:px-6">{navigation}</div>
       ) : null}
     </Card>
   );
