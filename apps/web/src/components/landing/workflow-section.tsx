@@ -1,42 +1,43 @@
-import { Card } from "@/components/ui/card";
 import { SectionHeader } from "@/components/ui/section-header";
 
-const workflowSteps = [
+const implementedFeatures = [
   {
-    title: "Upload video",
-    description: "Start with one talking-head source and move directly into a workspace URL.",
+    title: "Persistent job workspace",
+    description: "Each upload moves into a stable results URL so processing and review happen in the same place.",
   },
   {
-    title: "Review best clips",
-    description: "Use clip scores, explanations, and the source player to judge training usefulness quickly.",
+    title: "Ranked clip analysis",
+    description: "Short speech windows are segmented, scored, labeled, and explained for fast review.",
   },
   {
-    title: "Export JSON",
-    description: "Download ranked clips and timeline metadata for downstream annotation or curation work.",
+    title: "Usefulness timeline",
+    description: "A 48-bin overview highlights stronger and weaker regions across the full source video.",
+  },
+  {
+    title: "Structured export",
+    description: "JSON export preserves clip metadata for annotation pipelines and training set curation.",
   },
 ];
 
 export function WorkflowSection() {
   return (
-    <section id="workflow" className="border-t border-[var(--line)] py-16 sm:py-20">
+    <section id="features" className="border-t border-[var(--line)] py-16 sm:py-20">
       <div className="grid gap-8 lg:grid-cols-[0.72fr_1.28fr]">
         <SectionHeader
-          eyebrow="Workflow"
-          title="Understand the product in one pass"
-          description="The app is designed to answer three questions clearly: what should I upload, which clips are useful, and what can I export?"
+          eyebrow="Implemented now"
+          title="The current release already covers the core curation workflow"
+          description="ClipMine AI is already useful as a training-signal curation tool. These capabilities are shipped in the app today and are available in the current codebase."
         />
 
-        <Card padded={false} className="overflow-hidden">
-          <div className="grid gap-px bg-[var(--line)] md:grid-cols-3">
-            {workflowSteps.map((step, index) => (
-              <div key={step.title} className="bg-[var(--surface)] px-5 py-6">
-                <div className="metric-label text-[var(--accent)]">{`0${index + 1}`}</div>
-                <h3 className="mt-3 text-xl font-semibold tracking-[-0.03em]">{step.title}</h3>
-                <p className="mt-3 text-sm leading-6 text-[var(--muted)]">{step.description}</p>
-              </div>
-            ))}
-          </div>
-        </Card>
+        <div className="grid gap-px overflow-hidden rounded-[1.5rem] border border-[var(--line)] bg-[var(--line)] md:grid-cols-2">
+          {implementedFeatures.map((feature, index) => (
+            <div key={feature.title} className="bg-[var(--surface)] px-5 py-6">
+              <div className="metric-label text-[var(--accent)]">{`0${index + 1}`}</div>
+              <h3 className="mt-3 text-xl font-semibold tracking-[-0.03em]">{feature.title}</h3>
+              <p className="mt-3 text-sm leading-6 text-[var(--muted)]">{feature.description}</p>
+            </div>
+          ))}
+        </div>
       </div>
     </section>
   );

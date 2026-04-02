@@ -10,7 +10,9 @@ import { FooterNotes } from "@/components/ui/footer-notes";
 import { PageContainer } from "@/components/ui/page-container";
 import { TopBar } from "@/components/ui/top-bar";
 
+import { GoalsSection } from "./goals-section";
 import { PreviewPanel } from "./preview-panel";
+import { RoadmapSection } from "./roadmap-section";
 import { UploadSection } from "./upload-section";
 import { WorkflowSection } from "./workflow-section";
 
@@ -18,7 +20,7 @@ const proofPoints = [
   {
     id: "best-clips",
     title: "Best clips",
-    body: "Rank short speech windows by confidence, pace, signal strength, and continuity.",
+    body: "Review ranked short speech windows by confidence, pace, signal strength, and continuity.",
   },
   {
     id: "timeline",
@@ -56,9 +58,9 @@ export function HomePageView() {
             eyebrow="ClipMine AI"
             subtitle="Speech clip curation for training workflows."
             items={[
-              { label: "Best clips", href: "#best-clips" },
-              { label: "Timeline", href: "#timeline" },
-              { label: "Export", href: "#export" },
+              { label: "Goals", href: "#goals" },
+              { label: "Features", href: "#features" },
+              { label: "Roadmap", href: "#roadmap" },
               { label: "Upload", href: "#upload" },
               { label: "Notes", href: "#notes" },
             ]}
@@ -85,8 +87,9 @@ export function HomePageView() {
                   Find the best speech clips in a single video.
                 </h1>
                 <p className="max-w-2xl text-lg leading-8 text-[var(--muted-strong)] sm:text-[1.15rem]">
-                  Upload a talking-head source, review ranked 1 to 3 second speech segments, inspect the usefulness
-                  timeline, and export structured JSON for downstream annotation or dataset work.
+                  ClipMine AI helps dataset builders reduce manual review time by ranking 1 to 3 second speech
+                  segments, showing usefulness across the full source, and exporting structured clip data for
+                  annotation or training workflows.
                 </p>
               </div>
 
@@ -95,8 +98,8 @@ export function HomePageView() {
                   Upload video
                   <ArrowDownRight className="size-4" />
                 </a>
-                <a href="#workflow" className={buttonClassName({ variant: "ghost", size: "lg" })}>
-                  View workflow
+                <a href="#features" className={buttonClassName({ variant: "ghost", size: "lg" })}>
+                  See shipped features
                 </a>
               </div>
 
@@ -133,7 +136,9 @@ export function HomePageView() {
 
       <PageContainer className="space-y-0">
         <UploadSection />
+        <GoalsSection />
         <WorkflowSection />
+        <RoadmapSection />
         <FooterNotes id="notes" title="Operational notes" notes={footerNotes} />
       </PageContainer>
     </AppShell>
