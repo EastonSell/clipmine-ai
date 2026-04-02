@@ -2,10 +2,11 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from statistics import mean
 from contextlib import suppress
+from statistics import mean
 from time import perf_counter
 
+from .artifact_store import ArtifactStore
 from .media import extract_audio, load_mono_wave, probe_media_duration
 from .multimodal import enrich_scored_clips
 from .presentation import build_summary, build_timeline
@@ -19,8 +20,16 @@ logger = logging.getLogger("uvicorn.error")
 
 
 class JobProcessor:
-    def __init__(self, store: JobStore, *, worker_concurrency: int = 1, retention_hours: int = 168):
+    def __init__(
+        self,
+        store: JobStore,
+        artifact_store: ArtifactStore,
+        *,
+        worker_concurrency: int = 1,
+        retention_hours: int = 168,
+    ):
         self.store = store
+        self.artifact_store = artifact_store
         self.queue: asyncio.Queue[str] = asyncio.Queue()
         self.worker_concurrency = max(1, worker_concurrency)
         self.retention_hours = retention_hours
@@ -30,18 +39,26 @@ class JobProcessor:
     def queue_depth(self) -> int:
         return self.queue.qsize()
 
+    @property
+    def active_workers(self) -> int:
+        return sum(1 for task in self.worker_tasks if not task.done())
+
     async def start(self) -> None:
         if not self.worker_tasks:
             removed_count = self.store.cleanup_expired_jobs(self.retention_hours)
+            removed_ephemeral_artifacts = self.store.cleanup_ephemeral_artifacts(self.retention_hours)
+            expired_sessions = self.store.cleanup_expired_upload_sessions(self.artifact_store.abort_multipart_upload)
             self.worker_tasks = [
                 asyncio.create_task(self._worker_loop(worker_index))
                 for worker_index in range(self.worker_concurrency)
             ]
             await self._recover_incomplete_jobs()
             logger.info(
-                "processor.started worker_concurrency=%s removed_expired_jobs=%s",
+                "processor.started worker_concurrency=%s removed_expired_jobs=%s removed_ephemeral_artifacts=%s expired_upload_sessions=%s",
                 self.worker_concurrency,
                 removed_count,
+                removed_ephemeral_artifacts,
+                expired_sessions,
             )
 
     async def stop(self) -> None:
@@ -92,7 +109,7 @@ class JobProcessor:
 
     def process_job(self, job_id: str) -> None:
         job = self.store.load_job(job_id)
-        video_path = self.store.source_video_path(job)
+        video_path = self.store.processing_video_path(job)
         audio_path = self.store.audio_path(job_id)
         started_at = perf_counter()
         processing_timings = dict(job.processing_timings)
@@ -100,6 +117,18 @@ class JobProcessor:
         logger.info("job.start job_id=%s video_path=%s audio_path=%s", job_id, video_path, audio_path)
 
         try:
+            if job.source_video.storage_backend != "local":
+                download_started_at = perf_counter()
+                self.artifact_store.download_source_video(job.source_video, video_path)
+                processing_timings["download_source"] = round((perf_counter() - download_started_at) * 1000, 1)
+                job = self.store.save_job(job.model_copy(update={"processing_timings": processing_timings}))
+                logger.info(
+                    "job.remote_source_ready job_id=%s storage_backend=%s duration_ms=%.1f",
+                    job_id,
+                    job.source_video.storage_backend,
+                    processing_timings["download_source"],
+                )
+
             stage_started_at = perf_counter()
             job = self._save_state(job, status=JobStatus.PROCESSING, progress_phase=ProgressPhase.EXTRACTING_AUDIO)
             extract_audio(video_path, audio_path)
@@ -236,6 +265,9 @@ class JobProcessor:
             )
             self.store.save_job(failed_job)
             logger.exception("job.failed job_id=%s total_duration_ms=%.1f error=%s", job_id, (perf_counter() - started_at) * 1000, exc)
+        finally:
+            if job.source_video.storage_backend != "local":
+                video_path.unlink(missing_ok=True)
 
     def _save_state(self, job: JobManifest, *, status: JobStatus, progress_phase: ProgressPhase) -> JobManifest:
         updated_job = job.model_copy(update={"status": status, "progress_phase": progress_phase, "error": None})

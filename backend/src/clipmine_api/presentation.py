@@ -109,6 +109,7 @@ def serialize_export(job: JobManifest) -> dict[str, object]:
 def _serialize_source_video(job: JobManifest) -> dict[str, object]:
     source_video = job.source_video.model_dump(mode="json")
     source_video.pop("relative_path", None)
+    source_video.pop("storage_backend", None)
     source_video["url"] = f"/api/jobs/{job.job_id}/video"
     return source_video
 

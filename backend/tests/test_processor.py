@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import asyncio
+from pathlib import Path
 
+from clipmine_api.artifact_store import LocalArtifactStore
 from clipmine_api.config import Settings
 from clipmine_api.processor import JobProcessor
 from clipmine_api.schemas import JobStatus, ProgressPhase
@@ -54,7 +56,7 @@ def test_job_processor_recovers_incomplete_jobs_on_start(tmp_path: Path) -> None
     store.save_job(failed_job.model_copy(update={"status": JobStatus.FAILED, "progress_phase": ProgressPhase.FAILED}))
 
     processed_job_ids: list[str] = []
-    processor = JobProcessor(store)
+    processor = JobProcessor(store, LocalArtifactStore(settings))
     original_process_job = processor.process_job
 
     def fake_process_job(job_id: str) -> None:
@@ -86,6 +88,6 @@ def test_job_processor_defaults_to_single_worker(tmp_path: Path) -> None:
     settings = Settings(storage_dir=tmp_path / "storage", model_cache_dir=tmp_path / "models")
     store = JobStore(settings)
 
-    processor = JobProcessor(store, worker_concurrency=0)
+    processor = JobProcessor(store, LocalArtifactStore(settings), worker_concurrency=0)
 
     assert processor.worker_concurrency == 1

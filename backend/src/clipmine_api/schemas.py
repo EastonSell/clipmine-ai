@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from enum import Enum
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 def _default_pos_distribution() -> dict[str, float]:
@@ -44,6 +44,7 @@ class SourceVideoRecord(BaseModel):
     content_type: str
     size_bytes: int
     relative_path: str
+    storage_backend: str = "local"
     duration_seconds: float | None = None
 
 
@@ -164,6 +165,42 @@ class ProcessingStats(BaseModel):
     candidate_clip_count: int = 0
     clip_count: int = 0
     timeline_bin_count: int = 0
+
+
+class UploadSessionRecord(BaseModel):
+    session_id: str
+    job_id: str
+    file_name: str
+    content_type: str
+    size_bytes: int
+    relative_path: str
+    upload_id: str | None = None
+    part_size_bytes: int
+    total_parts: int
+    created_at: str
+    updated_at: str
+    expires_at: str
+
+
+class UploadInitRequest(BaseModel):
+    file_name: str = Field(alias="fileName")
+    content_type: str = Field(alias="contentType")
+    size_bytes: int = Field(alias="sizeBytes")
+
+    model_config = ConfigDict(populate_by_name=True)
+
+
+class CompletedUploadPart(BaseModel):
+    part_number: int = Field(alias="partNumber")
+    etag: str
+
+    model_config = ConfigDict(populate_by_name=True)
+
+
+class CompleteMultipartUploadRequest(BaseModel):
+    parts: list[CompletedUploadPart]
+
+    model_config = ConfigDict(populate_by_name=True)
 
 
 class JobManifest(BaseModel):

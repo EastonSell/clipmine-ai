@@ -1,16 +1,17 @@
 from __future__ import annotations
 
+import math
 import shutil
 import tempfile
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
-from typing import BinaryIO
+from typing import BinaryIO, Callable
 from uuid import uuid4
 
 import orjson
 
 from .config import Settings
-from .schemas import JobManifest, JobStatus, ProgressPhase, SourceVideoRecord
+from .schemas import JobManifest, JobStatus, ProgressPhase, SourceVideoRecord, UploadSessionRecord
 
 
 class JobStore:
@@ -19,6 +20,7 @@ class JobStore:
         self.settings.storage_dir.mkdir(parents=True, exist_ok=True)
         self.settings.model_cache_dir.mkdir(parents=True, exist_ok=True)
         self.settings.jobs_dir.mkdir(parents=True, exist_ok=True)
+        self.settings.upload_sessions_dir.mkdir(parents=True, exist_ok=True)
 
     def create_job(
         self,
@@ -27,6 +29,7 @@ class JobStore:
         content_type: str,
         size_bytes: int,
         relative_path: str,
+        storage_backend: str = "local",
     ) -> JobManifest:
         now = _utc_now()
         job_id = uuid4().hex[:12]
@@ -42,6 +45,7 @@ class JobStore:
                 content_type=content_type,
                 size_bytes=size_bytes,
                 relative_path=relative_path,
+                storage_backend=storage_backend,
             ),
         )
         job_dir = self.job_dir(job_id)
@@ -91,6 +95,7 @@ class JobStore:
         content_type: str,
         size_bytes: int,
         relative_path: str,
+        storage_backend: str = "local",
     ) -> JobManifest:
         now = _utc_now()
         manifest = JobManifest(
@@ -105,6 +110,7 @@ class JobStore:
                 content_type=content_type,
                 size_bytes=size_bytes,
                 relative_path=relative_path,
+                storage_backend=storage_backend,
             ),
         )
         (self.job_dir(job_id) / "artifacts").mkdir(parents=True, exist_ok=True)
@@ -113,6 +119,72 @@ class JobStore:
 
     def discard_reserved_job(self, job_id: str) -> None:
         shutil.rmtree(self.job_dir(job_id), ignore_errors=True)
+
+    def build_upload_session(
+        self,
+        *,
+        file_name: str,
+        content_type: str,
+        size_bytes: int,
+        part_size_bytes: int,
+        ttl_minutes: int,
+    ) -> UploadSessionRecord:
+        now = datetime.now(tz=UTC)
+        session_id = uuid4().hex[:12]
+        job_id = uuid4().hex[:12]
+        safe_file_name = _sanitize_filename(file_name)
+        total_parts = max(1, math.ceil(size_bytes / part_size_bytes))
+        return UploadSessionRecord(
+            session_id=session_id,
+            job_id=job_id,
+            file_name=file_name,
+            content_type=content_type,
+            size_bytes=size_bytes,
+            relative_path=f"jobs/{job_id}/source/{safe_file_name}",
+            part_size_bytes=part_size_bytes,
+            total_parts=total_parts,
+            created_at=now.isoformat(),
+            updated_at=now.isoformat(),
+            expires_at=(now + timedelta(minutes=ttl_minutes)).isoformat(),
+        )
+
+    def save_upload_session(self, session: UploadSessionRecord) -> UploadSessionRecord:
+        stamped_session = session.model_copy(update={"updated_at": _utc_now()})
+        payload = stamped_session.model_dump(mode="json")
+        path = self.upload_session_path(stamped_session.session_id)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(orjson.dumps(payload, option=orjson.OPT_INDENT_2))
+        return stamped_session
+
+    def load_upload_session(self, session_id: str) -> UploadSessionRecord:
+        path = self.upload_session_path(session_id)
+        if not path.exists():
+            raise FileNotFoundError(session_id)
+        return UploadSessionRecord.model_validate(orjson.loads(path.read_bytes()))
+
+    def list_upload_sessions(self) -> list[UploadSessionRecord]:
+        sessions: list[UploadSessionRecord] = []
+        for session_path in sorted(self.settings.upload_sessions_dir.glob("*.json")):
+            sessions.append(UploadSessionRecord.model_validate(orjson.loads(session_path.read_bytes())))
+        return sessions
+
+    def delete_upload_session(self, session_id: str) -> None:
+        self.upload_session_path(session_id).unlink(missing_ok=True)
+
+    def cleanup_expired_upload_sessions(
+        self,
+        abort_upload: Callable[[UploadSessionRecord], None] | None = None,
+    ) -> int:
+        removed_count = 0
+        now = datetime.now(tz=UTC)
+        for session in self.list_upload_sessions():
+            if datetime.fromisoformat(session.expires_at) > now:
+                continue
+            if abort_upload:
+                abort_upload(session)
+            self.delete_upload_session(session.session_id)
+            removed_count += 1
+        return removed_count
 
     def list_jobs(self) -> list[JobManifest]:
         jobs: list[JobManifest] = []
@@ -155,10 +227,42 @@ class JobStore:
 
         return removed_count
 
+    def cleanup_ephemeral_artifacts(self, retention_hours: int) -> int:
+        if retention_hours <= 0:
+            return 0
+
+        removed_count = 0
+        cutoff = datetime.now(tz=UTC).timestamp() - (retention_hours * 3600)
+
+        for job in self.list_jobs():
+            if job.status not in {JobStatus.READY, JobStatus.FAILED}:
+                continue
+            updated_timestamp = datetime.fromisoformat(job.updated_at).timestamp()
+            if updated_timestamp >= cutoff:
+                continue
+            processing_path = self.processing_video_path(job)
+            if processing_path.exists():
+                processing_path.unlink(missing_ok=True)
+                removed_count += 1
+            audio_path = self.audio_path(job.job_id)
+            if audio_path.exists():
+                audio_path.unlink(missing_ok=True)
+                removed_count += 1
+
+        return removed_count
+
     def is_storage_writable(self) -> bool:
         self.settings.storage_dir.mkdir(parents=True, exist_ok=True)
         try:
             with tempfile.NamedTemporaryFile(dir=self.settings.storage_dir, delete=True):
+                return True
+        except OSError:
+            return False
+
+    def is_temp_disk_writable(self) -> bool:
+        self.settings.jobs_dir.mkdir(parents=True, exist_ok=True)
+        try:
+            with tempfile.NamedTemporaryFile(dir=self.settings.jobs_dir, delete=True):
                 return True
         except OSError:
             return False
@@ -169,11 +273,20 @@ class JobStore:
     def manifest_path(self, job_id: str) -> Path:
         return self.job_dir(job_id) / "job.json"
 
+    def upload_session_path(self, session_id: str) -> Path:
+        return self.settings.upload_sessions_dir / f"{session_id}.json"
+
     def resolve_storage_path(self, relative_path: str) -> Path:
         return self.settings.storage_dir / relative_path
 
     def source_video_path(self, job: JobManifest) -> Path:
         return self.resolve_storage_path(job.source_video.relative_path)
+
+    def processing_video_path(self, job: JobManifest) -> Path:
+        if job.source_video.storage_backend == "local":
+            return self.source_video_path(job)
+        suffix = Path(job.source_video.file_name).suffix.lower() or ".mp4"
+        return self.job_dir(job.job_id) / "artifacts" / f"source-cache{suffix}"
 
     def audio_path(self, job_id: str) -> Path:
         return self.job_dir(job_id) / "artifacts" / "audio.wav"

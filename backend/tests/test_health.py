@@ -13,4 +13,7 @@ def test_healthcheck() -> None:
     assert payload["checks"]["storageWritable"] is True
     assert "ffmpegAvailable" in payload["checks"]
     assert "modelCacheReady" in payload["checks"]
+    assert "objectStoreReachable" in payload["checks"]
+    assert "tempDiskWritable" in payload["checks"]
     assert isinstance(payload["queueDepth"], int)
+    assert isinstance(payload["activeWorkers"], int)
