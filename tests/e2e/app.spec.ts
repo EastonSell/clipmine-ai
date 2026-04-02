@@ -5,6 +5,10 @@ import { createMockJob } from "./fixtures";
 const recentJobsKey = "clipmine:recent-jobs:v1";
 const batchSessionsKey = "clipmine:batches:v1";
 
+function buildMultipartPartUrl(uploadSessionId: string, partNumber: number) {
+  return `http://127.0.0.1:3000/__playwright/uploads/${uploadSessionId}/part/${partNumber}`;
+}
+
 test("landing page renders recent jobs and validates unsupported uploads", async ({ page }) => {
   const consoleErrors: string[] = [];
   page.on("console", (message) => {
@@ -50,6 +54,7 @@ test("landing page renders recent jobs and validates unsupported uploads", async
 test("uploading a valid source opens the workspace and supports shortlist persistence", async ({ page }) => {
   const job = createMockJob({ jobId: "job-ready" });
   const uploadSessionId = "session-ready";
+  const uploadPartUrl = buildMultipartPartUrl(uploadSessionId, 1);
 
   await page.route("**/api/uploads/init", async (route) => {
     await route.fulfill({
@@ -61,12 +66,12 @@ test("uploading a valid source opens the workspace and supports shortlist persis
         fileName: job.sourceVideo.file_name,
         partSizeBytes: 16 * 1024 * 1024,
         expiresAt: "2026-04-02T12:30:00.000Z",
-        parts: [{ partNumber: 1, url: `https://uploads.example/${uploadSessionId}/part/1` }],
+        parts: [{ partNumber: 1, url: uploadPartUrl }],
       }),
     });
   });
 
-  await page.route(`https://uploads.example/${uploadSessionId}/part/1`, async (route) => {
+  await page.route(uploadPartUrl, async (route) => {
     await new Promise((resolve) => setTimeout(resolve, 150));
     await route.fulfill({
       status: 200,
@@ -118,7 +123,7 @@ test("uploading a valid source opens the workspace and supports shortlist persis
   await page.waitForURL(`**/jobs/${job.jobId}`);
   await expect(page.getByRole("heading", { name: job.sourceVideo.file_name })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Ranked by training usefulness" })).toBeVisible();
-  await expect(page.getByText("Shortlist")).toBeVisible();
+  await expect(page.getByRole("button", { name: /Add to shortlist/i })).toBeVisible();
 
   await page.getByRole("button", { name: /Add to shortlist/i }).click();
   await expect(page.getByRole("button", { name: /Remove from shortlist/i })).toBeVisible();
@@ -128,12 +133,13 @@ test("uploading a valid source opens the workspace and supports shortlist persis
 
   await page.getByRole("button", { name: /Add more context before the final label\./i }).click();
   await expect(page).toHaveURL(/clip=clip-2/);
-  await expect(page.getByText("Boundary messy")).toBeVisible();
-  await expect(page.getByText("Speech density")).toBeVisible();
+  await expect(page.getByText("Boundary Messy", { exact: true }).first()).toBeVisible();
+  await expect(page.getByText("Speech density", { exact: true }).first()).toBeVisible();
 });
 
 test("multipart upload can be cancelled and returns a retryable error state", async ({ page }) => {
   const uploadSessionId = "session-cancel";
+  const uploadPartUrl = buildMultipartPartUrl(uploadSessionId, 1);
 
   await page.route("**/api/uploads/init", async (route) => {
     await route.fulfill({
@@ -145,12 +151,12 @@ test("multipart upload can be cancelled and returns a retryable error state", as
         fileName: "cancel-me.mp4",
         partSizeBytes: 16 * 1024 * 1024,
         expiresAt: "2026-04-02T12:30:00.000Z",
-        parts: [{ partNumber: 1, url: `https://uploads.example/${uploadSessionId}/part/1` }],
+        parts: [{ partNumber: 1, url: uploadPartUrl }],
       }),
     });
   });
 
-  await page.route(`https://uploads.example/${uploadSessionId}/part/1`, async (route) => {
+  await page.route(uploadPartUrl, async (route) => {
     await new Promise((resolve) => setTimeout(resolve, 5_000));
     await route.fulfill({
       status: 200,
@@ -177,7 +183,7 @@ test("multipart upload can be cancelled and returns a retryable error state", as
   await page.getByRole("button", { name: "Upload video" }).click();
 
   await expect(page.getByText("Upload progress")).toBeVisible();
-  await page.getByRole("button", { name: "Cancel" }).click();
+  await page.getByRole("button", { name: "Cancel", exact: true }).click();
 
   await expect(page.getByText("Upload was cancelled before processing started.")).toBeVisible();
   await expect(page.getByRole("button", { name: "Retry upload" })).toBeVisible();
@@ -197,7 +203,7 @@ test("timeline tab is shareable with query params", async ({ page }) => {
   await page.goto(`/jobs/${job.jobId}?tab=timeline`);
 
   await expect(page.getByRole("heading", { name: "Training usefulness across the full video" })).toBeVisible();
-  await expect(page.getByText("Shortlist-ready region")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Best regions" })).toBeVisible();
   await expect(page).toHaveURL(/tab=timeline/);
 });
 
@@ -240,8 +246,8 @@ test("precision signals are filterable in the clips workspace", async ({ page })
   await page.goto(`/jobs/${job.jobId}?recommendation=shortlist`);
 
   await expect(page.getByRole("heading", { name: "Ranked by training usefulness" })).toBeVisible();
-  await expect(page.getByText("Keep the labeling steady across every segment.")).toBeVisible();
-  await expect(page.getByText("Add more context before the final label.")).toHaveCount(0);
+  await expect(page.getByLabel(/Add Keep the labeling steady across every segment\./i)).toBeVisible();
+  await expect(page.getByLabel(/Add Add more context before the final label\./i)).toHaveCount(0);
 });
 
 test("selected clips can be batched into a package export", async ({ page }) => {
@@ -275,8 +281,8 @@ test("selected clips can be batched into a package export", async ({ page }) => 
   await expect(page.getByText("2 clips ready for export")).toBeVisible();
   await page.getByRole("button", { name: /Open export/i }).click();
   await expect(page.getByRole("heading", { name: "Build a training-ready clip archive" })).toBeVisible();
-  await expect(page.getByText("clip_001__clip-1.mp4")).toBeVisible();
-  await expect(page.getByText("clip_002__clip-2.mp4")).toBeVisible();
+  await expect(page.getByText("clip_001__clip-1.mp4", { exact: true })).toBeVisible();
+  await expect(page.getByText("clip_002__clip-2.mp4", { exact: true })).toBeVisible();
 
   const downloadPromise = page.waitForEvent("download");
   await page.getByRole("button", { name: "Download selected package" }).click();
@@ -395,8 +401,8 @@ test("batch workspace groups jobs and exports thresholded clips", async ({ page 
 
   await expect(page.getByRole("heading", { name: "3 sources queued" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Top clips across the batch" })).toBeVisible();
-  await expect(page.getByText("alpha.mp4")).toBeVisible();
-  await expect(page.getByText("beta.mp4")).toBeVisible();
+  await expect(page.getByRole("button", { name: /alpha\.mp4 ready/i })).toBeVisible();
+  await expect(page.getByRole("button", { name: /beta\.mp4 ready/i })).toBeVisible();
 
   await page.locator('input[type="range"]').fill("90");
 
@@ -435,20 +441,59 @@ test("landing page queues multiple uploads into one batch workspace", async ({ p
     },
   });
   let uploadCount = 0;
+  const uploadSessions = [
+    {
+      uploadSessionId: "session-alpha",
+      jobId: alpha.jobId,
+      fileName: alpha.sourceVideo.file_name,
+      uploadPartUrl: buildMultipartPartUrl("session-alpha", 1),
+    },
+    {
+      uploadSessionId: "session-beta",
+      jobId: beta.jobId,
+      fileName: beta.sourceVideo.file_name,
+      uploadPartUrl: buildMultipartPartUrl("session-beta", 1),
+    },
+  ];
 
-  await page.route("**/api/jobs", async (route) => {
+  await page.route("**/api/uploads/init", async (route) => {
     uploadCount += 1;
-    const payload = uploadCount === 1 ? alpha : beta;
+    const payload = uploadSessions[uploadCount - 1];
     await route.fulfill({
       status: 201,
       contentType: "application/json",
       body: JSON.stringify({
+        uploadSessionId: payload.uploadSessionId,
         jobId: payload.jobId,
-        status: "queued",
-        fileName: payload.sourceVideo.file_name,
+        fileName: payload.fileName,
+        partSizeBytes: 16 * 1024 * 1024,
+        expiresAt: "2026-04-02T12:30:00.000Z",
+        parts: [{ partNumber: 1, url: payload.uploadPartUrl }],
       }),
     });
   });
+  for (const session of uploadSessions) {
+    await page.route(session.uploadPartUrl, async (route) => {
+      await route.fulfill({
+        status: 200,
+        headers: {
+          ETag: `"etag-${session.uploadSessionId}"`,
+        },
+        body: "",
+      });
+    });
+    await page.route(`**/api/uploads/${session.uploadSessionId}/complete`, async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          jobId: session.jobId,
+          status: "queued",
+          fileName: session.fileName,
+        }),
+      });
+    });
+  }
 
   await page.route("**/api/jobs/queued-alpha", async (route) => {
     await route.fulfill({
@@ -482,7 +527,7 @@ test("landing page queues multiple uploads into one batch workspace", async ({ p
 
   await page.waitForURL("**/batches/*");
   await expect(page.getByRole("heading", { name: "2 sources queued" })).toBeVisible();
-  await expect(page.getByText("alpha.mp4")).toBeVisible();
-  await expect(page.getByText("beta.mp4")).toBeVisible();
+  await expect(page.getByRole("button", { name: /alpha\.mp4 processing|alpha\.mp4 ready/i })).toBeVisible();
+  await expect(page.getByRole("button", { name: /beta\.mp4 processing|beta\.mp4 ready/i })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Top clips across the batch" })).toBeVisible();
 });

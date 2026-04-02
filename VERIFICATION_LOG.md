@@ -2,6 +2,26 @@
 
 Date: 2026-04-02
 
+## Playwright Recovery Pass
+
+- Re-ran the local Playwright suite after terminal and system access were enabled.
+- Confirmed the original Chromium launch blocker is gone on this machine.
+- Fixed the remaining failures in the browser smoke suite by:
+  - updating multipart upload mocks to use same-origin mock part URLs so XHR `ETag` handling behaves deterministically
+  - tightening ambiguous text assertions to role-based or exact-match selectors
+  - aligning the queue-upload smoke test with the current multipart intake flow instead of the legacy direct-upload route
+- Updated the runner configuration to suppress noisy `NO_COLOR` / `FORCE_COLOR` warnings during local Playwright runs.
+
+### Playwright checks run
+
+```bash
+PLAYWRIGHT_BROWSERS_PATH=/tmp/clipmine-playwright-browsers npm run test:e2e
+```
+
+### Result
+
+- `9 / 9` browser smoke tests now pass locally.
+
 ## Review Workflow And Training Package Pass
 
 - Fixed the React duplicate-key warning in the landing preview by replacing value-derived keys with stable composite/index keys.

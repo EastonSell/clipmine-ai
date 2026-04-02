@@ -154,7 +154,7 @@ GitHub README pages cannot embed live iframe renders reliably, so this repo uses
 - `scripts/generate-readme-assets.mjs` captures product screenshots and rewrites visual assets
 - updated files are committed back into `docs/readme`
 
-That keeps the README visuals aligned to the current UI in a GitHub-compatible way. In this local macOS sandbox, Chromium screenshot capture can be blocked by OS policy, so the repo includes seeded screenshots and the GitHub Action is the refresh path.
+That keeps the README visuals aligned to the current UI in a GitHub-compatible way. The repo includes seeded screenshots for convenience, and the GitHub Action remains the reliable refresh path for keeping those assets current on `main`.
 
 ## Repository layout
 
