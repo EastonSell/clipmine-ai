@@ -24,14 +24,14 @@ const proofPoints = [
     body: "Review ranked short speech windows by confidence, pace, signal strength, and continuity.",
   },
   {
-    id: "timeline",
-    title: "Timeline",
-    body: "Scan the full source video and jump straight to the strongest regions.",
+    id: "batch-queue",
+    title: "Batch queue",
+    body: "Queue multiple uploads into one review run and keep every source grouped under the same session.",
   },
   {
     id: "export",
     title: "Training package",
-    body: "Batch selected clips into one linked zip archive with manifest metadata and stable file names.",
+    body: "Export top clips from one job or the whole batch with manifest metadata and stable file names.",
   },
 ];
 
@@ -92,14 +92,14 @@ export function HomePageView() {
 
               <div className="space-y-5">
                 <div className="rounded-[1.25rem] border border-[var(--line)] bg-[var(--surface-overlay)] px-4 py-3 text-sm text-[var(--muted)] shadow-[var(--shadow-soft)] sm:max-w-xl">
-                  Upload a talking-head video, inspect ranked clips, and export cleaner training signals from one app-like workspace.
+                  Upload one source or queue a full batch, inspect ranked clips, and export cleaner training signals from one app-like workspace.
                 </div>
                 <h1 className="max-w-5xl text-[3.15rem] font-semibold leading-[0.94] tracking-[-0.08em] sm:text-[4.2rem] lg:text-[5.15rem]">
-                  Review clips in a workspace, not a transcript dump.
+                  Review clips and queued uploads in one operator workspace.
                 </h1>
                 <p className="max-w-2xl text-lg leading-8 text-[var(--muted-strong)] sm:text-[1.08rem]">
-                  ClipMine AI turns a single source video into a ranked review surface with clip scoring, timeline
-                  coverage, and package-ready metadata for training and annotation workflows.
+                  ClipMine AI turns one source or a full batch into ranked review surfaces with clip scoring, timeline
+                  coverage, queue status, and package-ready metadata for training and annotation workflows.
                 </p>
               </div>
 

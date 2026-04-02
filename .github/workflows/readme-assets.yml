@@ -1,0 +1,49 @@
+name: Refresh README Assets
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "apps/web/**"
+      - "scripts/generate-readme-assets.mjs"
+      - ".github/workflows/readme-assets.yml"
+      - "README.md"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  refresh-assets:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: PLAYWRIGHT_BROWSERS_PATH=/tmp/clipmine-playwright-browsers npx playwright install --with-deps chromium
+      - run: npm run build:web
+      - run: npm run start:web > /tmp/clipmine-readme.log 2>&1 & echo $! > /tmp/clipmine-readme.pid
+      - run: |
+          for i in $(seq 1 40); do
+            if curl -fsS http://127.0.0.1:3000 >/dev/null; then
+              exit 0
+            fi
+            sleep 2
+          done
+          cat /tmp/clipmine-readme.log
+          exit 1
+      - run: PLAYWRIGHT_BROWSERS_PATH=/tmp/clipmine-playwright-browsers README_CAPTURE_BASE_URL=http://127.0.0.1:3000 node scripts/generate-readme-assets.mjs
+      - run: |
+          if git diff --quiet -- docs/readme; then
+            echo "No README asset changes."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/readme
+          git commit -m "docs: refresh readme assets"
+          git push

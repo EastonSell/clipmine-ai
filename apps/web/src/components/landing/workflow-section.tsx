@@ -9,6 +9,11 @@ const implementedFeatures = [
     icon: Film,
   },
   {
+    title: "Batch queue",
+    description: "Multiple uploads can be queued into one batch session with per-job status and cross-job export.",
+    icon: CheckCircle2,
+  },
+  {
     title: "Ranked clip analysis",
     description: "Short speech windows are segmented, scored, labeled, and explained for fast review.",
     icon: Sparkles,
@@ -16,7 +21,7 @@ const implementedFeatures = [
   {
     title: "Usefulness timeline",
     description: "A 48-bin overview highlights stronger and weaker regions across the full source video.",
-    icon: CheckCircle2,
+    icon: Film,
   },
   {
     title: "Structured export",

@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="1200" height="660" viewBox="0 0 1200 660" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1200" height="660" rx="28" fill="#0B1118"/>
+  <rect x="24" y="24" width="1152" height="612" rx="24" fill="#101822" stroke="#1E2C3C"/>
+  <text x="72" y="96" fill="#E8EEF6" font-family="Arial, sans-serif" font-size="34" font-weight="700">Illustrative workflow compression</text>
+  <text x="72" y="132" fill="#91A2B7" font-family="Arial, sans-serif" font-size="18">A reasonable model of how ClipMine reduces the time spent scrubbing raw footage and hand-building training packages.</text>
+  <text x="72" y="184" fill="#63D8F7" font-family="Arial, sans-serif" font-size="13" letter-spacing="3">MANUAL REVIEW</text>
+  <text x="910" y="184" fill="#63D8F7" font-family="Arial, sans-serif" font-size="13" letter-spacing="3">CLIPMINE</text>
+
+  <text x="72" y="212" fill="#D6E0EA" font-family="Arial, sans-serif" font-size="18">Find usable segments in one source</text>
+  <rect x="72" y="230" width="560" height="34" rx="17" fill="#151F2B"/>
+  <rect x="72" y="230" width="168" height="34" rx="17" fill="#33465A"/>
+  <text x="650" y="253" fill="#D6E0EA" font-family="Arial, sans-serif" font-size="16">42 min</text>
+  <rect x="720" y="230" width="360" height="34" rx="17" fill="#151F2B"/>
+  <rect x="720" y="230" width="28" height="34" rx="17" fill="#63D8F7"/>
+  <text x="1100" y="253" fill="#D6E0EA" font-family="Arial, sans-serif" font-size="16">11 min</text>
+
+  <text x="72" y="322" fill="#D6E0EA" font-family="Arial, sans-serif" font-size="18">Prepare clip files + manifest</text>
+  <rect x="72" y="340" width="560" height="34" rx="17" fill="#151F2B"/>
+  <rect x="72" y="340" width="72" height="34" rx="17" fill="#33465A"/>
+  <text x="650" y="363" fill="#D6E0EA" font-family="Arial, sans-serif" font-size="16">18 min</text>
+  <rect x="720" y="340" width="360" height="34" rx="17" fill="#151F2B"/>
+  <rect x="720" y="340" width="10" height="34" rx="17" fill="#63D8F7"/>
+  <text x="1100" y="363" fill="#D6E0EA" font-family="Arial, sans-serif" font-size="16">4 min</text>
+
+  <text x="72" y="432" fill="#D6E0EA" font-family="Arial, sans-serif" font-size="18">Review five uploads in one pass</text>
+  <rect x="72" y="450" width="560" height="34" rx="17" fill="#151F2B"/>
+  <rect x="72" y="450" width="480" height="34" rx="17" fill="#33465A"/>
+  <text x="650" y="473" fill="#D6E0EA" font-family="Arial, sans-serif" font-size="16">120 min</text>
+  <rect x="720" y="450" width="360" height="34" rx="17" fill="#151F2B"/>
+  <rect x="720" y="450" width="72" height="34" rx="17" fill="#63D8F7"/>
+  <text x="1100" y="473" fill="#D6E0EA" font-family="Arial, sans-serif" font-size="16">28 min</text>
+
+  <text x="72" y="584" fill="#6F8196" font-family="Arial, sans-serif" font-size="14">Values are illustrative workflow estimates, not benchmark claims.</text>
+</svg>

@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="1200" height="660" viewBox="0 0 1200 660" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1200" height="660" rx="28" fill="#0B1118"/>
+  <rect x="24" y="24" width="1152" height="612" rx="24" fill="#101822" stroke="#1E2C3C"/>
+  <text x="72" y="96" fill="#E8EEF6" font-family="Arial, sans-serif" font-size="34" font-weight="700">Batch review scales the same workflow</text>
+  <text x="72" y="132" fill="#91A2B7" font-family="Arial, sans-serif" font-size="18">Queued uploads keep multiple sources in one session so the user can threshold and export top clips across the full run.</text>
+  <line x1="96" y1="540" x2="1110" y2="540" stroke="#243447" stroke-width="2"/>
+  <line x1="96" y1="180" x2="96" y2="540" stroke="#243447" stroke-width="2"/>
+  <text x="72" y="562" fill="#6F8196" font-family="Arial, sans-serif" font-size="14">Start</text>
+  <text x="280" y="562" fill="#6F8196" font-family="Arial, sans-serif" font-size="14">Uploads queued</text>
+  <text x="520" y="562" fill="#6F8196" font-family="Arial, sans-serif" font-size="14">Jobs processing</text>
+  <text x="760" y="562" fill="#6F8196" font-family="Arial, sans-serif" font-size="14">Threshold review</text>
+  <text x="1010" y="562" fill="#6F8196" font-family="Arial, sans-serif" font-size="14">One package export</text>
+  <path d="M96 500 C180 470 220 420 320 390 C420 360 460 290 560 250 C650 214 710 210 810 186 C910 162 980 152 1110 144" stroke="#63D8F7" stroke-width="8" stroke-linecap="round"/>
+  <circle cx="96" cy="500" r="9" fill="#63D8F7"/>
+  <circle cx="320" cy="390" r="9" fill="#63D8F7"/>
+  <circle cx="560" cy="250" r="9" fill="#63D8F7"/>
+  <circle cx="810" cy="186" r="9" fill="#63D8F7"/>
+  <circle cx="1110" cy="144" r="9" fill="#63D8F7"/>
+  <rect x="756" y="292" width="296" height="126" rx="18" fill="#121C28" stroke="#243447"/>
+  <text x="784" y="334" fill="#E8EEF6" font-family="Arial, sans-serif" font-size="22" font-weight="700">What changes</text>
+  <text x="784" y="364" fill="#91A2B7" font-family="Arial, sans-serif" font-size="16">• one queue instead of one-off uploads</text>
+  <text x="784" y="392" fill="#91A2B7" font-family="Arial, sans-serif" font-size="16">• one threshold across every ready job</text>
+  <text x="784" y="420" fill="#91A2B7" font-family="Arial, sans-serif" font-size="16">• one combined package for training prep</text>
+</svg>

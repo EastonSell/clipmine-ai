@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="1400" height="820" viewBox="0 0 1400 820" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1400" height="820" rx="32" fill="#091018"/>
+  <rect x="20" y="20" width="1360" height="780" rx="28" fill="#0E1621" stroke="#1E2B3B"/>
+  <rect x="52" y="44" width="1296" height="72" rx="22" fill="#101A26" stroke="#1E2B3B"/>
+  <circle cx="96" cy="80" r="20" fill="#141F2C"/>
+  <text x="86" y="86" fill="#8CBBD6" font-family="Arial, sans-serif" font-size="15" font-weight="700">CM</text>
+  <text x="130" y="76" fill="#E9F0F7" font-family="Arial, sans-serif" font-size="24" font-weight="700">ClipMine AI</text>
+  <text x="130" y="101" fill="#8FA0B5" font-family="Arial, sans-serif" font-size="16">Speech clip curation for training workflows.</text>
+  <rect x="936" y="58" width="120" height="40" rx="20" fill="#121C28" stroke="#29384A"/>
+  <rect x="1070" y="58" width="112" height="40" rx="20" fill="#182637" stroke="#2E425A"/>
+  <rect x="1194" y="58" width="118" height="40" rx="20" fill="#82DFFF"/>
+  <text x="962" y="83" fill="#B9C7D7" font-family="Arial, sans-serif" font-size="16">Recent</text>
+  <text x="1102" y="83" fill="#B9C7D7" font-family="Arial, sans-serif" font-size="16">Roadmap</text>
+  <text x="1226" y="83" fill="#08202A" font-family="Arial, sans-serif" font-size="16" font-weight="700">Upload video</text>
+
+  <text x="72" y="194" fill="#7BD9F3" font-family="Arial, sans-serif" font-size="15" letter-spacing="3">TRAINING-READY SPEECH CURATION</text>
+  <text x="72" y="282" fill="#F0F5FA" font-family="Arial, sans-serif" font-size="78" font-weight="700">Queue uploads.</text>
+  <text x="72" y="358" fill="#F0F5FA" font-family="Arial, sans-serif" font-size="78" font-weight="700">Review ranked clips.</text>
+  <text x="72" y="434" fill="#F0F5FA" font-family="Arial, sans-serif" font-size="78" font-weight="700">Export one package.</text>
+  <text x="74" y="492" fill="#8FA0B5" font-family="Arial, sans-serif" font-size="24">ClipMine AI turns raw talking-head video into a review surface with scoring,</text>
+  <text x="74" y="528" fill="#8FA0B5" font-family="Arial, sans-serif" font-size="24">timeline coverage, batch queue state, and training-package exports.</text>
+
+  <rect x="72" y="578" width="184" height="56" rx="22" fill="#82DFFF"/>
+  <rect x="272" y="578" width="204" height="56" rx="22" fill="#121C28" stroke="#29384A"/>
+  <text x="118" y="613" fill="#08202A" font-family="Arial, sans-serif" font-size="20" font-weight="700">Upload video</text>
+  <text x="319" y="613" fill="#C2CEDA" font-family="Arial, sans-serif" font-size="20">Explore workspace</text>
+
+  <rect x="72" y="676" width="210" height="96" rx="24" fill="#121C28" stroke="#29384A"/>
+  <rect x="290" y="676" width="210" height="96" rx="24" fill="#121C28" stroke="#29384A"/>
+  <rect x="508" y="676" width="210" height="96" rx="24" fill="#121C28" stroke="#29384A"/>
+  <text x="96" y="714" fill="#7BD9F3" font-family="Arial, sans-serif" font-size="13" letter-spacing="2">BEST CLIPS</text>
+  <text x="96" y="748" fill="#E9F0F7" font-family="Arial, sans-serif" font-size="22" font-weight="700">Rank strong speech</text>
+  <text x="314" y="714" fill="#7BD9F3" font-family="Arial, sans-serif" font-size="13" letter-spacing="2">BATCH QUEUE</text>
+  <text x="314" y="748" fill="#E9F0F7" font-family="Arial, sans-serif" font-size="22" font-weight="700">Keep sources grouped</text>
+  <text x="532" y="714" fill="#7BD9F3" font-family="Arial, sans-serif" font-size="13" letter-spacing="2">TRAINING PACKAGE</text>
+  <text x="532" y="748" fill="#E9F0F7" font-family="Arial, sans-serif" font-size="22" font-weight="700">Export clips + manifest</text>
+
+  <rect x="816" y="156" width="520" height="566" rx="30" fill="#101823" stroke="#223247"/>
+  <rect x="848" y="188" width="456" height="70" rx="20" fill="#121D2A" stroke="#25354A"/>
+  <text x="878" y="220" fill="#7BD9F3" font-family="Arial, sans-serif" font-size="13" letter-spacing="2">WORKSPACE PREVIEW</text>
+  <text x="878" y="247" fill="#E9F0F7" font-family="Arial, sans-serif" font-size="28" font-weight="700">Single app surface</text>
+
+  <rect x="848" y="286" width="176" height="220" rx="24" fill="#121C28" stroke="#26384D"/>
+  <text x="874" y="320" fill="#8FA0B5" font-family="Arial, sans-serif" font-size="14">SELECTED PACKAGE</text>
+  <text x="874" y="398" fill="#F0F5FA" font-family="Arial, sans-serif" font-size="76" font-weight="700">08</text>
+  <text x="874" y="440" fill="#8FA0B5" font-family="Arial, sans-serif" font-size="16">Linked clip files and manifest</text>
+
+  <rect x="1048" y="286" width="256" height="92" rx="22" fill="#121C28" stroke="#26384D"/>
+  <rect x="1048" y="392" width="256" height="92" rx="22" fill="#121C28" stroke="#26384D"/>
+  <text x="1072" y="322" fill="#7BD9F3" font-family="Arial, sans-serif" font-size="13" letter-spacing="2">QUEUE</text>
+  <text x="1072" y="352" fill="#E9F0F7" font-family="Arial, sans-serif" font-size="24" font-weight="700">3 uploads grouped</text>
+  <text x="1072" y="428" fill="#7BD9F3" font-family="Arial, sans-serif" font-size="13" letter-spacing="2">TIMELINE</text>
+  <text x="1072" y="458" fill="#E9F0F7" font-family="Arial, sans-serif" font-size="24" font-weight="700">48 usefulness bins</text>
+
+  <rect x="848" y="534" width="456" height="156" rx="24" fill="#121C28" stroke="#26384D"/>
+  <text x="878" y="568" fill="#8FA0B5" font-family="Arial, sans-serif" font-size="14">TOP CLIPS</text>
+  <rect x="878" y="596" width="396" height="28" rx="14" fill="#0E1621"/>
+  <rect x="878" y="596" width="348" height="28" rx="14" fill="#82DFFF"/>
+  <rect x="878" y="636" width="396" height="28" rx="14" fill="#0E1621"/>
+  <rect x="878" y="636" width="288" height="28" rx="14" fill="#5C6C7F"/>
+  <text x="1126" y="617" fill="#07212A" font-family="Arial, sans-serif" font-size="14" font-weight="700">97 / 100</text>
+  <text x="1080" y="657" fill="#D4DEE8" font-family="Arial, sans-serif" font-size="14">84 / 100</text>
+</svg>

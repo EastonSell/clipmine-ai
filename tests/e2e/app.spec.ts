@@ -3,6 +3,7 @@ import { expect, test } from "@playwright/test";
 import { createMockJob } from "./fixtures";
 
 const recentJobsKey = "clipmine:recent-jobs:v1";
+const batchSessionsKey = "clipmine:batches:v1";
 
 test("landing page renders recent jobs and validates unsupported uploads", async ({ page }) => {
   const consoleErrors: string[] = [];
@@ -283,4 +284,129 @@ test("selected clips can be batched into a package export", async ({ page }) => 
 
   expect(packageRequestBody).toEqual({ clipIds: ["clip-1", "clip-2"] });
   await expect(page.getByText("Full job JSON")).toBeVisible();
+});
+
+test("batch workspace groups jobs and exports thresholded clips", async ({ page }) => {
+  const jobAlpha = createMockJob({
+    jobId: "job-alpha",
+    sourceVideo: {
+      id: "video-alpha",
+      file_name: "alpha.mp4",
+      content_type: "video/mp4",
+      size_bytes: 12_000_000,
+      duration_seconds: 164,
+      url: "/api/jobs/job-alpha/video",
+    },
+  });
+  const jobBeta = createMockJob(
+    {
+      jobId: "job-beta",
+      sourceVideo: {
+        id: "video-beta",
+        file_name: "beta.mp4",
+        content_type: "video/mp4",
+        size_bytes: 14_000_000,
+        duration_seconds: 201,
+        url: "/api/jobs/job-beta/video",
+      },
+    },
+    [
+      {
+        id: "job-beta-clip-1",
+        score: 94,
+        text: "Ship the batch package as one archive.",
+      },
+      {
+        id: "job-beta-clip-2",
+        score: 83,
+        text: "The second clip should fall below the threshold later.",
+      },
+    ]
+  );
+  let batchRequestBody: Record<string, unknown> | null = null;
+
+  await page.addInitScript(
+    ({ batchSessionsKey, session }) => {
+      window.localStorage.setItem(batchSessionsKey, JSON.stringify([session]));
+    },
+    {
+      batchSessionsKey,
+      session: {
+        batchId: "demo-batch",
+        label: "3 sources queued",
+        createdAt: "2026-04-02T12:00:00.000Z",
+        updatedAt: "2026-04-02T12:10:00.000Z",
+        qualityThreshold: 84,
+        items: [
+          {
+            id: "upload-1",
+            fileName: "alpha.mp4",
+            sizeBytes: 12_000_000,
+            jobId: "job-alpha",
+            status: "ready",
+            uploadPhase: "complete",
+            uploadProgress: 100,
+            error: null,
+            updatedAt: "2026-04-02T12:10:00.000Z",
+          },
+          {
+            id: "upload-2",
+            fileName: "beta.mp4",
+            sizeBytes: 14_000_000,
+            jobId: "job-beta",
+            status: "ready",
+            uploadPhase: "complete",
+            uploadProgress: 100,
+            error: null,
+            updatedAt: "2026-04-02T12:11:00.000Z",
+          },
+        ],
+      },
+    }
+  );
+
+  await page.route("**/api/jobs/job-alpha", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(jobAlpha),
+    });
+  });
+  await page.route("**/api/jobs/job-beta", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(jobBeta),
+    });
+  });
+  await page.route("**/api/exports/batch-package", async (route) => {
+    batchRequestBody = JSON.parse(route.request().postData() ?? "{}") as Record<string, unknown>;
+    await route.fulfill({
+      status: 200,
+      headers: {
+        "Content-Type": "application/zip",
+        "Content-Disposition": 'attachment; filename="clipmine-batch-export-demo.zip"',
+      },
+      body: Buffer.from("PK\x03\x04"),
+    });
+  });
+
+  await page.goto("/batches/demo-batch");
+
+  await expect(page.getByRole("heading", { name: "3 sources queued" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Top clips across the batch" })).toBeVisible();
+  await expect(page.getByText("alpha.mp4")).toBeVisible();
+  await expect(page.getByText("beta.mp4")).toBeVisible();
+
+  await page.locator('input[type="range"]').fill("90");
+
+  const downloadPromise = page.waitForEvent("download");
+  await page.getByRole("button", { name: /Export 2 clips/i }).click();
+  await downloadPromise;
+
+  expect(batchRequestBody?.qualityThreshold).toBe(90);
+  expect(batchRequestBody?.selections).toEqual([
+    { jobId: "job-alpha", clipIds: ["clip-1"] },
+    { jobId: "job-beta", clipIds: ["job-beta-clip-1"] },
+  ]);
 });

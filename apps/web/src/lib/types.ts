@@ -4,6 +4,14 @@ export type UploadJobResponse = {
   fileName: string;
 };
 
+export type BatchUploadItemStatus =
+  | "queued"
+  | "uploading"
+  | "processing"
+  | "ready"
+  | "failed"
+  | "cancelled";
+
 export type UploadMode = "direct" | "multipart";
 export type UploadPhase = "validating" | "transferring" | "finalizing" | "processing";
 
@@ -11,6 +19,27 @@ export type UploadProgress = {
   loaded: number;
   total: number;
   percentage: number;
+};
+
+export type BatchUploadItemRecord = {
+  id: string;
+  fileName: string;
+  sizeBytes: number;
+  jobId: string | null;
+  status: BatchUploadItemStatus;
+  uploadPhase: UploadPhase | "queued" | "complete";
+  uploadProgress: number;
+  error: string | null;
+  updatedAt: string;
+};
+
+export type BatchSessionRecord = {
+  batchId: string;
+  label: string;
+  createdAt: string;
+  updatedAt: string;
+  qualityThreshold: number;
+  items: BatchUploadItemRecord[];
 };
 
 export type ApiErrorDetail = {
@@ -179,6 +208,11 @@ export type ProcessingStats = {
   shortlist_recommended_count: number;
   clip_count: number;
   timeline_bin_count: number;
+};
+
+export type BatchPackageJobSelection = {
+  jobId: string;
+  clipIds: string[];
 };
 
 export type RecentJobRecord = {

@@ -229,6 +229,21 @@ class PackageExportRequest(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
 
+class BatchPackageSelection(BaseModel):
+    job_id: str = Field(alias="jobId")
+    clip_ids: list[str] = Field(alias="clipIds")
+
+    model_config = ConfigDict(populate_by_name=True)
+
+
+class BatchPackageExportRequest(BaseModel):
+    batch_label: str | None = Field(default=None, alias="batchLabel")
+    quality_threshold: float | None = Field(default=None, alias="qualityThreshold")
+    selections: list[BatchPackageSelection]
+
+    model_config = ConfigDict(populate_by_name=True)
+
+
 class JobManifest(BaseModel):
     job_id: str
     status: JobStatus

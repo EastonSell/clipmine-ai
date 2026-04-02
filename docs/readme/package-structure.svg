@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="1200" height="560" viewBox="0 0 1200 560" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1200" height="560" rx="28" fill="#0B1118"/>
+  <rect x="24" y="24" width="1152" height="512" rx="24" fill="#101822" stroke="#1E2C3C"/>
+  <text x="72" y="96" fill="#E8EEF6" font-family="Arial, sans-serif" font-size="34" font-weight="700">Training package structure</text>
+  <text x="72" y="132" fill="#91A2B7" font-family="Arial, sans-serif" font-size="18">The primary export bundles selected clip video files with a manifest that keeps every file linked to clip-level metadata.</text>
+  <rect x="72" y="184" width="486" height="288" rx="24" fill="#121C28" stroke="#27384B"/>
+  <text x="100" y="226" fill="#7BD9F3" font-family="Arial, sans-serif" font-size="14" letter-spacing="2">ZIP LAYOUT</text>
+  <text x="100" y="272" fill="#E8EEF6" font-family="Courier New, monospace" font-size="22">clipmine-export-&lt;jobId&gt;/</text>
+  <text x="132" y="312" fill="#D6E0EA" font-family="Courier New, monospace" font-size="20">manifest.json</text>
+  <text x="132" y="348" fill="#D6E0EA" font-family="Courier New, monospace" font-size="20">clips/</text>
+  <text x="164" y="384" fill="#D6E0EA" font-family="Courier New, monospace" font-size="20">clip_001__dc07547b698b-clip-011.mp4</text>
+  <text x="164" y="420" fill="#D6E0EA" font-family="Courier New, monospace" font-size="20">clip_002__dc07547b698b-clip-023.mp4</text>
+  <rect x="622" y="184" width="506" height="288" rx="24" fill="#121C28" stroke="#27384B"/>
+  <text x="650" y="226" fill="#7BD9F3" font-family="Arial, sans-serif" font-size="14" letter-spacing="2">MANIFEST LINKS</text>
+  <text x="650" y="276" fill="#E8EEF6" font-family="Arial, sans-serif" font-size="20" font-weight="700">Each clip keeps:</text>
+  <text x="650" y="316" fill="#91A2B7" font-family="Arial, sans-serif" font-size="18">• ordinal and stable file name</text>
+  <text x="650" y="348" fill="#91A2B7" font-family="Arial, sans-serif" font-size="18">• relative path inside the package</text>
+  <text x="650" y="380" fill="#91A2B7" font-family="Arial, sans-serif" font-size="18">• transcript, timings, scores, and tags</text>
+  <text x="650" y="412" fill="#91A2B7" font-family="Arial, sans-serif" font-size="18">• selection recommendation and penalties</text>
+</svg>

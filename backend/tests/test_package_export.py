@@ -144,6 +144,90 @@ def test_package_export_rejects_unknown_clip_ids(tmp_path: Path) -> None:
     assert "package-job-clip-999" in response.json()["detail"]["message"]
 
 
+def test_batch_package_export_returns_grouped_zip(tmp_path: Path) -> None:
+    with TestClient(app) as client:
+        settings = client.app.state.settings
+        original_storage = settings.storage_dir
+        original_model_cache = settings.model_cache_dir
+        settings.storage_dir = tmp_path / "storage"
+        settings.model_cache_dir = tmp_path / "models"
+
+        try:
+            alpha_clip = build_clip_record(job_id="job-alpha", clip_id="job-alpha-clip-001", start=0.0, end=0.9, score=93.0)
+            beta_clip = build_clip_record(job_id="job-beta", clip_id="job-beta-clip-001", start=0.1, end=1.0, score=88.0)
+
+            alpha_manifest = client.app.state.job_store.create_manifest_for_job(
+                job_id="job-alpha",
+                file_name="alpha.mp4",
+                content_type="video/mp4",
+                size_bytes=2048,
+                relative_path="jobs/job-alpha/source/alpha.mp4",
+            )
+            beta_manifest = client.app.state.job_store.create_manifest_for_job(
+                job_id="job-beta",
+                file_name="beta.mp4",
+                content_type="video/mp4",
+                size_bytes=2048,
+                relative_path="jobs/job-beta/source/beta.mp4",
+            )
+            create_sample_video(client.app.state.job_store.source_video_path(alpha_manifest))
+            create_sample_video(client.app.state.job_store.source_video_path(beta_manifest))
+            client.app.state.job_store.save_job(
+                alpha_manifest.model_copy(
+                    update={
+                        "status": JobStatus.READY,
+                        "progress_phase": ProgressPhase.READY,
+                        "clips": [alpha_clip],
+                        "summary": build_summary([alpha_clip], duration_seconds=1.0, transcript_text="Alpha transcript"),
+                        "timeline": build_timeline([alpha_clip], duration_seconds=1.0),
+                    }
+                )
+            )
+            client.app.state.job_store.save_job(
+                beta_manifest.model_copy(
+                    update={
+                        "status": JobStatus.READY,
+                        "progress_phase": ProgressPhase.READY,
+                        "clips": [beta_clip],
+                        "summary": build_summary([beta_clip], duration_seconds=1.0, transcript_text="Beta transcript"),
+                        "timeline": build_timeline([beta_clip], duration_seconds=1.0),
+                    }
+                )
+            )
+
+            response = client.post(
+                "/api/exports/batch-package",
+                json={
+                    "batchLabel": "April Batch",
+                    "qualityThreshold": 84,
+                    "selections": [
+                        {"jobId": "job-alpha", "clipIds": [alpha_clip.id]},
+                        {"jobId": "job-beta", "clipIds": [beta_clip.id]},
+                    ],
+                },
+            )
+        finally:
+            settings.storage_dir = original_storage
+            settings.model_cache_dir = original_model_cache
+
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "application/zip"
+    assert 'filename="clipmine-batch-export-april-batch.zip"' in response.headers["content-disposition"]
+
+    archive = zipfile.ZipFile(BytesIO(response.content))
+    archive_names = set(archive.namelist())
+    assert "clipmine-batch-export-april-batch/manifest.json" in archive_names
+    assert "clipmine-batch-export-april-batch/jobs/job-alpha/clips/clip_001__job-alpha-clip-001.mp4" in archive_names
+    assert "clipmine-batch-export-april-batch/jobs/job-beta/clips/clip_001__job-beta-clip-001.mp4" in archive_names
+
+    manifest_payload = orjson.loads(archive.read("clipmine-batch-export-april-batch/manifest.json"))
+    assert manifest_payload["jobCount"] == 2
+    assert manifest_payload["clipCount"] == 2
+    assert manifest_payload["qualityThreshold"] == 84
+    assert manifest_payload["jobs"][0]["clips"][0]["relativePath"] == "jobs/job-alpha/clips/clip_001__job-alpha-clip-001.mp4"
+    assert manifest_payload["jobs"][1]["clips"][0]["relativePath"] == "jobs/job-beta/clips/clip_001__job-beta-clip-001.mp4"
+
+
 def build_clip_record(*, job_id: str, clip_id: str, start: float, end: float, score: float) -> ClipRecord:
     return ClipRecord(
         id=clip_id,

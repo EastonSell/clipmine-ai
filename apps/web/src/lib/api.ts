@@ -1,5 +1,6 @@
 import type {
   ApiErrorDetail,
+  BatchPackageJobSelection,
   JobResponse,
   UploadInitResponse,
   UploadJobResponse,
@@ -26,6 +27,7 @@ const API_ERROR_MESSAGES: Record<string, string> = {
   export_selection_required: "Select at least one clip before downloading a package.",
   invalid_clip_selection: "One or more selected clips could not be found in this job.",
   package_export_failed: "The selected package could not be built right now.",
+  batch_package_export_failed: "The combined package could not be built right now.",
   job_not_found: "This workspace could not be found.",
   video_not_found: "The source video is no longer available.",
   invalid_request: "The request payload was invalid.",
@@ -202,6 +204,40 @@ export async function downloadClipPackage(jobId: string, clipIds: string[]) {
         }),
       });
       return response;
+    } catch (error) {
+      const apiError = toApiError(error);
+      lastError = apiError;
+      if (!apiError.retryable) {
+        throw apiError;
+      }
+    }
+  }
+
+  throw lastError ?? new ApiError(buildErrorDetail("request_failed", "Something went wrong.", true));
+}
+
+export async function downloadBatchClipPackage(
+  selections: BatchPackageJobSelection[],
+  options: {
+    batchLabel?: string;
+    qualityThreshold?: number;
+  } = {}
+) {
+  let lastError: ApiError | null = null;
+
+  for (const baseUrl of getApiBaseUrls()) {
+    try {
+      return await requestBlob(`${baseUrl}/api/exports/batch-package`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          selections,
+          batchLabel: options.batchLabel,
+          qualityThreshold: options.qualityThreshold,
+        }),
+      });
     } catch (error) {
       const apiError = toApiError(error);
       lastError = apiError;
