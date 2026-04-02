@@ -3,7 +3,8 @@ import { ChevronLeft, ChevronRight, Pin, PinOff, Play } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
-import { formatPercent, formatSeconds, formatSignedScore } from "@/lib/format";
+import { Badge } from "@/components/ui/badge";
+import { formatPercent, formatSeconds, formatSignedScore, formatTokenLabel } from "@/lib/format";
 import type { ClipRecord } from "@/lib/types";
 
 import { AlignmentPreview } from "./alignment-preview";
@@ -54,6 +55,7 @@ export function ClipDetailPanel({
           <p className="metric-label text-[var(--accent)]">Selected clip</p>
           <div className="mt-4 flex flex-wrap items-center gap-3">
             <QualityBadge label={clip.quality_label} />
+            <RecommendationBadge recommendation={clip.selection_recommendation} />
             <span className="rounded-full border border-[var(--line)] bg-white/[0.04] px-3 py-1 text-sm font-medium text-[var(--text)]">
               Clip score {formatSignedScore(clip.score)}
             </span>
@@ -75,6 +77,15 @@ export function ClipDetailPanel({
               </span>
             ))}
           </div>
+          {clip.quality_penalties.length > 0 ? (
+            <div className="mt-4 flex flex-wrap gap-2">
+              {clip.quality_penalties.map((penalty) => (
+                <Badge key={penalty} tone="danger">
+                  {formatTokenLabel(penalty)}
+                </Badge>
+              ))}
+            </div>
+          ) : null}
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
@@ -101,13 +112,36 @@ export function ClipDetailPanel({
         <MetricCell label="Score" value={formatSignedScore(clip.score)} />
         <MetricCell label="Confidence" value={formatPercent(clip.confidence)} />
         <MetricCell label="Speech rate" value={`${clip.speech_rate.toFixed(1)} w/s`} />
-        <MetricCell label="Audio signal" value={formatPercent(clip.quality_breakdown.acoustic_signal)} />
+        <MetricCell label="Boundary" value={formatPercent(clip.quality_breakdown.boundary_cleanliness)} />
+      </div>
+
+      <div className="grid gap-px border-t border-[var(--line)] bg-[var(--line)] sm:grid-cols-4">
+        <MetricCell label="Speech density" value={formatPercent(clip.candidate_metrics.speech_density)} />
+        <MetricCell label="Max gap" value={`${clip.candidate_metrics.max_gap_seconds.toFixed(2)}s`} />
+        <MetricCell label="Low-confidence span" value={formatPercent(clip.candidate_metrics.low_confidence_ratio)} />
+        <MetricCell label="Pause count" value={String(clip.candidate_metrics.pause_count)} />
       </div>
 
       <ClipInsightsPanel clip={clip} />
       <AlignmentPreview clip={clip} />
     </Card>
   );
+}
+
+function RecommendationBadge({
+  recommendation,
+}: {
+  recommendation: ClipRecord["selection_recommendation"];
+}) {
+  if (recommendation === "shortlist") {
+    return <Badge tone="accent">Shortlist</Badge>;
+  }
+
+  if (recommendation === "discard") {
+    return <Badge tone="danger">Discard</Badge>;
+  }
+
+  return <Badge tone="neutral">Review</Badge>;
 }
 
 function MetricCell({ label, value }: { label: string; value: string }) {

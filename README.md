@@ -34,18 +34,20 @@ Raw transcripts are noisy. Raw video is slow to review. Most dataset builders ne
 
 - Extract mono `16 kHz` audio with a bundled ffmpeg binary
 - Transcribe speech with `faster-whisper`
-- Segment candidate clips around the `1` to `3` second range
-- Score clips for confidence, pace, energy, silence, and stability
-- Generate human-readable quality labels and explanations for each clip
+- Segment candidate clips around the `1` to `3` second range with filler trimming and boundary checks
+- Score clips for confidence, pace, energy, silence, stability, boundary cleanliness, and speech density
+- Deduplicate near-overlapping clips so weaker repeats do not crowd out cleaner selections
+- Generate human-readable quality labels, penalties, and shortlist/review/discard recommendations for each clip
 
 ### Review And Export
 
 - Rank clips by training usefulness
 - Visualize the full source video with a `48`-bin usefulness timeline
-- Filter clips by transcript text, quality label, tag, and sort order
+- Filter clips by transcript text, quality label, recommendation, penalty/tag signal, and sort order
 - Keep a local shortlist of pinned clips and reopen recent jobs from the landing page
 - Keep source playback aligned with timestamps from the ranking output
 - Export structured JSON for annotation or dataset curation workflows
+- Extend every clip with candidate metrics, multimodal features, quality penalties, and selection recommendation metadata
 
 ## Upcoming Features
 
@@ -54,6 +56,7 @@ Raw transcripts are noisy. Raw video is slow to review. Most dataset builders ne
 - [ ] Richer export presets with optional CSV and more processing metadata
 - [ ] Stronger production observability and workflow analytics
 - [ ] Workspace comparison tools for evaluating multiple shortlisted clips side by side
+- [ ] Optional embedding generation from a dedicated production embedding model instead of the current nullable placeholder field
 
 ## Architecture
 
@@ -63,6 +66,7 @@ Raw transcripts are noisy. Raw video is slow to review. Most dataset builders ne
 - `backend/src/clipmine_api/transcription.py`: CPU transcription via `faster-whisper`
 - `backend/src/clipmine_api/segmentation.py`: candidate clip building from timestamped words
 - `backend/src/clipmine_api/scoring.py`: transparent training-usefulness scoring
+- `backend/src/clipmine_api/precision.py`: overlap dedupe and selection recommendation logic
 - `backend/src/clipmine_api/presentation.py`: summary, timeline, and export serialization
 
 The frontend talks directly to the backend API for upload session creation, polling, video playback, and export. Local development keeps a direct upload path for simplicity. Production deployments can switch to multipart uploads backed by S3-compatible object storage while the backend continues to own job orchestration, processing, and same-origin playback.
@@ -76,24 +80,38 @@ Each clip receives:
 - `energy`: normalized RMS energy inside the source audio
 - `silence_ratio`: share of low-energy frames inside the clip
 - `instability`: how uneven the signal is across the clip
+- `candidate_metrics`: pause count, max gap, speech density, low-confidence span ratio, edge filler ratios, and punctuation strength
+- `selection_recommendation`: `shortlist`, `review`, or `discard`
+- `quality_penalties`: machine-readable reasons like `boundary_messy` or `duplicate_overlap`
 - `score`: final score from `0` to `100`
 - `quality_label`: `Excellent`, `Good`, or `Weak`
 - `explanation`: short human-readable rationale
 
-Score formula:
+Score model:
 
 ```text
 score = clamp(
-  100 * (0.45*confidence + 0.20*pace_fit + 0.20*energy_norm + 0.15*continuity)
+  100 * (
+    0.34*confidence
+    + 0.18*pace_fit
+    + 0.16*energy_norm
+    + 0.10*continuity
+    + 0.10*boundary_cleanliness
+    + 0.08*speech_density
+    + 0.04*lexical_clarity
+  )
   - 15*silence_ratio
   - 8*instability
-  - 5*duration_penalty,
+  - 6*edge_filler_penalty
+  - 7*low_confidence_penalty
+  - 5*duration_penalty
+  - duplicate_penalty,
   0,
   100
 )
 ```
 
-Where `pace_fit` favors roughly `2.2` to `3.8` words per second and `continuity = 1 - silence_ratio`.
+Where `pace_fit` favors roughly `2.2` to `3.8` words per second, `continuity = 1 - silence_ratio`, and a second precision pass removes or downgrades near-duplicate, filler-heavy, and boundary-messy clips.
 
 ## Repository Layout
 

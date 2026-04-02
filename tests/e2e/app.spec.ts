@@ -108,6 +108,7 @@ test("uploading a valid source opens the workspace and supports shortlist persis
   await page.waitForURL(`**/jobs/${job.jobId}`);
   await expect(page.getByRole("heading", { name: job.sourceVideo.file_name })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Ranked by training usefulness" })).toBeVisible();
+  await expect(page.getByText("Shortlist")).toBeVisible();
 
   await page.getByRole("button", { name: /Add to shortlist/i }).click();
   await expect(page.getByRole("button", { name: /Remove from shortlist/i })).toBeVisible();
@@ -117,6 +118,8 @@ test("uploading a valid source opens the workspace and supports shortlist persis
 
   await page.getByRole("button", { name: /Add more context before the final label\./i }).click();
   await expect(page).toHaveURL(/clip=clip-2/);
+  await expect(page.getByText("Boundary messy")).toBeVisible();
+  await expect(page.getByText("Speech density")).toBeVisible();
 });
 
 test("multipart upload can be cancelled and returns a retryable error state", async ({ page }) => {
@@ -184,7 +187,7 @@ test("timeline tab is shareable with query params", async ({ page }) => {
   await page.goto(`/jobs/${job.jobId}?tab=timeline`);
 
   await expect(page.getByRole("heading", { name: "Training usefulness across the full video" })).toBeVisible();
-  await expect(page.getByText("Strong region")).toBeVisible();
+  await expect(page.getByText("Shortlist-ready region")).toBeVisible();
   await expect(page).toHaveURL(/tab=timeline/);
 });
 
@@ -211,4 +214,39 @@ test("export stays disabled while processing is incomplete", async ({ page }) =>
 
   await expect(page.getByText("Export becomes available when processing is complete")).toBeVisible();
   await expect(page.getByRole("link", { name: /Export pending/i })).toBeVisible();
+});
+
+test("precision signals are filterable in the clips workspace", async ({ page }) => {
+  const job = createMockJob();
+
+  await page.route(`**/api/jobs/${job.jobId}`, async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(job),
+    });
+  });
+
+  await page.goto(`/jobs/${job.jobId}?recommendation=shortlist`);
+
+  await expect(page.getByRole("heading", { name: "Ranked by training usefulness" })).toBeVisible();
+  await expect(page.getByText("Keep the labeling steady across every segment.")).toBeVisible();
+  await expect(page.getByText("Add more context before the final label.")).toHaveCount(0);
+});
+
+test("export preview shows dedupe and discard summary", async ({ page }) => {
+  const job = createMockJob();
+
+  await page.route(`**/api/jobs/${job.jobId}`, async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(job),
+    });
+  });
+
+  await page.goto(`/jobs/${job.jobId}?tab=export`);
+
+  await expect(page.getByText("Deduped / discarded")).toBeVisible();
+  await expect(page.getByText("3 / 5")).toBeVisible();
 });

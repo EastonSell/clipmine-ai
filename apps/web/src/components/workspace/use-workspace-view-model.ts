@@ -20,7 +20,7 @@ import type { WorkspaceTab } from "./constants";
 type WorkspaceViewModel = {
   activeTab: WorkspaceTab;
   filters: ReviewFilters;
-  availableTags: string[];
+  availableSignals: string[];
   selectedClip: JobResponse["clips"][number] | null;
   resolvedClipId: string | null;
   shortlistedClips: JobResponse["clips"];
@@ -85,10 +85,14 @@ export function useWorkspaceViewModel(jobId: string, job: JobResponse | undefine
   const filters = useMemo(() => parseReviewFilters(searchParams), [searchParams]);
   const requestedClipId = searchParams.get("clip");
 
-  const availableTags = useMemo(
+  const availableSignals = useMemo(
     () =>
       Array.from(
-        new Set((job?.clips ?? []).flatMap((clip) => clip.tags).filter(Boolean))
+        new Set(
+          (job?.clips ?? [])
+            .flatMap((clip) => [...clip.tags, ...clip.quality_penalties])
+            .filter(Boolean)
+        )
       ).toSorted((left, right) => left.localeCompare(right)),
     [job?.clips]
   );
@@ -177,7 +181,7 @@ export function useWorkspaceViewModel(jobId: string, job: JobResponse | undefine
   return {
     activeTab,
     filters,
-    availableTags,
+    availableSignals,
     selectedClip,
     resolvedClipId,
     shortlistedClips,

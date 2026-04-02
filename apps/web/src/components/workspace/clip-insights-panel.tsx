@@ -1,6 +1,6 @@
 import { Badge } from "@/components/ui/badge";
 import { ProgressBar } from "@/components/ui/progress-bar";
-import { formatPercent } from "@/lib/format";
+import { formatPercent, formatTokenLabel } from "@/lib/format";
 import type { ClipRecord } from "@/lib/types";
 
 type ClipInsightsPanelProps = {
@@ -17,6 +17,9 @@ const qualityRows: Array<{
   { key: "continuity", label: "Continuity" },
   { key: "linguistic_clarity", label: "Language" },
   { key: "visual_readiness", label: "Visual" },
+  { key: "boundary_cleanliness", label: "Boundary" },
+  { key: "speech_density", label: "Speech density" },
+  { key: "dedupe_confidence", label: "Deduped" },
 ];
 
 export function ClipInsightsPanel({ clip }: ClipInsightsPanelProps) {
@@ -61,8 +64,8 @@ export function ClipInsightsPanel({ clip }: ClipInsightsPanelProps) {
           <div className="mt-4 flex flex-wrap gap-2">
             {clip.tags.length > 0 ? (
               clip.tags.map((tag) => (
-                <Badge key={tag} tone={tag === "training-ready" ? "accent" : "muted"}>
-                  {formatTagLabel(tag)}
+                <Badge key={tag} tone={tag === "training-ready" || tag === "av-ready" ? "accent" : "muted"}>
+                  {formatTokenLabel(tag)}
                 </Badge>
               ))
             ) : (
@@ -74,9 +77,22 @@ export function ClipInsightsPanel({ clip }: ClipInsightsPanelProps) {
           <div className="mt-3 flex flex-wrap gap-2">
             {clip.recommended_use.map((item) => (
               <Badge key={item} tone="neutral">
-                {formatTagLabel(item)}
+                {formatTokenLabel(item)}
               </Badge>
             ))}
+          </div>
+
+          <div className="mt-5 metric-label text-[var(--muted)]">Quality penalties</div>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {clip.quality_penalties.length > 0 ? (
+              clip.quality_penalties.map((penalty) => (
+                <Badge key={penalty} tone="danger">
+                  {formatTokenLabel(penalty)}
+                </Badge>
+              ))
+            ) : (
+              <span className="text-sm text-[var(--muted)]">No major precision penalties.</span>
+            )}
           </div>
         </div>
 
@@ -91,14 +107,6 @@ export function ClipInsightsPanel({ clip }: ClipInsightsPanelProps) {
       </section>
     </div>
   );
-}
-
-function formatTagLabel(value: string) {
-  return value
-    .split(/[-_]/)
-    .filter(Boolean)
-    .map((segment) => segment[0]?.toUpperCase() + segment.slice(1))
-    .join(" ");
 }
 
 function ReasonList({

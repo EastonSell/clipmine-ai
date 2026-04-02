@@ -67,6 +67,9 @@ const baseClip: ClipRecord = {
     stability: 0.83,
     linguistic_clarity: 0.74,
     visual_readiness: 0.79,
+    boundary_cleanliness: 0.9,
+    speech_density: 0.82,
+    dedupe_confidence: 0.96,
     overall: 0.88,
   },
   quality_reasoning: {
@@ -74,6 +77,17 @@ const baseClip: ClipRecord = {
     strengths: ["High confidence"],
     cautions: [],
   },
+  candidate_metrics: {
+    pause_count: 0,
+    max_gap_seconds: 0.08,
+    speech_density: 0.82,
+    low_confidence_ratio: 0,
+    leading_filler_ratio: 0,
+    trailing_filler_ratio: 0,
+    boundary_punctuation_strength: 1,
+  },
+  selection_recommendation: "shortlist",
+  quality_penalties: [],
   tags: ["training-ready", "clear-speech"],
   recommended_use: ["speech-annotation"],
   embedding_vector: null,
@@ -96,8 +110,20 @@ const clips: ClipRecord[] = [
     tags: ["contextual"],
     quality_breakdown: {
       ...baseClip.quality_breakdown,
+      boundary_cleanliness: 0.74,
+      speech_density: 0.71,
+      dedupe_confidence: 0.91,
       overall: 0.71,
     },
+    candidate_metrics: {
+      ...baseClip.candidate_metrics,
+      pause_count: 1,
+      max_gap_seconds: 0.21,
+      speech_density: 0.71,
+      boundary_punctuation_strength: 0.6,
+    },
+    selection_recommendation: "review",
+    quality_penalties: ["boundary_messy"],
   },
   {
     ...baseClip,
@@ -118,8 +144,22 @@ const clips: ClipRecord[] = [
     },
     quality_breakdown: {
       ...baseClip.quality_breakdown,
+      boundary_cleanliness: 0.36,
+      speech_density: 0.46,
+      dedupe_confidence: 0.62,
       overall: 0.32,
     },
+    candidate_metrics: {
+      ...baseClip.candidate_metrics,
+      pause_count: 2,
+      max_gap_seconds: 0.34,
+      speech_density: 0.46,
+      low_confidence_ratio: 0.42,
+      leading_filler_ratio: 0.25,
+      boundary_punctuation_strength: 0.2,
+    },
+    selection_recommendation: "discard",
+    quality_penalties: ["filler_heavy", "low_confidence_span"],
   },
 ];
 
@@ -133,31 +173,46 @@ describe("review-state", () => {
 
   it("parses query params into review filters", () => {
     const filters = parseReviewFilters(
-      new URLSearchParams("q=clean&quality=Excellent&tag=training-ready&sort=duration&pinned=1")
+      new URLSearchParams(
+        "q=clean&quality=Excellent&tag=training-ready&recommendation=shortlist&sort=duration&pinned=1&ready=1"
+      )
     );
 
     expect(filters).toEqual({
       query: "clean",
       quality: "Excellent",
       tag: "training-ready",
+      recommendation: "shortlist",
       sort: "duration",
       pinnedOnly: true,
+      shortlistReadyOnly: true,
     });
   });
 
-  it("filters and sorts clips by search, quality, tag, and sort order", () => {
+  it("filters and sorts clips by search, recommendation, signal, and sort order", () => {
     const byScore = filterAndSortClips(clips, DEFAULT_REVIEW_FILTERS);
     expect(byScore.map((clip) => clip.id)).toEqual(["clip-1", "clip-2", "clip-3"]);
 
     const filtered = filterAndSortClips(clips, {
       query: "label",
       quality: "Good",
-      tag: "contextual",
+      tag: "boundary_messy",
+      recommendation: "review",
       sort: "start",
       pinnedOnly: false,
+      shortlistReadyOnly: false,
     });
 
     expect(filtered.map((clip) => clip.id)).toEqual(["clip-2"]);
+  });
+
+  it("can isolate shortlist-ready clips", () => {
+    const filtered = filterAndSortClips(clips, {
+      ...DEFAULT_REVIEW_FILTERS,
+      shortlistReadyOnly: true,
+    });
+
+    expect(filtered.map((clip) => clip.id)).toEqual(["clip-1"]);
   });
 
   it("tracks whether review filters are active", () => {
@@ -168,17 +223,27 @@ describe("review-state", () => {
         pinnedOnly: true,
       })
     ).toBe(true);
+    expect(
+      hasActiveReviewFilters({
+        ...DEFAULT_REVIEW_FILTERS,
+        recommendation: "review",
+      })
+    ).toBe(true);
   });
 
   it("serializes filters back into clean query params", () => {
     const params = serializeReviewFilters(new URLSearchParams("tab=timeline"), {
       query: "clean speech",
       quality: "Good",
-      tag: "",
+      tag: "duplicate-risk",
+      recommendation: "review",
       sort: "confidence",
       pinnedOnly: true,
+      shortlistReadyOnly: true,
     });
 
-    expect(params.toString()).toBe("tab=timeline&q=clean+speech&quality=Good&sort=confidence&pinned=1");
+    expect(params.toString()).toBe(
+      "tab=timeline&q=clean+speech&quality=Good&tag=duplicate-risk&recommendation=review&sort=confidence&pinned=1&ready=1"
+    );
   });
 });

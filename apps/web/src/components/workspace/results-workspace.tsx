@@ -273,7 +273,7 @@ export function ResultsWorkspace({ jobId }: ResultsWorkspaceProps) {
                   <div className="space-y-6">
                     <ReviewToolbar
                       filters={viewModel.filters}
-                      availableTags={viewModel.availableTags}
+                      availableSignals={viewModel.availableSignals}
                       visibleCount={viewModel.shortlistedClips.length + viewModel.rankedClips.length}
                       totalCount={data.clips.length}
                       shortlistedCount={viewModel.pinnedClipIds.length}

@@ -309,3 +309,83 @@ npm_config_cache=/tmp/clipmine-npm-cache npm run build:web
 PLAYWRIGHT_BROWSERS_PATH=/tmp/clipmine-playwright-browsers npx playwright install chromium
 PLAYWRIGHT_BROWSERS_PATH=/tmp/clipmine-playwright-browsers npm run test:e2e
 ```
+
+## Precision-First Clip Intelligence Pass
+
+- Tightened segmentation with:
+  - filler trimming at clip edges
+  - boundary cleanliness checks
+  - long-pause and weak-transition splitting
+  - low-confidence span rejection
+- Added additive per-clip precision metadata:
+  - `candidate_metrics`
+  - `selection_recommendation`
+  - `quality_penalties`
+- Extended `quality_breakdown` with:
+  - `boundary_cleanliness`
+  - `speech_density`
+  - `dedupe_confidence`
+- Added a precision selection layer that:
+  - penalizes messy or filler-heavy spans
+  - detects near-duplicate overlap
+  - dedupes weaker repeats
+  - assigns `shortlist`, `review`, or `discard`
+- Updated the workspace UI to show:
+  - recommendation badges
+  - penalty chips
+  - candidate metrics in the selected clip view
+  - precision summary counts in export and job summary panels
+
+## Precision Bugs Fixed
+
+### 11. Weak clip edges survived segmentation too often
+
+- The segmenter previously accepted more filler-heavy and weak-boundary spans than it should for a precision-first curation tool.
+- Candidate generation now trims obvious filler edges, tracks boundary quality metrics, and rejects clips that remain too messy after trimming.
+
+### 12. Near-duplicate clips crowded the ranking
+
+- The ranking path previously allowed highly overlapping clips with near-identical wording to survive together.
+- A new post-score precision pass now measures overlap plus lexical similarity and keeps the stronger clip while tagging duplicate risk on survivors.
+
+### 13. Precision metadata was missing from the workspace
+
+- The backend now exports additive precision fields, and the frontend surfaces them directly in ranked clips, the selected clip panel, the timeline context, and export preview summaries.
+
+## Precision Features Tested
+
+- Backend tests now cover:
+  - filler-edge trimming
+  - low-confidence candidate rejection
+  - near-duplicate dedupe behavior
+  - additive export field presence for precision metadata
+- Frontend unit tests now cover:
+  - recommendation parsing and serialization
+  - recommendation and penalty-aware filtering
+  - shortlist-ready filtering
+- The workspace production build was verified to compile with the new precision UI signals.
+
+## Precision Checks Run
+
+```bash
+TMPDIR='/Users/easton/Codex Creator Challenge/.tmp-pytest' npm run test:api
+npm_config_cache=/tmp/clipmine-npm-cache npm run test:web
+npm_config_cache=/tmp/clipmine-npm-cache npm run lint:web
+npm_config_cache=/tmp/clipmine-npm-cache npm run build:web
+npm_config_cache=/tmp/clipmine-npm-cache npm run start:web
+curl -I http://127.0.0.1:3000/
+curl -I 'http://127.0.0.1:3000/jobs/demo-job?tab=timeline'
+npm_config_cache=/tmp/clipmine-npm-cache npm run test:e2e
+```
+
+## Precision Browser Smoke Status
+
+- Browser smoke specs were extended to assert:
+  - recommendation badge visibility
+  - penalty chip visibility
+  - timeline recommendation language
+  - recommendation-based filtering
+  - export dedupe/discard summary
+- Local Playwright execution still fails in this macOS sandbox before page code runs because Chromium cannot open the required Mach rendezvous port:
+  - `bootstrap_check_in org.chromium.Chromium.MachPortRendezvousServer: Permission denied (1100)`
+- This remains an environment-level browser-launch restriction rather than an application assertion failure.

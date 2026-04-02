@@ -13,6 +13,14 @@ type ExportPanelProps = {
 };
 
 export function ExportPanel({ job, exportUrl, disabled }: ExportPanelProps) {
+  const recommendationCounts = job.clips.reduce(
+    (totals, clip) => {
+      totals[clip.selection_recommendation] += 1;
+      return totals;
+    },
+    { shortlist: 0, review: 0, discard: 0 }
+  );
+
   if (!job.summary && disabled) {
     return (
       <EmptyState
@@ -35,9 +43,10 @@ export function ExportPanel({ job, exportUrl, disabled }: ExportPanelProps) {
         <div className="mt-6 space-y-3">
           {[
             "Source metadata and playback path",
-            "Per-clip audio, linguistic, visual, and quality breakdown signals",
-            "Word-level alignment timestamps, tags, recommended use, and optional embedding vector",
-            "Timeline bins for stronger and weaker regions",
+            "Per-clip audio, linguistic, visual, and precision breakdown signals",
+            "Word-level alignment timestamps, candidate metrics, tags, and recommended use",
+            "Penalty flags, selection recommendations, and optional embedding vector",
+            "Timeline bins for stronger and weaker regions after dedupe",
           ].map((item) => (
             <div
               key={item}
@@ -71,8 +80,18 @@ export function ExportPanel({ job, exportUrl, disabled }: ExportPanelProps) {
         <SectionHeader
           eyebrow="Schema preview"
           title="Payload shape"
-          description="The export stays readable while extending each clip with multimodal analysis for downstream review and training workflows."
+          description="The export stays readable while extending each clip with multimodal analysis and precision-first selection metadata."
         />
+
+        <div className="mt-6 grid gap-3 sm:grid-cols-2">
+          <PreviewMetric label="Shortlist-ready" value={String(recommendationCounts.shortlist)} />
+          <PreviewMetric label="Review" value={String(recommendationCounts.review)} />
+          <PreviewMetric label="Discard" value={String(recommendationCounts.discard)} />
+          <PreviewMetric
+            label="Deduped / discarded"
+            value={`${job.processingStats.deduped_candidate_count} / ${job.processingStats.discarded_candidate_count}`}
+          />
+        </div>
 
         <pre className="mt-6 overflow-auto rounded-[1.5rem] border border-[var(--line)] bg-[var(--surface-dark)] p-5 text-xs leading-6 text-white/75 shadow-[var(--shadow-soft)]">
 {JSON.stringify(
@@ -95,6 +114,15 @@ export function ExportPanel({ job, exportUrl, disabled }: ExportPanelProps) {
 )}
         </pre>
       </Card>
+    </div>
+  );
+}
+
+function PreviewMetric({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-[1.15rem] border border-[var(--line)] bg-white/[0.04] px-4 py-4">
+      <div className="metric-label text-[var(--muted)]">{label}</div>
+      <div className="mt-2 text-lg font-semibold tracking-[-0.03em] text-[var(--text)]">{value}</div>
     </div>
   );
 }

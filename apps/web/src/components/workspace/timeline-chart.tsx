@@ -3,6 +3,7 @@ import { useState } from "react";
 import { Card } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { SectionHeader } from "@/components/ui/section-header";
+import { Badge } from "@/components/ui/badge";
 import { formatSeconds, formatSignedScore } from "@/lib/format";
 import type { ClipRecord, TimelineBin } from "@/lib/types";
 
@@ -58,8 +59,11 @@ export function TimelineChart({ bins, clips, activeClipId, onSeek }: TimelineCha
               <div className="metric-label text-[var(--muted)]">Active region</div>
               <div className="mt-2 flex flex-wrap items-center gap-3">
                 <QualityBadge label={activeTimelineBin.quality_label} />
+                {activeTimelineClip ? (
+                  <RecommendationBadge recommendation={activeTimelineClip.selection_recommendation} />
+                ) : null}
                 <span className="text-sm font-medium text-[var(--text)]">
-                  {formatRegionLabel(activeTimelineBin.quality_label)}
+                  {formatRegionLabel(activeTimelineBin.quality_label, activeTimelineClip?.selection_recommendation)}
                 </span>
                 <span className="text-sm text-[var(--muted)]">
                   {formatSeconds(activeTimelineBin.start)} - {formatSeconds(activeTimelineBin.end)}
@@ -166,6 +170,7 @@ export function TimelineChart({ bins, clips, activeClipId, onSeek }: TimelineCha
                 >
                   <div className="flex items-center justify-between gap-3">
                     <QualityBadge label={bin.quality_label} />
+                    {clip ? <RecommendationBadge recommendation={clip.selection_recommendation} /> : null}
                     <span className="font-mono text-sm text-[var(--muted-strong)]">
                       {formatSignedScore(bin.score)}
                     </span>
@@ -202,7 +207,18 @@ function getTimelineBarClassName(label: TimelineBin["quality_label"]) {
   return "block w-full rounded-[0.75rem] bg-[linear-gradient(180deg,rgba(71,85,105,0.16),rgba(71,85,105,0.72))]";
 }
 
-function formatRegionLabel(label: TimelineBin["quality_label"]) {
+function formatRegionLabel(
+  label: TimelineBin["quality_label"],
+  recommendation?: ClipRecord["selection_recommendation"]
+) {
+  if (recommendation === "shortlist") {
+    return "Shortlist-ready region";
+  }
+
+  if (recommendation === "discard") {
+    return "Discard-risk region";
+  }
+
   if (label === "Excellent") {
     return "Strong region";
   }
@@ -212,4 +228,20 @@ function formatRegionLabel(label: TimelineBin["quality_label"]) {
   }
 
   return "Weak region";
+}
+
+function RecommendationBadge({
+  recommendation,
+}: {
+  recommendation: ClipRecord["selection_recommendation"];
+}) {
+  if (recommendation === "shortlist") {
+    return <Badge tone="accent">Shortlist</Badge>;
+  }
+
+  if (recommendation === "discard") {
+    return <Badge tone="danger">Discard</Badge>;
+  }
+
+  return <Badge tone="neutral">Review</Badge>;
 }

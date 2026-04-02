@@ -66,3 +66,11 @@ export function formatDateTime(value: string) {
     minute: "2-digit",
   }).format(new Date(value));
 }
+
+export function formatTokenLabel(value: string) {
+  return value
+    .split(/[-_]/)
+    .filter(Boolean)
+    .map((segment) => segment[0]?.toUpperCase() + segment.slice(1))
+    .join(" ");
+}

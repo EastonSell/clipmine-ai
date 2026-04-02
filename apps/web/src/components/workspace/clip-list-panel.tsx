@@ -4,7 +4,7 @@ import { Card } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { SectionHeader } from "@/components/ui/section-header";
 import { Badge } from "@/components/ui/badge";
-import { formatPercent, formatSeconds, formatSignedScore } from "@/lib/format";
+import { formatPercent, formatSeconds, formatSignedScore, formatTokenLabel } from "@/lib/format";
 import type { ClipRecord } from "@/lib/types";
 
 import { QualityBadge } from "./quality-badge";
@@ -127,6 +127,7 @@ function renderClipRow(
         <div>
           <div className="flex flex-wrap items-center gap-3">
             <QualityBadge label={clip.quality_label} />
+            <RecommendationBadge recommendation={clip.selection_recommendation} />
             <span className="text-sm text-[var(--muted)]">
               {formatSeconds(clip.start)} - {formatSeconds(clip.end)}
             </span>
@@ -136,11 +137,16 @@ function renderClipRow(
             {clip.text}
           </p>
           <p className="mt-3 text-sm leading-6 text-[var(--muted)]">{clip.explanation}</p>
-          {clip.tags.length > 0 ? (
+          {clip.tags.length > 0 || clip.quality_penalties.length > 0 ? (
             <div className="mt-4 flex flex-wrap gap-2">
-              {clip.tags.slice(0, 3).map((tag) => (
-                <Badge key={tag} tone={tag === "training-ready" ? "accent" : "muted"}>
-                  {formatTagLabel(tag)}
+              {clip.tags.slice(0, 2).map((tag) => (
+                <Badge key={tag} tone={tag === "training-ready" || tag === "av-ready" ? "accent" : "muted"}>
+                  {formatTokenLabel(tag)}
+                </Badge>
+              ))}
+              {clip.quality_penalties.slice(0, 2).map((penalty) => (
+                <Badge key={penalty} tone="danger">
+                  {formatTokenLabel(penalty)}
                 </Badge>
               ))}
             </div>
@@ -150,7 +156,7 @@ function renderClipRow(
         <div className="grid gap-3 text-sm text-[var(--muted)] sm:grid-cols-3 xl:grid-cols-1">
           <MetricSummary label="Confidence" value={formatPercent(clip.confidence)} />
           <MetricSummary label="Speech rate" value={`${clip.speech_rate.toFixed(1)} w/s`} />
-          <MetricSummary label="Signal" value={formatPercent(clip.quality_breakdown.acoustic_signal)} />
+          <MetricSummary label="Boundary" value={formatPercent(clip.quality_breakdown.boundary_cleanliness)} />
         </div>
       </div>
 
@@ -162,6 +168,22 @@ function renderClipRow(
   );
 }
 
+function RecommendationBadge({
+  recommendation,
+}: {
+  recommendation: ClipRecord["selection_recommendation"];
+}) {
+  if (recommendation === "shortlist") {
+    return <Badge tone="accent">Shortlist</Badge>;
+  }
+
+  if (recommendation === "discard") {
+    return <Badge tone="danger">Discard</Badge>;
+  }
+
+  return <Badge tone="neutral">Review</Badge>;
+}
+
 function MetricSummary({ label, value }: { label: string; value: string }) {
   return (
     <div>
@@ -169,12 +191,4 @@ function MetricSummary({ label, value }: { label: string; value: string }) {
       <div className="mt-1 font-medium text-[var(--text)]">{value}</div>
     </div>
   );
-}
-
-function formatTagLabel(value: string) {
-  return value
-    .split(/[-_]/)
-    .filter(Boolean)
-    .map((segment) => segment[0]?.toUpperCase() + segment.slice(1))
-    .join(" ");
 }

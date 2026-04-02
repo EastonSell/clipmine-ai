@@ -96,8 +96,23 @@ export type QualityBreakdown = {
   stability: number;
   linguistic_clarity: number;
   visual_readiness: number;
+  boundary_cleanliness: number;
+  speech_density: number;
+  dedupe_confidence: number;
   overall: number;
 };
+
+export type CandidateMetrics = {
+  pause_count: number;
+  max_gap_seconds: number;
+  speech_density: number;
+  low_confidence_ratio: number;
+  leading_filler_ratio: number;
+  trailing_filler_ratio: number;
+  boundary_punctuation_strength: number;
+};
+
+export type SelectionRecommendation = "shortlist" | "review" | "discard";
 
 export type QualityReasoning = {
   summary: string;
@@ -127,6 +142,9 @@ export type ClipRecord = {
   visual_features: VisualFeatures;
   quality_breakdown: QualityBreakdown;
   quality_reasoning: QualityReasoning;
+  candidate_metrics: CandidateMetrics;
+  selection_recommendation: SelectionRecommendation;
+  quality_penalties: string[];
   tags: string[];
   recommended_use: string[];
   embedding_vector: number[] | null;
@@ -149,12 +167,16 @@ export type JobSummary = {
   weak_count: number;
   average_score: number;
   top_score: number;
+  shortlist_recommended_count: number;
 };
 
 export type ProcessingStats = {
   source_duration_seconds: number;
   transcript_word_count: number;
   candidate_clip_count: number;
+  discarded_candidate_count: number;
+  deduped_candidate_count: number;
+  shortlist_recommended_count: number;
   clip_count: number;
   timeline_bin_count: number;
 };

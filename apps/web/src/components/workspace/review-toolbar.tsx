@@ -5,11 +5,12 @@ import { Filter, Pin, Search, SlidersHorizontal, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { formatTokenLabel } from "@/lib/format";
 import type { ReviewFilters, ReviewSort } from "@/lib/review-state";
 
 type ReviewToolbarProps = {
   filters: ReviewFilters;
-  availableTags: string[];
+  availableSignals: string[];
   visibleCount: number;
   totalCount: number;
   shortlistedCount: number;
@@ -27,7 +28,7 @@ const sortOptions: Array<{ value: ReviewSort; label: string }> = [
 
 export function ReviewToolbar({
   filters,
-  availableTags,
+  availableSignals,
   visibleCount,
   totalCount,
   shortlistedCount,
@@ -56,13 +57,13 @@ export function ReviewToolbar({
           <input
             value={filters.query}
             onChange={(event) => onFiltersChange({ query: event.target.value })}
-            placeholder="Search transcript, explanation, or tags"
+            placeholder="Search transcript, explanation, tags, or penalties"
             className="w-full bg-transparent text-sm text-[var(--text)] outline-none placeholder:text-[var(--muted)]"
           />
         </label>
       </div>
 
-      <div className="grid gap-3 px-5 py-5 sm:grid-cols-2 sm:px-6 xl:grid-cols-4">
+      <div className="grid gap-3 px-5 py-5 sm:grid-cols-2 sm:px-6 xl:grid-cols-6">
         <SelectField
           icon={<Filter className="size-4 text-[var(--muted)]" />}
           label="Quality"
@@ -86,15 +87,28 @@ export function ReviewToolbar({
 
         <SelectField
           icon={<Pin className="size-4 text-[var(--muted)]" />}
-          label="Tag"
+          label="Signal"
           value={filters.tag}
           onChange={(value) => onFiltersChange({ tag: value })}
           options={[
-            { value: "", label: "All tags" },
-            ...availableTags.map((tag) => ({
+            { value: "", label: "All signals" },
+            ...availableSignals.map((tag) => ({
               value: tag,
-              label: formatTagLabel(tag),
+              label: formatTokenLabel(tag),
             })),
+          ]}
+        />
+
+        <SelectField
+          icon={<Filter className="size-4 text-[var(--muted)]" />}
+          label="Recommendation"
+          value={filters.recommendation}
+          onChange={(value) => onFiltersChange({ recommendation: value as ReviewFilters["recommendation"] })}
+          options={[
+            { value: "all", label: "All recommendations" },
+            { value: "shortlist", label: "Shortlist" },
+            { value: "review", label: "Review" },
+            { value: "discard", label: "Discard" },
           ]}
         />
 
@@ -114,6 +128,25 @@ export function ReviewToolbar({
           </div>
           <div className="text-xs text-[var(--muted)]">
             {filters.pinnedOnly ? "Showing only pinned clips" : "Include all ranked clips"}
+          </div>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => onFiltersChange({ shortlistReadyOnly: !filters.shortlistReadyOnly })}
+          className={[
+            "flex min-h-[4.2rem] flex-col justify-between rounded-[1rem] border px-4 py-3 text-left transition duration-200",
+            filters.shortlistReadyOnly
+              ? "border-[var(--accent-strong)] bg-[var(--accent-soft)]"
+              : "border-[var(--line)] bg-white/[0.03] hover:border-[var(--line-strong)] hover:bg-white/[0.05]",
+          ].join(" ")}
+        >
+          <div className="flex items-center gap-2 text-sm font-medium text-[var(--text)]">
+            <SlidersHorizontal className="size-4" />
+            Shortlist-ready
+          </div>
+          <div className="text-xs text-[var(--muted)]">
+            {filters.shortlistReadyOnly ? "Only precision-shortlist clips" : "Include review and discard candidates"}
           </div>
         </button>
       </div>
@@ -165,12 +198,4 @@ function SelectField({
       </select>
     </label>
   );
-}
-
-function formatTagLabel(value: string) {
-  return value
-    .split(/[-_]/)
-    .filter(Boolean)
-    .map((segment) => segment[0]?.toUpperCase() + segment.slice(1))
-    .join(" ");
 }
