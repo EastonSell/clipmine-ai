@@ -5,6 +5,13 @@ import { createMockJob } from "./fixtures";
 const recentJobsKey = "clipmine:recent-jobs:v1";
 
 test("landing page renders recent jobs and validates unsupported uploads", async ({ page }) => {
+  const consoleErrors: string[] = [];
+  page.on("console", (message) => {
+    if (message.type() === "error") {
+      consoleErrors.push(message.text());
+    }
+  });
+
   await page.addInitScript((storageKey) => {
     window.localStorage.setItem(
       storageKey,
@@ -26,6 +33,7 @@ test("landing page renders recent jobs and validates unsupported uploads", async
 
   await expect(page.getByRole("heading", { name: "Reopen recent workspaces" })).toBeVisible();
   await expect(page.getByText("team-sync.mp4")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Research workspace" })).toBeVisible();
 
   await page.locator('input[type="file"]').setInputFiles({
     name: "notes.txt",
@@ -35,6 +43,7 @@ test("landing page renders recent jobs and validates unsupported uploads", async
   await page.getByRole("button", { name: "Upload video" }).click();
 
   await expect(page.getByText("Only .mp4 and .mov files are supported.")).toBeVisible();
+  expect(consoleErrors.some((message) => message.includes("same key"))).toBe(false);
 });
 
 test("uploading a valid source opens the workspace and supports shortlist persistence", async ({ page }) => {
@@ -213,7 +222,7 @@ test("export stays disabled while processing is incomplete", async ({ page }) =>
   await page.goto(`/jobs/${job.jobId}?tab=export`);
 
   await expect(page.getByText("Export becomes available when processing is complete")).toBeVisible();
-  await expect(page.getByRole("link", { name: /Export pending/i })).toBeVisible();
+  await expect(page.getByText(/training package and raw JSON export unlock/i)).toBeVisible();
 });
 
 test("precision signals are filterable in the clips workspace", async ({ page }) => {
@@ -234,8 +243,9 @@ test("precision signals are filterable in the clips workspace", async ({ page })
   await expect(page.getByText("Add more context before the final label.")).toHaveCount(0);
 });
 
-test("export preview shows dedupe and discard summary", async ({ page }) => {
+test("selected clips can be batched into a package export", async ({ page }) => {
   const job = createMockJob();
+  let packageRequestBody: { clipIds: string[] } | null = null;
 
   await page.route(`**/api/jobs/${job.jobId}`, async (route) => {
     await route.fulfill({
@@ -245,8 +255,32 @@ test("export preview shows dedupe and discard summary", async ({ page }) => {
     });
   });
 
-  await page.goto(`/jobs/${job.jobId}?tab=export`);
+  await page.route(`**/api/jobs/${job.jobId}/exports/package`, async (route) => {
+    packageRequestBody = JSON.parse(route.request().postData() ?? "{}") as { clipIds: string[] };
+    await route.fulfill({
+      status: 200,
+      headers: {
+        "Content-Type": "application/zip",
+        "Content-Disposition": `attachment; filename="clipmine-export-${job.jobId}.zip"`,
+      },
+      body: Buffer.from("PK\x03\x04"),
+    });
+  });
 
-  await expect(page.getByText("Deduped / discarded")).toBeVisible();
-  await expect(page.getByText("3 / 5")).toBeVisible();
+  await page.goto(`/jobs/${job.jobId}`);
+  await page.getByLabel(/Add Keep the labeling steady across every segment\./i).check();
+  await page.getByLabel(/Add Add more context before the final label\./i).check();
+
+  await expect(page.getByText("2 clips ready for export")).toBeVisible();
+  await page.getByRole("button", { name: /Open export/i }).click();
+  await expect(page.getByRole("heading", { name: "Build a training-ready clip archive" })).toBeVisible();
+  await expect(page.getByText("clip_001__clip-1.mp4")).toBeVisible();
+  await expect(page.getByText("clip_002__clip-2.mp4")).toBeVisible();
+
+  const downloadPromise = page.waitForEvent("download");
+  await page.getByRole("button", { name: "Download selected package" }).click();
+  await downloadPromise;
+
+  expect(packageRequestBody).toEqual({ clipIds: ["clip-1", "clip-2"] });
+  await expect(page.getByText("Full job JSON")).toBeVisible();
 });

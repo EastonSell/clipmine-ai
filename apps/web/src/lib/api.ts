@@ -22,6 +22,10 @@ const API_ERROR_MESSAGES: Record<string, string> = {
   object_store_unavailable: "Upload storage is unavailable right now. Try again in a moment.",
   upload_session_expired: "The upload session expired before the file finished transferring.",
   upload_complete_failed: "The upload finished transferring, but the backend could not finalize the source file.",
+  export_not_ready: "Export becomes available when processing is complete.",
+  export_selection_required: "Select at least one clip before downloading a package.",
+  invalid_clip_selection: "One or more selected clips could not be found in this job.",
+  package_export_failed: "The selected package could not be built right now.",
   job_not_found: "This workspace could not be found.",
   video_not_found: "The source video is no longer available.",
   invalid_request: "The request payload was invalid.",
@@ -171,6 +175,33 @@ export async function getJob(jobId: string) {
       return await requestJson<JobResponse>(`${baseUrl}/api/jobs/${jobId}`, {
         cache: "no-store",
       });
+    } catch (error) {
+      const apiError = toApiError(error);
+      lastError = apiError;
+      if (!apiError.retryable) {
+        throw apiError;
+      }
+    }
+  }
+
+  throw lastError ?? new ApiError(buildErrorDetail("request_failed", "Something went wrong.", true));
+}
+
+export async function downloadClipPackage(jobId: string, clipIds: string[]) {
+  let lastError: ApiError | null = null;
+
+  for (const baseUrl of getApiBaseUrls()) {
+    try {
+      const response = await requestBlob(`${baseUrl}/api/jobs/${jobId}/exports/package`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          clipIds,
+        }),
+      });
+      return response;
     } catch (error) {
       const apiError = toApiError(error);
       lastError = apiError;
@@ -557,6 +588,29 @@ async function requestJson<T>(url: string, init?: RequestInit): Promise<T> {
   }
 }
 
+async function requestBlob(url: string, init?: RequestInit): Promise<{ blob: Blob; fileName: string }> {
+  try {
+    const response = await fetch(url, init);
+    if (!response.ok) {
+      throw await parseApiErrorFromResponse(response);
+    }
+
+    return {
+      blob: await response.blob(),
+      fileName: parseContentDispositionFilename(response.headers.get("content-disposition")) ?? "clipmine-export.zip",
+    };
+  } catch (error) {
+    if (error instanceof ApiError) {
+      throw error;
+    }
+    if (isAbortLikeError(error)) {
+      throw new ApiError(buildErrorDetail("upload_cancelled", API_ERROR_MESSAGES.upload_cancelled, true));
+    }
+
+    throw new ApiError(buildErrorDetail("network_unreachable", API_ERROR_MESSAGES.network_unreachable, true));
+  }
+}
+
 async function parseApiErrorFromResponse(response: Response) {
   try {
     const payload = (await response.json()) as ErrorPayload;
@@ -606,9 +660,11 @@ export function buildApiError(detail: ErrorPayload["detail"], status: number) {
   const code = detail?.code ?? "request_failed";
   const message = detail?.message || API_ERROR_MESSAGES[code] || API_ERROR_MESSAGES.request_failed;
   const retryable = typeof detail?.retryable === "boolean" ? detail.retryable : status >= 500;
+  const preferredMessage =
+    code === "invalid_clip_selection" ? message : API_ERROR_MESSAGES[code] ?? message;
 
   return new ApiError(
-    buildErrorDetail(code, API_ERROR_MESSAGES[code] ?? message, retryable),
+    buildErrorDetail(code, preferredMessage, retryable),
     status
   );
 }
@@ -641,4 +697,23 @@ function isAbortLikeError(error: unknown) {
   return typeof DOMException !== "undefined" && error instanceof DOMException
     ? error.name === "AbortError"
     : error instanceof Error && /abort/i.test(error.name);
+}
+
+function parseContentDispositionFilename(contentDisposition: string | null) {
+  if (!contentDisposition) {
+    return null;
+  }
+
+  const utf8Match = contentDisposition.match(/filename\*=UTF-8''([^;]+)/i);
+  if (utf8Match?.[1]) {
+    return decodeURIComponent(utf8Match[1]);
+  }
+
+  const quotedMatch = contentDisposition.match(/filename="([^"]+)"/i);
+  if (quotedMatch?.[1]) {
+    return quotedMatch[1];
+  }
+
+  const bareMatch = contentDisposition.match(/filename=([^;]+)/i);
+  return bareMatch?.[1]?.trim() ?? null;
 }

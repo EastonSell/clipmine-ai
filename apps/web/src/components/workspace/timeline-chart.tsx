@@ -13,10 +13,11 @@ type TimelineChartProps = {
   bins: TimelineBin[];
   clips: ClipRecord[];
   activeClipId: string | null;
+  selectedClipIds: string[];
   onSeek: (start: number, clipId?: string | null) => void;
 };
 
-export function TimelineChart({ bins, clips, activeClipId, onSeek }: TimelineChartProps) {
+export function TimelineChart({ bins, clips, activeClipId, selectedClipIds, onSeek }: TimelineChartProps) {
   const [hoveredBinIndex, setHoveredBinIndex] = useState<number | null>(null);
 
   if (bins.length === 0) {
@@ -44,13 +45,15 @@ export function TimelineChart({ bins, clips, activeClipId, onSeek }: TimelineCha
   const activeTimelineClip =
     activeTimelineBin?.top_clip_id ? clipsById.get(activeTimelineBin.top_clip_id) ?? null : null;
 
+  const selectedClipSet = new Set(selectedClipIds);
+
   return (
     <div className="grid gap-6 lg:grid-cols-[minmax(0,1.15fr)_19rem] xl:grid-cols-[minmax(0,1.3fr)_22rem]">
       <Card>
         <SectionHeader
           eyebrow="Timeline"
           title="Training usefulness across the full video"
-          description="Every bar represents one slice of the source. Use it to move directly toward stronger or weaker regions."
+          description="Each column represents one slice of the source. Use it to inspect stronger regions, weaker regions, and any selected export targets."
         />
 
         {activeTimelineBin ? (
@@ -91,10 +94,17 @@ export function TimelineChart({ bins, clips, activeClipId, onSeek }: TimelineCha
               <span>End</span>
             </div>
 
-            <div className="mt-5 flex h-56 items-end gap-2">
+            <div className="mt-4 grid h-56 grid-rows-4 gap-0 rounded-[1.1rem] border border-[var(--line)] bg-[linear-gradient(180deg,rgba(255,255,255,0.02),transparent)]">
+              {[0, 1, 2, 3].map((row) => (
+                <div key={row} className="border-b border-dashed border-[var(--line)] last:border-b-0" />
+              ))}
+            </div>
+
+            <div className="pointer-events-none -mt-56 grid h-56 [grid-template-columns:repeat(48,minmax(0,1fr))] items-end gap-1">
               {bins.map((bin, index) => {
                 const clip = bin.top_clip_id ? clipsById.get(bin.top_clip_id) ?? null : null;
                 const active = activeClip ? activeClip.end > bin.start && activeClip.start < bin.end : clip?.id === activeClipId;
+                const selected = clip ? selectedClipSet.has(clip.id) : false;
 
                 return (
                   <button
@@ -106,17 +116,22 @@ export function TimelineChart({ bins, clips, activeClipId, onSeek }: TimelineCha
                     onMouseLeave={() => setHoveredBinIndex(null)}
                     onBlur={() => setHoveredBinIndex(null)}
                     className={[
-                      "flex flex-1 items-end rounded-[1rem] border bg-white/[0.03] p-1 transition duration-200",
+                      "pointer-events-auto flex h-full items-end rounded-[0.55rem] border border-transparent bg-transparent pt-3 transition duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-inset",
                       active
                         ? "border-[var(--accent)] bg-[var(--accent-soft)]"
-                        : "border-[var(--line)] hover:-translate-y-0.5 hover:border-[var(--line-strong)] hover:bg-white/[0.05]",
+                        : selected
+                          ? "border-[var(--accent-strong)] bg-white/[0.03]"
+                          : "hover:border-[var(--line-strong)] hover:bg-white/[0.03]",
                     ].join(" ")}
                     aria-label={`Timeline segment ${index + 1}, ${bin.quality_label}, score ${Math.round(bin.score)}`}
                     aria-pressed={active}
                     title={`${bin.quality_label} region · ${formatSignedScore(bin.score)}`}
                   >
                     <span
-                      className={getTimelineBarClassName(bin.quality_label)}
+                      className={[
+                        getTimelineBarClassName(bin.quality_label),
+                        selected ? "ring-1 ring-inset ring-[var(--accent)]" : "",
+                      ].join(" ")}
                       style={{ height: `${Math.max(12, Math.round(bin.score))}%` }}
                     />
                   </button>
@@ -139,6 +154,10 @@ export function TimelineChart({ bins, clips, activeClipId, onSeek }: TimelineCha
             {
               label: "Weak",
               swatch: "linear-gradient(180deg,rgba(71,85,105,0.16),rgba(71,85,105,0.72))",
+            },
+            {
+              label: "Selected",
+              swatch: "rgba(99,216,247,0.95)",
             },
           ].map((item) => (
             <div key={item.label} className="inline-flex items-center gap-2 rounded-full border border-[var(--line)] bg-white/[0.03] px-3 py-1.5">
@@ -171,6 +190,7 @@ export function TimelineChart({ bins, clips, activeClipId, onSeek }: TimelineCha
                   <div className="flex items-center justify-between gap-3">
                     <QualityBadge label={bin.quality_label} />
                     {clip ? <RecommendationBadge recommendation={clip.selection_recommendation} /> : null}
+                    {clip && selectedClipSet.has(clip.id) ? <Badge tone="accent">Selected</Badge> : null}
                     <span className="font-mono text-sm text-[var(--muted-strong)]">
                       {formatSignedScore(bin.score)}
                     </span>
@@ -197,14 +217,14 @@ export function TimelineChart({ bins, clips, activeClipId, onSeek }: TimelineCha
 
 function getTimelineBarClassName(label: TimelineBin["quality_label"]) {
   if (label === "Excellent") {
-    return "block w-full rounded-[0.75rem] bg-[linear-gradient(180deg,rgba(94,234,212,0.28),rgba(94,234,212,0.98))]";
+    return "block w-full rounded-[0.35rem] bg-[linear-gradient(180deg,rgba(94,234,212,0.2),rgba(94,234,212,0.98))]";
   }
 
   if (label === "Good") {
-    return "block w-full rounded-[0.75rem] bg-[linear-gradient(180deg,rgba(148,163,184,0.2),rgba(148,163,184,0.82))]";
+    return "block w-full rounded-[0.35rem] bg-[linear-gradient(180deg,rgba(148,163,184,0.24),rgba(148,163,184,0.86))]";
   }
 
-  return "block w-full rounded-[0.75rem] bg-[linear-gradient(180deg,rgba(71,85,105,0.16),rgba(71,85,105,0.72))]";
+  return "block w-full rounded-[0.35rem] bg-[linear-gradient(180deg,rgba(71,85,105,0.2),rgba(71,85,105,0.72))]";
 }
 
 function formatRegionLabel(

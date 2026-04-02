@@ -41,7 +41,7 @@ export function WorkspaceHeader({
             {title}
           </h1>
           <p className="mt-3 text-sm leading-6 text-[var(--muted)] sm:text-[0.98rem]">
-            Review the source video, ranked clips, timeline, and export inside one persistent session.
+            Review the source once, select the strongest clips, and export a training package from one persistent session.
           </p>
         </div>
 

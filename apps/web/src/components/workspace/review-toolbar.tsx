@@ -14,9 +14,14 @@ type ReviewToolbarProps = {
   visibleCount: number;
   totalCount: number;
   shortlistedCount: number;
+  selectedCount: number;
   hasActiveFilters: boolean;
   onFiltersChange: (partial: Partial<ReviewFilters>) => void;
   onClear: () => void;
+  onSelectVisible: () => void;
+  onSelectShortlistReady: () => void;
+  onSelectAllShortlisted: () => void;
+  onClearSelection: () => void;
 };
 
 const sortOptions: Array<{ value: ReviewSort; label: string }> = [
@@ -32,9 +37,14 @@ export function ReviewToolbar({
   visibleCount,
   totalCount,
   shortlistedCount,
+  selectedCount,
   hasActiveFilters,
   onFiltersChange,
   onClear,
+  onSelectVisible,
+  onSelectShortlistReady,
+  onSelectAllShortlisted,
+  onClearSelection,
 }: ReviewToolbarProps) {
   return (
     <Card className="lg:sticky lg:top-28 lg:z-20" padded={false}>
@@ -49,6 +59,7 @@ export function ReviewToolbar({
           <div className="flex flex-wrap gap-2">
             <Badge tone="neutral">{visibleCount} visible</Badge>
             <Badge tone="muted">{shortlistedCount} shortlisted</Badge>
+            <Badge tone={selectedCount > 0 ? "accent" : "muted"}>{selectedCount} selected</Badge>
           </div>
         </div>
 
@@ -149,6 +160,24 @@ export function ReviewToolbar({
             {filters.shortlistReadyOnly ? "Only precision-shortlist clips" : "Include review and discard candidates"}
           </div>
         </button>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-2 border-t border-[var(--line)] px-5 py-4 sm:px-6">
+        <Button variant="secondary" size="sm" onClick={onSelectVisible} disabled={visibleCount === 0}>
+          Select visible
+        </Button>
+        <Button variant="secondary" size="sm" onClick={onSelectShortlistReady} disabled={visibleCount === 0}>
+          Select shortlist-ready
+        </Button>
+        <Button variant="secondary" size="sm" onClick={onSelectAllShortlisted} disabled={shortlistedCount === 0}>
+          Select all shortlisted
+        </Button>
+        {selectedCount > 0 ? (
+          <Button variant="ghost" size="sm" onClick={onClearSelection}>
+            <X className="size-4" />
+            Clear selection
+          </Button>
+        ) : null}
       </div>
 
       <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[var(--line)] px-5 py-4 text-sm text-[var(--muted)] sm:px-6">

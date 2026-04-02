@@ -223,6 +223,12 @@ class CompleteMultipartUploadRequest(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
 
+class PackageExportRequest(BaseModel):
+    clip_ids: list[str] = Field(alias="clipIds")
+
+    model_config = ConfigDict(populate_by_name=True)
+
+
 class JobManifest(BaseModel):
     job_id: str
     status: JobStatus

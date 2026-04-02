@@ -1,4 +1,4 @@
-import { ChevronLeft, ChevronRight, Pin, PinOff, Play } from "lucide-react";
+import { Check, ChevronLeft, ChevronRight, Pin, PinOff, Play, Square } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -15,7 +15,9 @@ type ClipDetailPanelProps = {
   clip: ClipRecord | null;
   onSeek: (start: number, clipId?: string | null) => void;
   isPinned: boolean;
+  isSelected: boolean;
   onTogglePinned: (clipId: string) => void;
+  onToggleSelected: (clipId: string) => void;
   onPrevious: () => void;
   onNext: () => void;
   hasPrevious: boolean;
@@ -26,7 +28,9 @@ export function ClipDetailPanel({
   clip,
   onSeek,
   isPinned,
+  isSelected,
   onTogglePinned,
+  onToggleSelected,
   onPrevious,
   onNext,
   hasPrevious,
@@ -100,6 +104,10 @@ export function ClipDetailPanel({
           <Button variant="secondary" size="sm" onClick={() => onTogglePinned(clip.id)}>
             {isPinned ? <PinOff className="size-4" /> : <Pin className="size-4" />}
             {isPinned ? "Remove from shortlist" : "Add to shortlist"}
+          </Button>
+          <Button variant="secondary" size="sm" onClick={() => onToggleSelected(clip.id)}>
+            {isSelected ? <Check className="size-4" /> : <Square className="size-4" />}
+            {isSelected ? "Remove from package" : "Add to package"}
           </Button>
           <Button variant="secondary" onClick={() => onSeek(clip.start, clip.id)}>
             <Play className="size-4" />

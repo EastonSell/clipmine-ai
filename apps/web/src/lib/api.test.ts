@@ -48,6 +48,34 @@ describe("api upload helpers", () => {
     expect(isRetryableApiError(error)).toBe(true);
   });
 
+  it("maps export selection errors into plain language", () => {
+    const error = buildApiError(
+      {
+        code: "export_selection_required",
+        message: "Need clip ids",
+        retryable: false,
+      },
+      400
+    );
+
+    expect(error.code).toBe("export_selection_required");
+    expect(error.message).toBe("Select at least one clip before downloading a package.");
+    expect(error.retryable).toBe(false);
+  });
+
+  it("preserves invalid clip selection details from the backend", () => {
+    const error = buildApiError(
+      {
+        code: "invalid_clip_selection",
+        message: "Unknown clip ids for this job: clip-999",
+        retryable: false,
+      },
+      400
+    );
+
+    expect(error.message).toBe("Unknown clip ids for this job: clip-999");
+  });
+
   it("treats unknown values as non-retryable only when they are not api errors", () => {
     const error = buildApiError("Something custom happened.", 400);
 

@@ -30,8 +30,8 @@ const proofPoints = [
   },
   {
     id: "export",
-    title: "JSON export",
-    body: "Export structured clip data for annotation and dataset workflows.",
+    title: "Training package",
+    body: "Batch selected clips into one linked zip archive with manifest metadata and stable file names.",
   },
 ];
 
@@ -44,11 +44,11 @@ const footerNotes = [
     label: "Processing",
     body: "Large files take longer to transfer and transcribe, but the workspace URL remains stable while the backend keeps state current.",
   },
-  {
-    label: "Output",
-    body: "Best clips, timeline bins, and JSON export all stay aligned to the same source video and scoring pass.",
-  },
-];
+    {
+      label: "Output",
+      body: "Best clips, timeline bins, package export, and raw JSON all stay aligned to the same source video and scoring pass.",
+    },
+  ];
 
 export function HomePageView() {
   return (
@@ -99,7 +99,7 @@ export function HomePageView() {
                 </h1>
                 <p className="max-w-2xl text-lg leading-8 text-[var(--muted-strong)] sm:text-[1.08rem]">
                   ClipMine AI turns a single source video into a ranked review surface with clip scoring, timeline
-                  coverage, and export-ready metadata for training and annotation workflows.
+                  coverage, and package-ready metadata for training and annotation workflows.
                 </p>
               </div>
 

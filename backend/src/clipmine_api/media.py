@@ -37,6 +37,55 @@ def extract_audio(video_path: Path, output_path: Path) -> None:
     logger.info("media.extract_audio complete output_path=%s", output_path)
 
 
+def extract_video_clip(video_path: Path, output_path: Path, *, start_time: float, end_time: float) -> None:
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    duration = max(0.1, end_time - start_time)
+    command = [
+        imageio_ffmpeg.get_ffmpeg_exe(),
+        "-y",
+        "-i",
+        str(video_path),
+        "-ss",
+        f"{max(0.0, start_time):.3f}",
+        "-t",
+        f"{duration:.3f}",
+        "-map",
+        "0:v:0",
+        "-map",
+        "0:a:0?",
+        "-vf",
+        "scale=trunc(iw/2)*2:trunc(ih/2)*2",
+        "-c:v",
+        "libx264",
+        "-preset",
+        "veryfast",
+        "-crf",
+        "23",
+        "-c:a",
+        "aac",
+        "-movflags",
+        "+faststart",
+        str(output_path),
+    ]
+    logger.info(
+        "media.extract_video_clip start video_path=%s output_path=%s start=%.3f end=%.3f",
+        video_path,
+        output_path,
+        start_time,
+        end_time,
+    )
+    completed = subprocess.run(command, capture_output=True, text=True)
+    if completed.returncode != 0:
+        logger.error(
+            "media.extract_video_clip failed video_path=%s output_path=%s stderr=%s",
+            video_path,
+            output_path,
+            completed.stderr.strip(),
+        )
+        raise RuntimeError(completed.stderr.strip() or "ffmpeg clip extraction failed")
+    logger.info("media.extract_video_clip complete output_path=%s", output_path)
+
+
 def probe_media_duration(media_path: Path) -> float | None:
     logger.debug("media.probe_duration path=%s", media_path)
     with av.open(str(media_path)) as container:

@@ -6,16 +6,18 @@ from pathlib import Path
 import imageio_ffmpeg
 import orjson
 from botocore.exceptions import BotoCoreError, ClientError
-from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile, status
+from fastapi import APIRouter, BackgroundTasks, Depends, File, HTTPException, Request, UploadFile, status
 from fastapi.responses import FileResponse, Response
 
 from .artifact_store import ArtifactStore
 from .errors import build_http_error
+from .package_export import build_package_export, cleanup_package_export
 from .presentation import serialize_export, serialize_job
 from .processor import JobProcessor
 from .schemas import (
     CompleteMultipartUploadRequest,
     JobStatus,
+    PackageExportRequest,
     SourceVideoRecord,
     UploadInitRequest,
     UploadSessionRecord,
@@ -412,6 +414,95 @@ async def export_job(job_id: str, store: JobStore = Depends(get_job_store)) -> R
     headers = {"Content-Disposition": f'attachment; filename="{job.job_id}.json"'}
     logger.info("export.ready job_id=%s status=%s clip_count=%s", job_id, job.status.value, len(job.clips))
     return Response(content=orjson.dumps(payload, option=orjson.OPT_INDENT_2), media_type="application/json", headers=headers)
+
+
+@router.post("/jobs/{job_id}/exports/package")
+async def export_job_package(
+    job_id: str,
+    payload: PackageExportRequest,
+    background_tasks: BackgroundTasks,
+    store: JobStore = Depends(get_job_store),
+    artifact_store: ArtifactStore = Depends(get_artifact_store),
+):
+    try:
+        job = store.load_job(job_id)
+    except FileNotFoundError as exc:
+        logger.warning("package.lookup_missing job_id=%s", job_id)
+        raise build_http_error(
+            status_code=status.HTTP_404_NOT_FOUND,
+            code="job_not_found",
+            message="Job not found.",
+            retryable=False,
+        ) from exc
+
+    if job.status != JobStatus.READY:
+        raise build_http_error(
+            status_code=status.HTTP_409_CONFLICT,
+            code="export_not_ready",
+            message="Package export is available when processing completes.",
+            retryable=False,
+        )
+
+    requested_clip_ids = list(dict.fromkeys(payload.clip_ids))
+    if not requested_clip_ids:
+        raise build_http_error(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            code="export_selection_required",
+            message="Choose at least one clip before exporting a training package.",
+            retryable=False,
+        )
+
+    clips_by_id = {clip.id: clip for clip in job.clips}
+    invalid_clip_ids = [clip_id for clip_id in requested_clip_ids if clip_id not in clips_by_id]
+    if invalid_clip_ids:
+        raise build_http_error(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            code="invalid_clip_selection",
+            message=f"Unknown clip ids for this job: {', '.join(invalid_clip_ids)}",
+            retryable=False,
+        )
+
+    selected_clips = [clip for clip in job.clips if clip.id in requested_clip_ids]
+    if job.source_video.storage_backend == "local" and not store.source_video_path(job).exists():
+        raise build_http_error(
+            status_code=status.HTTP_404_NOT_FOUND,
+            code="video_not_found",
+            message="Video file not found.",
+            retryable=False,
+        )
+
+    try:
+        package_export = build_package_export(
+            job,
+            selected_clips,
+            store=store,
+            artifact_store=artifact_store,
+        )
+    except (BotoCoreError, ClientError) as exc:
+        logger.exception("package.object_store_failed job_id=%s clip_count=%s", job_id, len(selected_clips))
+        raise build_http_error(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            code="object_store_unavailable",
+            message="Object storage is unavailable right now.",
+            retryable=True,
+        ) from exc
+    except Exception as exc:
+        logger.exception("package.failed job_id=%s clip_count=%s", job_id, len(selected_clips))
+        raise build_http_error(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            code="package_export_failed",
+            message="The selected clip package could not be built.",
+            retryable=True,
+        ) from exc
+
+    background_tasks.add_task(cleanup_package_export, package_export)
+    logger.info("package.ready job_id=%s clip_count=%s archive=%s", job_id, len(selected_clips), package_export.archive_name)
+    return FileResponse(
+        package_export.archive_path,
+        media_type="application/zip",
+        filename=package_export.archive_name,
+        background=background_tasks,
+    )
 
 
 def _validate_upload_metadata(

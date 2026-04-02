@@ -2,6 +2,7 @@ import type { JobResponse, RecentJobRecord } from "./types";
 
 const RECENT_JOBS_KEY = "clipmine:recent-jobs:v1";
 const SHORTLIST_KEY_PREFIX = "clipmine:shortlist:";
+const SELECTED_CLIPS_KEY_PREFIX = "clipmine:selected:";
 const MAX_RECENT_JOBS = 6;
 
 type StorageLike = Pick<Storage, "getItem" | "setItem" | "removeItem">;
@@ -87,8 +88,49 @@ export function saveShortlist(
   return normalized;
 }
 
+export function loadSelectedClips(jobId: string, storage: StorageLike | null = getBrowserStorage()): string[] {
+  if (!storage) {
+    return [];
+  }
+
+  try {
+    const raw = storage.getItem(getSelectedClipsKey(jobId));
+    if (!raw) {
+      return [];
+    }
+
+    const parsed = JSON.parse(raw) as string[];
+    return Array.isArray(parsed) ? parsed.filter((value): value is string => typeof value === "string") : [];
+  } catch {
+    return [];
+  }
+}
+
+export function saveSelectedClips(
+  jobId: string,
+  clipIds: string[],
+  storage: StorageLike | null = getBrowserStorage()
+): string[] {
+  if (!storage) {
+    return clipIds;
+  }
+
+  const normalized = Array.from(new Set(clipIds)).slice(0, 128);
+  if (normalized.length === 0) {
+    storage.removeItem(getSelectedClipsKey(jobId));
+    return [];
+  }
+
+  storage.setItem(getSelectedClipsKey(jobId), JSON.stringify(normalized));
+  return normalized;
+}
+
 function getShortlistKey(jobId: string) {
   return `${SHORTLIST_KEY_PREFIX}${jobId}`;
+}
+
+function getSelectedClipsKey(jobId: string) {
+  return `${SELECTED_CLIPS_KEY_PREFIX}${jobId}`;
 }
 
 function getBrowserStorage(): StorageLike | null {

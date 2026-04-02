@@ -24,7 +24,7 @@ export function JobStatusPanel({ job, onRefresh }: JobStatusPanelProps) {
   const description =
     job.status === "queued" || job.status === "processing"
       ? "The workspace refreshes automatically while the backend extracts audio, transcribes speech, segments clips, and scores results."
-      : job.error ?? "Processing completed and export is available.";
+      : job.error ?? "Processing finished. Use the review surface to select clips and export a package.";
   const timingEntries = Object.entries(job.processingTimings)
     .filter(([, value]) => Number.isFinite(value) && value > 0)
     .toSorted((left, right) => left[0].localeCompare(right[0]));
@@ -84,7 +84,9 @@ export function JobStatusPanel({ job, onRefresh }: JobStatusPanelProps) {
                 "flex items-center gap-3 rounded-[1rem] border px-3 py-3",
                 state === "current"
                   ? "border-[var(--accent-strong)] bg-[var(--accent-soft)]"
-                  : "border-[var(--line)] bg-white/[0.03]",
+                  : job.status === "ready"
+                    ? "border-[var(--line)] bg-white/[0.02] opacity-80"
+                    : "border-[var(--line)] bg-white/[0.03]",
               ].join(" ")}
             >
               <div

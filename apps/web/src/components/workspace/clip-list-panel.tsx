@@ -13,20 +13,24 @@ type ClipListPanelProps = {
   shortlistedClips: ClipRecord[];
   clips: ClipRecord[];
   activeClipId: string | null;
+  selectedClipIds: string[];
   totalClipCount: number;
   hasActiveFilters: boolean;
   pinnedOnly: boolean;
   onSelect: (start: number, clipId?: string | null) => void;
+  onToggleSelected: (clipId: string) => void;
 };
 
 export function ClipListPanel({
   shortlistedClips,
   clips,
   activeClipId,
+  selectedClipIds,
   totalClipCount,
   hasActiveFilters,
   pinnedOnly,
   onSelect,
+  onToggleSelected,
 }: ClipListPanelProps) {
   if (totalClipCount === 0) {
     return (
@@ -82,14 +86,28 @@ export function ClipListPanel({
               <Badge tone="accent">{shortlistedClips.length} pinned</Badge>
             </div>
             <div className="mt-4 divide-y divide-[var(--line)] overflow-hidden rounded-[1.15rem] border border-[var(--line)]">
-              {shortlistedClips.map((clip, index) => renderClipRow(clip, index, activeClipId, onSelect))}
+              {shortlistedClips.map((clip, index) =>
+                renderClipRow(clip, index, {
+                  activeClipId,
+                  selectedClipIds,
+                  onSelect,
+                  onToggleSelected,
+                })
+              )}
             </div>
           </div>
         ) : null}
 
         {clips.length > 0 ? (
           <div className="divide-y divide-[var(--line)]">
-            {clips.map((clip, index) => renderClipRow(clip, index, activeClipId, onSelect))}
+            {clips.map((clip, index) =>
+              renderClipRow(clip, index, {
+                activeClipId,
+                selectedClipIds,
+                onSelect,
+                onToggleSelected,
+              })
+            )}
           </div>
         ) : null}
       </div>
@@ -100,34 +118,65 @@ export function ClipListPanel({
 function renderClipRow(
   clip: ClipRecord,
   index: number,
-  activeClipId: string | null,
-  onSelect: (start: number, clipId?: string | null) => void
+  {
+    activeClipId,
+    selectedClipIds,
+    onSelect,
+    onToggleSelected,
+  }: {
+    activeClipId: string | null;
+    selectedClipIds: string[];
+    onSelect: (start: number, clipId?: string | null) => void;
+    onToggleSelected: (clipId: string) => void;
+  }
 ) {
   const active = clip.id === activeClipId;
+  const selected = selectedClipIds.includes(clip.id);
 
   return (
-    <button
+    <div
       key={clip.id}
-      type="button"
-      onClick={() => onSelect(clip.start, clip.id)}
       className={[
-        "w-full px-5 py-5 text-left transition duration-200 [content-visibility:auto] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-inset sm:px-6",
-        active ? "bg-[var(--accent-soft)]" : "hover:bg-white/[0.04]",
+        "grid gap-4 px-5 py-5 [content-visibility:auto] sm:px-6 lg:grid-cols-[auto_minmax(0,1fr)]",
+        active && selected
+          ? "bg-[linear-gradient(180deg,rgba(99,216,247,0.16),rgba(99,216,247,0.06))]"
+          : active
+            ? "bg-[var(--accent-soft)]"
+            : selected
+              ? "bg-white/[0.055]"
+              : "hover:bg-white/[0.04]",
       ].join(" ")}
-      aria-pressed={active}
     >
-      <div className="grid gap-4 xl:grid-cols-[5.5rem_minmax(0,1fr)_14rem] xl:items-start">
-        <div className="flex items-center gap-3 xl:flex-col xl:items-start">
+      <div className="flex items-start gap-4">
+        <label className="mt-1 inline-flex shrink-0 items-center gap-3 text-sm text-[var(--muted)]">
+          <input
+            type="checkbox"
+            checked={selected}
+            onChange={() => onToggleSelected(clip.id)}
+            className="size-4 rounded border-[var(--line-strong)] bg-transparent accent-[var(--accent)]"
+            style={{ accentColor: "var(--accent)" }}
+            aria-label={`${selected ? "Remove" : "Add"} ${clip.text} ${selected ? "from" : "to"} export package`}
+          />
+        </label>
+        <div className="flex items-center gap-3 lg:flex-col lg:items-start">
           <div className="font-mono text-2xl font-medium text-[var(--muted)]">{String(index + 1).padStart(2, "0")}</div>
           <div className="rounded-full border border-[var(--line)] bg-white/[0.04] px-3 py-1 text-sm font-medium text-[var(--text)]">
             {formatSignedScore(clip.score)}
           </div>
         </div>
+      </div>
 
+      <button
+        type="button"
+        onClick={() => onSelect(clip.start, clip.id)}
+        className="grid w-full gap-4 text-left transition duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-inset xl:grid-cols-[minmax(0,1fr)_14rem] xl:items-start"
+        aria-pressed={active}
+      >
         <div>
           <div className="flex flex-wrap items-center gap-3">
             <QualityBadge label={clip.quality_label} />
             <RecommendationBadge recommendation={clip.selection_recommendation} />
+            {selected ? <Badge tone="accent">Selected</Badge> : null}
             <span className="text-sm text-[var(--muted)]">
               {formatSeconds(clip.start)} - {formatSeconds(clip.end)}
             </span>
@@ -158,13 +207,13 @@ function renderClipRow(
           <MetricSummary label="Speech rate" value={`${clip.speech_rate.toFixed(1)} w/s`} />
           <MetricSummary label="Boundary" value={formatPercent(clip.quality_breakdown.boundary_cleanliness)} />
         </div>
-      </div>
 
-      <div className="mt-4 inline-flex items-center gap-2 text-sm font-medium text-[var(--muted-strong)]">
-        <Play className="size-4" />
-        Jump to clip
-      </div>
-    </button>
+        <div className="mt-4 inline-flex items-center gap-2 text-sm font-medium text-[var(--muted-strong)]">
+          <Play className="size-4" />
+          Jump to clip
+        </div>
+      </button>
+    </div>
   );
 }
 

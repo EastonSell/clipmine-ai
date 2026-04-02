@@ -45,8 +45,13 @@ Raw transcripts are noisy. Raw video is slow to review. Most dataset builders ne
 - Visualize the full source video with a `48`-bin usefulness timeline
 - Filter clips by transcript text, quality label, recommendation, penalty/tag signal, and sort order
 - Keep a local shortlist of pinned clips and reopen recent jobs from the landing page
+- Batch select clips separately from the shortlist while reviewing
 - Keep source playback aligned with timestamps from the ranking output
 - Export structured JSON for annotation or dataset curation workflows
+- Export a selected training package as one zip archive with:
+  - trimmed `.mp4` clip files
+  - stable `clip_<ordinal>__<clipId>.mp4` naming
+  - `manifest.json` linking each file back to clip metadata
 - Extend every clip with candidate metrics, multimodal features, quality penalties, and selection recommendation metadata
 
 ## Upcoming Features
@@ -222,7 +227,10 @@ In this current macOS sandbox, Playwright browser launch can fail before page co
 3. Wait while the backend moves through audio extraction, transcription, segmentation, and scoring.
 4. Review the ranked clips in `Best clips`.
 5. Inspect strong and weak regions in `Timeline`.
-6. Download `export.json` from `Export`.
+6. Select the clips you want to keep for training prep.
+7. Download either:
+   - `selected package` for clip files + manifest
+   - `export.json` for the full raw job payload
 
 ## What Makes The Project Useful
 

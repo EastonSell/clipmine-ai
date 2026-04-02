@@ -1,6 +1,45 @@
 # Verification Log
 
-Date: 2026-04-01
+Date: 2026-04-02
+
+## Review Workflow And Training Package Pass
+
+- Fixed the React duplicate-key warning in the landing preview by replacing value-derived keys with stable composite/index keys.
+- Removed redundant workspace navigation so the sticky top nav is now the single primary workspace control.
+- Added batch clip selection, including:
+  - per-row selection
+  - selected clip panel toggle
+  - select visible
+  - select shortlist-ready
+  - select all shortlisted
+  - clear selection
+- Added local-storage persistence for selected clip IDs per job.
+- Reworked the export tab into a package builder instead of a schema-first screen.
+- Added a backend package export endpoint:
+  - `POST /api/jobs/{jobId}/exports/package`
+- Package export now builds a single zip archive with:
+  - `clipmine-export-<jobId>/manifest.json`
+  - `clipmine-export-<jobId>/clips/clip_<ordinal>__<clipId>.mp4`
+- `manifest.json` now links clip IDs, file names, relative paths, timings, scores, penalties, and word alignments back to each exported clip file.
+- Updated the timeline UI so the chart reads like a real analysis instrument instead of a row of small pills, and selected clips are now reflected in the strongest-region view.
+
+## Bugs Fixed In This Pass
+
+### 1. Duplicate React keys in landing preview
+
+- Fixed duplicate `key` warnings in the landing-page preview panel caused by repeated value-derived keys in preview rows and heatmap bars.
+
+### 2. Workspace navigation duplication
+
+- Removed the duplicated inner workspace tabs/buttons that repeated the same controls already present in the sticky top nav.
+
+### 3. Export flow did not match user workflow
+
+- Replaced the old schema-preview-first export surface with a package-first workflow centered on selected clips and training-prep output.
+
+### 4. No way to batch curate clips for export
+
+- Added a dedicated export-selection model separate from the shortlist so users can review clips and build an export package intentionally.
 
 ## Scope
 

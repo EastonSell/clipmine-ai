@@ -1,6 +1,13 @@
 import { describe, expect, it } from "vitest";
 
-import { loadRecentJobs, loadShortlist, saveRecentJob, saveShortlist } from "./recent-jobs";
+import {
+  loadRecentJobs,
+  loadSelectedClips,
+  loadShortlist,
+  saveRecentJob,
+  saveSelectedClips,
+  saveShortlist,
+} from "./recent-jobs";
 import type { JobResponse } from "./types";
 
 function createStorage() {
@@ -111,5 +118,17 @@ describe("recent-jobs", () => {
 
     expect(saveShortlist("job-1", [], storage)).toEqual([]);
     expect(loadShortlist("job-1", storage)).toEqual([]);
+  });
+
+  it("persists selected clip ids independently from the shortlist", () => {
+    const storage = createStorage();
+
+    const saved = saveSelectedClips("job-1", ["clip-3", "clip-1", "clip-3"], storage);
+    expect(saved).toEqual(["clip-3", "clip-1"]);
+    expect(loadSelectedClips("job-1", storage)).toEqual(["clip-3", "clip-1"]);
+    expect(loadShortlist("job-1", storage)).toEqual([]);
+
+    expect(saveSelectedClips("job-1", [], storage)).toEqual([]);
+    expect(loadSelectedClips("job-1", storage)).toEqual([]);
   });
 });

@@ -5,19 +5,22 @@ import { Card } from "@/components/ui/card";
 
 const previewClips = [
   {
+    id: "preview-clip-01",
     quality: "Excellent",
     score: "91/100",
-    text: "High confidence, strong signal, ideal pace",
+    text: "Shortlist-ready with clean boundary and stable delivery",
   },
   {
+    id: "preview-clip-02",
     quality: "Good",
     score: "78/100",
-    text: "Usable clip with slightly weaker energy",
+    text: "Review candidate with softer signal but usable pacing",
   },
   {
+    id: "preview-clip-03",
     quality: "Weak",
     score: "52/100",
-    text: "Pause-heavy segment with lower confidence",
+    text: "Discard candidate because the pause structure is messy",
   },
 ];
 
@@ -42,31 +45,31 @@ export function PreviewPanel() {
           <div className="flex items-center justify-between gap-3">
             <div className="metric-label text-[var(--muted)]">Current pass</div>
             <span className="rounded-[0.8rem] border border-[var(--line)] px-2.5 py-1 font-mono text-xs text-[var(--muted-strong)]">
-              clipmine:v1
+              package-ready
             </span>
           </div>
           <div className="mt-5 rounded-[1.15rem] border border-[var(--line)] bg-white/[0.03] p-4">
-            <div className="metric-label text-[var(--muted)]">Top clip score</div>
-            <div className="mt-3 text-6xl font-semibold tracking-[-0.08em]">91</div>
+            <div className="metric-label text-[var(--muted)]">Selected package</div>
+            <div className="mt-3 text-6xl font-semibold tracking-[-0.08em]">08</div>
             <p className="mt-3 text-sm leading-6 text-[var(--muted)]">
-              Strong confidence, clean boundary, stable signal.
+              Clip files and manifest stay linked by clip ID and export order.
             </p>
           </div>
           <div className="mt-4 space-y-3 text-sm text-[var(--muted)]">
             <div className="flex items-center justify-between gap-4 rounded-[1rem] border border-[var(--line)] bg-white/[0.03] px-4 py-3">
-              <span>Clip window</span>
-              <span className="font-medium text-[var(--text)]">1-3s</span>
+              <span>Package type</span>
+              <span className="font-medium text-[var(--text)]">ZIP + manifest</span>
             </div>
             <div className="flex items-center justify-between gap-4 rounded-[1rem] border border-[var(--line)] bg-white/[0.03] px-4 py-3">
-              <span>Export</span>
+              <span>Clip naming</span>
               <span className="inline-flex items-center gap-2 font-medium text-[var(--text)]">
                 <FileJson2 className="size-4" />
-                JSON
+                clip_001__id.mp4
               </span>
             </div>
             <div className="flex items-center justify-between gap-4 rounded-[1rem] border border-[var(--line)] bg-white/[0.03] px-4 py-3">
               <span>Timeline bins</span>
-              <span className="font-medium text-[var(--text)]">48</span>
+              <span className="font-medium text-[var(--text)]">48 labeled</span>
             </div>
           </div>
         </div>
@@ -86,7 +89,7 @@ export function PreviewPanel() {
           <div className="mt-4 space-y-3">
             {previewClips.map((clip, index) => (
               <div
-                key={clip.score}
+                key={`preview-${index}-${clip.quality}-${clip.score}`}
                 className="rounded-[1.15rem] border border-[var(--line)] bg-white/[0.035] px-4 py-4 backdrop-blur-md"
               >
                 <div className="flex items-center justify-between gap-3">
@@ -112,7 +115,7 @@ export function PreviewPanel() {
         </div>
         <div className="mt-4 flex items-end gap-2 rounded-[1.3rem] border border-[var(--line)] bg-[var(--surface-overlay)] p-3">
           {heatmapHeights.map((height, index) => (
-            <div key={height + index} className="flex h-24 flex-1 items-end rounded-full bg-white/[0.04] p-0.5">
+            <div key={`heatmap-${index}`} className="flex h-24 flex-1 items-end rounded-full bg-white/[0.04] p-0.5">
               <div
                 className="w-full rounded-full bg-[linear-gradient(180deg,rgba(94,234,212,0.18),rgba(94,234,212,0.95))]"
                 style={{ height: `${height}%` }}

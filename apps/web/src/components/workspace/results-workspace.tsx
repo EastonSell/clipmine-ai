@@ -1,7 +1,7 @@
 "use client";
 
 import { AnimatePresence, motion } from "framer-motion";
-import { Download, RefreshCcw } from "lucide-react";
+import { Boxes, RefreshCcw } from "lucide-react";
 import { useMemo, useRef } from "react";
 import useSWR from "swr";
 
@@ -9,17 +9,17 @@ import { buttonClassName } from "@/components/ui/button";
 import { ErrorState } from "@/components/ui/error-state";
 import { FooterNotes } from "@/components/ui/footer-notes";
 import { ProcessingState } from "@/components/ui/processing-state";
-import { Tabs } from "@/components/ui/tabs";
 import { AppShell } from "@/components/ui/app-shell";
 import { PageContainer } from "@/components/ui/page-container";
 import { TopBar } from "@/components/ui/top-bar";
 import { getApiBaseUrl, getJob } from "@/lib/api";
 import type { JobResponse } from "@/lib/types";
 
+import { BulkSelectionBar } from "./bulk-selection-bar";
 import { ClipDetailPanel } from "./clip-detail-panel";
 import { ClipListPanel } from "./clip-list-panel";
 import { ExportPanel } from "./export-panel";
-import { phaseCopy, workspaceTabs, type WorkspaceTab } from "./constants";
+import { phaseCopy, type WorkspaceTab } from "./constants";
 import { JobStatusPanel } from "./job-status-panel";
 import { JobSummaryPanel } from "./job-summary-panel";
 import { ReviewToolbar } from "./review-toolbar";
@@ -140,7 +140,7 @@ export function ResultsWorkspace({ jobId }: ResultsWorkspaceProps) {
     },
     {
       label: "Export",
-      body: "JSON export stays aligned with the same clip ranking and timeline state shown in the workspace.",
+      body: "Selected package export trims clip files on demand and links each file name back to the manifest by clip ID.",
     },
   ];
 
@@ -158,22 +158,16 @@ export function ResultsWorkspace({ jobId }: ResultsWorkspaceProps) {
             { label: "Notes", onClick: () => handleNavigate("notes") },
           ]}
           action={
-            <a
-              href={exportUrl}
-              className={buttonClassName({
-                variant: processing ? "secondary" : "primary",
-                className: processing ? "pointer-events-none opacity-60" : "",
-              })}
-              aria-disabled={processing}
-              onClick={(event) => {
-                if (processing) {
-                  event.preventDefault();
-                }
-              }}
+            <button
+              type="button"
+              onClick={() => handleNavigate("export")}
+              className={buttonClassName({ variant: viewModel.selectedClipIds.length > 0 ? "primary" : "secondary" })}
             >
-              <Download className="size-4" />
-              {processing ? "Export pending" : "Export JSON"}
-            </a>
+              <Boxes className="size-4" />
+              {viewModel.selectedClipIds.length > 0
+                ? `Export ${viewModel.selectedClipIds.length} selected`
+                : "Open export"}
+            </button>
           }
         />
 
@@ -182,31 +176,6 @@ export function ResultsWorkspace({ jobId }: ResultsWorkspaceProps) {
           sourceVideo={data.sourceVideo}
           language={data.language}
           statusLabel={phaseCopy[data.progressPhase]}
-          navigation={
-            <div className="flex flex-wrap gap-2">
-              <button
-                type="button"
-                onClick={() => handleNavigate("clips")}
-                className={buttonClassName({ variant: "secondary", size: "sm" })}
-              >
-                Best clips
-              </button>
-              <button
-                type="button"
-                onClick={() => handleNavigate("timeline")}
-                className={buttonClassName({ variant: "secondary", size: "sm" })}
-              >
-                Timeline
-              </button>
-              <button
-                type="button"
-                onClick={() => handleNavigate("export")}
-                className={buttonClassName({ variant: "secondary", size: "sm" })}
-              >
-                Export
-              </button>
-            </div>
-          }
         />
 
         <div className="grid gap-6 lg:grid-cols-[minmax(0,1.45fr)_20rem] xl:grid-cols-[minmax(0,1.55fr)_22rem]">
@@ -214,52 +183,46 @@ export function ResultsWorkspace({ jobId }: ResultsWorkspaceProps) {
             <div id="source-video">
               <SourceVideoPanel videoRef={videoRef} videoUrl={videoUrl} />
             </div>
-            <ClipDetailPanel
-              clip={selectedClip}
-              onSeek={handleSeek}
-              isPinned={selectedClip ? viewModel.isPinned(selectedClip.id) : false}
-              onTogglePinned={viewModel.togglePinned}
-              onPrevious={() => {
-                const previousClip = selectedClipIndex > 0 ? reviewSequence[selectedClipIndex - 1] : null;
-                if (previousClip) {
-                  handleSeek(previousClip.start, previousClip.id);
-                }
-              }}
-              onNext={() => {
-                const nextClip =
-                  selectedClipIndex >= 0 && selectedClipIndex < reviewSequence.length - 1
-                    ? reviewSequence[selectedClipIndex + 1]
-                    : null;
-                if (nextClip) {
-                  handleSeek(nextClip.start, nextClip.id);
-                }
-              }}
-              hasPrevious={selectedClipIndex > 0}
-              hasNext={selectedClipIndex >= 0 && selectedClipIndex < reviewSequence.length - 1}
-            />
-
-            <div
-              id="workspace-features"
-              className="flex flex-wrap items-center justify-between gap-4 rounded-[1.35rem] border border-[var(--line)] bg-white/[0.04] px-4 py-3 backdrop-blur-xl"
-            >
-              <Tabs options={workspaceTabs} value={viewModel.activeTab} onChange={viewModel.setActiveTab} />
-              <a
-                href={exportUrl}
-                className={buttonClassName({
-                  variant: processing ? "secondary" : "primary",
-                  className: processing ? "pointer-events-none opacity-60" : "",
-                })}
-                aria-disabled={processing}
-                onClick={(event) => {
-                  if (processing) {
-                    event.preventDefault();
+            {viewModel.activeTab !== "export" ? (
+              <ClipDetailPanel
+                clip={selectedClip}
+                onSeek={handleSeek}
+                isPinned={selectedClip ? viewModel.isPinned(selectedClip.id) : false}
+                isSelected={selectedClip ? viewModel.isSelected(selectedClip.id) : false}
+                onTogglePinned={viewModel.togglePinned}
+                onToggleSelected={viewModel.toggleSelected}
+                onPrevious={() => {
+                  const previousClip = selectedClipIndex > 0 ? reviewSequence[selectedClipIndex - 1] : null;
+                  if (previousClip) {
+                    handleSeek(previousClip.start, previousClip.id);
                   }
                 }}
-              >
-                <Download className="size-4" />
-                {processing ? "Export when ready" : "Download JSON"}
-              </a>
-            </div>
+                onNext={() => {
+                  const nextClip =
+                    selectedClipIndex >= 0 && selectedClipIndex < reviewSequence.length - 1
+                      ? reviewSequence[selectedClipIndex + 1]
+                      : null;
+                  if (nextClip) {
+                    handleSeek(nextClip.start, nextClip.id);
+                  }
+                }}
+                hasPrevious={selectedClipIndex > 0}
+                hasNext={selectedClipIndex >= 0 && selectedClipIndex < reviewSequence.length - 1}
+              />
+            ) : null}
+
+            {viewModel.selectedClipIds.length > 0 ? (
+              <div id="workspace-features">
+                <BulkSelectionBar
+                  selectedCount={viewModel.selectedClipIds.length}
+                  selectedDuration={viewModel.selectedClipDuration}
+                  onOpenExport={() => viewModel.setActiveTab("export")}
+                  onClear={viewModel.clearSelected}
+                />
+              </div>
+            ) : (
+              <div id="workspace-features" />
+            )}
 
             <AnimatePresence mode="wait">
               <motion.section
@@ -277,18 +240,25 @@ export function ResultsWorkspace({ jobId }: ResultsWorkspaceProps) {
                       visibleCount={viewModel.shortlistedClips.length + viewModel.rankedClips.length}
                       totalCount={data.clips.length}
                       shortlistedCount={viewModel.pinnedClipIds.length}
+                      selectedCount={viewModel.selectedClipIds.length}
                       hasActiveFilters={viewModel.hasActiveFilters}
                       onFiltersChange={viewModel.updateFilters}
                       onClear={viewModel.clearFilters}
+                      onSelectVisible={viewModel.selectVisible}
+                      onSelectShortlistReady={viewModel.selectShortlistReady}
+                      onSelectAllShortlisted={viewModel.selectAllShortlisted}
+                      onClearSelection={viewModel.clearSelected}
                     />
                     <ClipListPanel
                       shortlistedClips={viewModel.shortlistedClips}
                       clips={viewModel.rankedClips}
                       activeClipId={resolvedClipId}
+                      selectedClipIds={viewModel.selectedClipIds}
                       totalClipCount={data.clips.length}
                       hasActiveFilters={viewModel.hasActiveFilters}
                       pinnedOnly={viewModel.filters.pinnedOnly}
                       onSelect={handleSeek}
+                      onToggleSelected={viewModel.toggleSelected}
                     />
                   </div>
                 ) : null}
@@ -297,11 +267,17 @@ export function ResultsWorkspace({ jobId }: ResultsWorkspaceProps) {
                     bins={data.timeline}
                     clips={data.clips}
                     activeClipId={resolvedClipId}
+                    selectedClipIds={viewModel.selectedClipIds}
                     onSeek={handleSeek}
                   />
                 ) : null}
                 {viewModel.activeTab === "export" ? (
-                  <ExportPanel job={data} exportUrl={exportUrl} disabled={processing} />
+                  <ExportPanel
+                    job={data}
+                    exportUrl={exportUrl}
+                    disabled={processing}
+                    selectedClips={viewModel.selectedClips}
+                  />
                 ) : null}
               </motion.section>
             </AnimatePresence>
