@@ -479,7 +479,7 @@ test("batch workspace groups jobs and exports thresholded clips", async ({ page 
   ]);
 });
 
-test("landing page queues multiple uploads into one batch workspace", async ({ page }) => {
+test("landing page completes a batch queue and then opens the workspace on demand", async ({ page }) => {
   const alpha = createMockJob({
     jobId: "queued-alpha",
     sourceVideo: {
@@ -587,6 +587,12 @@ test("landing page queues multiple uploads into one batch workspace", async ({ p
   ]);
   await page.getByRole("button", { name: "Queue 2 videos" }).click();
 
+  await expect(page.getByText("Queue complete")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Batch review session is ready" })).toBeVisible();
+  await expect(page.getByText("2 of 2 sources reached the workspace stage.")).toBeVisible();
+  await expect(page.getByText("Workspace ready")).toBeVisible();
+
+  await page.getByRole("button", { name: "Open batch workspace" }).click();
   await page.waitForURL("**/batches/*");
   await expect(page.getByRole("heading", { name: "2 sources queued" })).toBeVisible();
   await expect(page.getByRole("button", { name: /alpha\.mp4 processing|alpha\.mp4 ready/i })).toBeVisible();

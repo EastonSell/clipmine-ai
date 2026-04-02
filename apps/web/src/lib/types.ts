@@ -40,6 +40,17 @@ export type BatchSessionRecord = {
   updatedAt: string;
   qualityThreshold: number;
   items: BatchUploadItemRecord[];
+  lastCompletionSummary?: BatchCompletionSummary | null;
+};
+
+export type BatchCompletionSummary = {
+  batchId: string;
+  label: string;
+  finishedAt: string;
+  totalSources: number;
+  readyCount: number;
+  failedCount: number;
+  cancelledCount: number;
 };
 
 export type ApiErrorDetail = {

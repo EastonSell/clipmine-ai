@@ -108,8 +108,16 @@
 - [ ] Add export preset selector
   Prompt: "Extend the export panel with presets like full AV package, audio-only package, and metadata-only package while keeping the current zip export as the default."
 
-- [ ] Add queue completion toast and summary state
+- [x] Add queue completion toast and summary state
   Prompt: "When a batch queue finishes, show a stronger completion summary before navigating so the user understands how many sources succeeded or failed."
+  Notes: Added on 2026-04-02 and completed in the same pass. The landing page now stops on a finished-state summary with success / failure counts and a direct button into the batch workspace.
+  Verified: `npm run test:web`, `npm run lint:web`, `npm run build:web`, `npm run test:e2e`
+
+- [ ] Surface the latest finished batch session from the landing page
+  Prompt: "Add a compact landing shortcut for the most recently completed batch session so users can reopen it without re-queueing the same sources."
+
+- [ ] Add per-source ETA hints to the active queue card
+  Prompt: "Estimate queue progress for the current source and remaining queue so large multi-file uploads feel less opaque while the active transfer is running."
 
 ## Backend Tasks
 
@@ -152,3 +160,6 @@
 - 2026-04-02: Added `Improve live batch queue status` and completed it in the same pass.
 - 2026-04-02: Added `Add queue completion toast and summary state` as the next follow-on frontend task.
 - 2026-04-02: Added `Remove Playwright color warnings` after re-reading the plan during verification cleanup.
+- 2026-04-02: Added `Surface the latest finished batch session from the landing page` before implementing the queue completion summary flow.
+- 2026-04-02: Completed `Add queue completion toast and summary state` after web unit, lint, build, and Playwright verification.
+- 2026-04-02: Added `Add per-source ETA hints to the active queue card` as the next frontend queue follow-up.

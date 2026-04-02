@@ -16,6 +16,7 @@ import { saveBatchSession } from "@/lib/batch-sessions";
 import { ApiError, createJob, getUploadMode, isRetryableApiError } from "@/lib/api";
 import { formatBytes } from "@/lib/format";
 import type {
+  BatchCompletionSummary,
   BatchSessionRecord,
   BatchUploadItemRecord,
   BatchUploadItemStatus,
@@ -77,7 +78,8 @@ function upsertBatchSnapshot(
   batchId: string,
   label: string,
   createdAt: string,
-  items: BatchUploadItemRecord[]
+  items: BatchUploadItemRecord[],
+  lastCompletionSummary: BatchCompletionSummary | null = null
 ) {
   const snapshot: BatchSessionRecord = {
     batchId,
@@ -86,8 +88,25 @@ function upsertBatchSnapshot(
     updatedAt: new Date().toISOString(),
     qualityThreshold: DEFAULT_BATCH_THRESHOLD,
     items,
+    lastCompletionSummary,
   };
   saveBatchSession(snapshot);
+}
+
+function buildBatchCompletionSummary(
+  batchId: string,
+  label: string,
+  items: BatchUploadItemRecord[]
+): BatchCompletionSummary {
+  return {
+    batchId,
+    label,
+    finishedAt: new Date().toISOString(),
+    totalSources: items.length,
+    readyCount: items.filter((item) => item.jobId).length,
+    failedCount: items.filter((item) => item.status === "failed").length,
+    cancelledCount: items.filter((item) => item.status === "cancelled").length,
+  };
 }
 
 function formatOverallQueueProgress(items: BatchUploadItemRecord[]) {
@@ -165,6 +184,7 @@ export function UploadSection() {
   const [uploadPhase, setUploadPhase] = useState<UploadPhase | "idle">("idle");
   const [batchQueue, setBatchQueue] = useState<BatchUploadItemRecord[]>([]);
   const [currentBatchIndex, setCurrentBatchIndex] = useState<number | null>(null);
+  const [completedBatchSummary, setCompletedBatchSummary] = useState<BatchCompletionSummary | null>(null);
   const activeUploadCancelRef = useRef<(() => void) | null>(null);
   const batchCancelledRef = useRef(false);
   const uploadMode = getUploadMode();
@@ -229,6 +249,7 @@ export function UploadSection() {
   }
 
   async function runSingleUpload(file: File) {
+    setCompletedBatchSummary(null);
     setIsUploading(true);
     setUploadPhase("validating");
     setUploadProgress(0);
@@ -271,6 +292,7 @@ export function UploadSection() {
     const initialItems = createBatchItems(files);
 
     batchCancelledRef.current = false;
+    setCompletedBatchSummary(null);
     setError(null);
     setIsUploading(true);
     setBatchQueue(initialItems);
@@ -380,9 +402,10 @@ export function UploadSection() {
     resetUploadState();
 
     if (workingItems.some((item) => item.jobId)) {
-      startTransition(() => {
-        router.push(`/batches/${batchId}`);
-      });
+      const completionSummary = buildBatchCompletionSummary(batchId, label, workingItems);
+      upsertBatchSnapshot(batchId, label, createdAt, [...workingItems], completionSummary);
+      setCompletedBatchSummary(completionSummary);
+      setSelectedFiles([]);
       return;
     }
 
@@ -439,9 +462,17 @@ export function UploadSection() {
     void (selectedFiles.length > 1 ? runBatchUpload(selectedFiles) : runSingleUpload(selectedFiles[0]));
   }
 
+  function handleOpenBatchWorkspace(batchId: string) {
+    startTransition(() => {
+      router.push(`/batches/${batchId}`);
+    });
+  }
+
   const queueSummary = isBatchMode
     ? `${selectedFiles.length} sources selected`
-    : "Use the dropzone below to start a new review job.";
+    : completedBatchSummary
+      ? "The latest queue finished successfully. Open the batch workspace or replace it with a new queue."
+      : "Use the dropzone below to start a new review job.";
 
   return (
     <section id="upload" className="border-t border-[var(--line)] py-16 sm:py-20">
@@ -523,6 +554,7 @@ export function UploadSection() {
                   onDragChange={setIsDragging}
                   onSelectFiles={(files) => {
                     setSelectedFiles(files);
+                    setCompletedBatchSummary(null);
                     setError(null);
                     setBatchQueue([]);
                     setIsDragging(false);
@@ -698,6 +730,52 @@ export function UploadSection() {
                       If you are running locally, make sure both the frontend and backend are running and that the API
                       allows the current browser origin.
                     </p>
+                  </div>
+                </div>
+              ) : null}
+
+              {completedBatchSummary && !isUploading ? (
+                <div className="mt-5 border-t border-[var(--line)] pt-5">
+                  <div className="rounded-[1.25rem] border border-[var(--line)] bg-[var(--surface-overlay)] px-4 py-4">
+                    <div className="flex flex-wrap items-start justify-between gap-4">
+                      <div className="max-w-2xl">
+                        <div className="metric-label text-[var(--accent)]">Queue complete</div>
+                        <h3 className="mt-2 text-xl font-semibold tracking-[-0.04em] text-[var(--text)]">
+                          Batch review session is ready
+                        </h3>
+                        <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
+                          {completedBatchSummary.readyCount} of {completedBatchSummary.totalSources} sources reached
+                          the workspace stage. Open the grouped batch review page to inspect each job and export top
+                          clips together.
+                        </p>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          size="lg"
+                          onClick={() => setCompletedBatchSummary(null)}
+                        >
+                          Queue more sources
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="primary"
+                          size="lg"
+                          onClick={() => handleOpenBatchWorkspace(completedBatchSummary.batchId)}
+                        >
+                          <ArrowUpRight className="size-4" />
+                          Open batch workspace
+                        </Button>
+                      </div>
+                    </div>
+
+                    <div className="mt-4 grid gap-3 sm:grid-cols-4">
+                      <QueueMetric label="Sources" value={String(completedBatchSummary.totalSources)} />
+                      <QueueMetric label="Workspace ready" value={String(completedBatchSummary.readyCount)} />
+                      <QueueMetric label="Failed" value={String(completedBatchSummary.failedCount)} />
+                      <QueueMetric label="Cancelled" value={String(completedBatchSummary.cancelledCount)} />
+                    </div>
                   </div>
                 </div>
               ) : null}

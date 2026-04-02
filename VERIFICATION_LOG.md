@@ -563,3 +563,49 @@ npm_config_cache=/tmp/clipmine-npm-cache npm run test:e2e
 - Local Playwright execution still fails in this macOS sandbox before page code runs because Chromium cannot open the required Mach rendezvous port:
   - `bootstrap_check_in org.chromium.Chromium.MachPortRendezvousServer: Permission denied (1100)`
 - This remains an environment-level browser-launch restriction rather than an application assertion failure.
+
+## Queue Completion Summary Pass
+
+- Added a real finished-state summary for batch uploads on the landing page instead of auto-jumping straight into the batch workspace.
+- The queue now stops on a clear completion surface that shows:
+  - total sources
+  - workspace-ready count
+  - failed count
+  - cancelled count
+  - a direct `Open batch workspace` action
+- Persisted the latest queue completion summary on the saved batch session record so the batch session carries its intake outcome metadata with it.
+
+## Queue Completion Bugs Fixed
+
+### 14. Batch queues transitioned too abruptly into the workspace
+
+- The landing flow previously redirected immediately after the queue finished, which made it hard to understand whether every source succeeded or whether some failed on the way through intake.
+- The upload bay now ends in a completion summary state before navigation so the queue outcome is explicit.
+
+### 15. Batch session records had no completion summary snapshot
+
+- Saved batch sessions previously tracked only item-level records and the threshold value.
+- They now optionally persist a completion summary, which gives the landing and batch flows a stable summary object to build on later.
+
+## Queue Completion Features Tested
+
+- Web unit tests cover the updated batch-session persistence shape.
+- Browser smoke now covers:
+  - batch queue completion summary rendering
+  - manual transition from the landing page into the batch workspace after queue completion
+
+## Queue Completion Checks Run
+
+```bash
+npm_config_cache=/tmp/clipmine-npm-cache npm run test:web
+npm_config_cache=/tmp/clipmine-npm-cache npm run lint:web
+npm_config_cache=/tmp/clipmine-npm-cache npm run build:web
+npm run test:e2e
+```
+
+## Queue Completion Results
+
+- `npm run test:web`: 20 / 20 tests passed
+- `npm run lint:web`: passed
+- `npm run build:web`: passed
+- `npm run test:e2e`: 10 / 10 tests passed

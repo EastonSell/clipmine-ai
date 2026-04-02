@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { loadBatchSession, loadBatchSessions, removeBatchSession, saveBatchSession } from "./batch-sessions";
-import type { BatchSessionRecord } from "./types";
+import type { BatchCompletionSummary, BatchSessionRecord } from "./types";
 
 function createStorage() {
   const state = new Map<string, string>();
@@ -43,6 +43,19 @@ function createBatchSession(overrides: Partial<BatchSessionRecord> = {}): BatchS
   };
 }
 
+function createCompletionSummary(overrides: Partial<BatchCompletionSummary> = {}): BatchCompletionSummary {
+  return {
+    batchId: "batch-1",
+    label: "2 sources queued",
+    finishedAt: "2026-04-02T12:12:00.000Z",
+    totalSources: 2,
+    readyCount: 2,
+    failedCount: 0,
+    cancelledCount: 0,
+    ...overrides,
+  };
+}
+
 describe("batch-sessions", () => {
   it("stores batches newest first and reloads an individual session", () => {
     const storage = createStorage();
@@ -67,5 +80,17 @@ describe("batch-sessions", () => {
 
     expect(removeBatchSession("batch-1", storage)).toEqual([]);
     expect(loadBatchSession("batch-1", storage)).toBeNull();
+  });
+
+  it("preserves the latest completion summary when sessions reload", () => {
+    const storage = createStorage();
+    saveBatchSession(
+      createBatchSession({
+        lastCompletionSummary: createCompletionSummary(),
+      }),
+      storage
+    );
+
+    expect(loadBatchSession("batch-1", storage)?.lastCompletionSummary).toEqual(createCompletionSummary());
   });
 });
