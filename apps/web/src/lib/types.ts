@@ -4,10 +4,33 @@ export type UploadJobResponse = {
   fileName: string;
 };
 
+export type UploadMode = "direct" | "multipart";
+export type UploadPhase = "validating" | "transferring" | "finalizing" | "processing";
+
 export type UploadProgress = {
   loaded: number;
   total: number;
   percentage: number;
+};
+
+export type ApiErrorDetail = {
+  code: string;
+  message: string;
+  retryable: boolean;
+};
+
+export type UploadPartDescriptor = {
+  partNumber: number;
+  url: string;
+};
+
+export type UploadInitResponse = {
+  uploadSessionId: string;
+  jobId: string;
+  fileName: string;
+  partSizeBytes: number;
+  expiresAt: string;
+  parts: UploadPartDescriptor[];
 };
 
 export type SourceVideo = {

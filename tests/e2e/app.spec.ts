@@ -39,13 +39,36 @@ test("landing page renders recent jobs and validates unsupported uploads", async
 
 test("uploading a valid source opens the workspace and supports shortlist persistence", async ({ page }) => {
   const job = createMockJob({ jobId: "job-ready" });
+  const uploadSessionId = "session-ready";
 
-  await page.route("**/api/jobs", async (route, request) => {
-    if (request.method() !== "POST") {
-      await route.fallback();
-      return;
-    }
+  await page.route("**/api/uploads/init", async (route) => {
+    await route.fulfill({
+      status: 201,
+      contentType: "application/json",
+      body: JSON.stringify({
+        uploadSessionId,
+        jobId: job.jobId,
+        fileName: job.sourceVideo.file_name,
+        partSizeBytes: 16 * 1024 * 1024,
+        expiresAt: "2026-04-02T12:30:00.000Z",
+        parts: [{ partNumber: 1, url: `https://uploads.example/${uploadSessionId}/part/1` }],
+      }),
+    });
+  });
 
+  await page.route(`https://uploads.example/${uploadSessionId}/part/1`, async (route) => {
+    await new Promise((resolve) => setTimeout(resolve, 150));
+    await route.fulfill({
+      status: 200,
+      headers: {
+        ETag: '"etag-ready"',
+      },
+      body: "",
+    });
+  });
+
+  await page.route(`**/api/uploads/${uploadSessionId}/complete`, async (route) => {
+    await new Promise((resolve) => setTimeout(resolve, 150));
     await route.fulfill({
       status: 200,
       contentType: "application/json",
@@ -75,12 +98,13 @@ test("uploading a valid source opens the workspace and supports shortlist persis
 
   await page.goto("/");
   await page.locator('input[type="file"]').setInputFiles({
-    name: "talking-head.mp4",
+    name: job.sourceVideo.file_name,
     mimeType: "video/mp4",
     buffer: Buffer.from("fake-mp4-data"),
   });
   await page.getByRole("button", { name: "Upload video" }).click();
 
+  await expect(page.getByText("Upload progress")).toBeVisible();
   await page.waitForURL(`**/jobs/${job.jobId}`);
   await expect(page.getByRole("heading", { name: job.sourceVideo.file_name })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Ranked by training usefulness" })).toBeVisible();
@@ -93,6 +117,57 @@ test("uploading a valid source opens the workspace and supports shortlist persis
 
   await page.getByRole("button", { name: /Add more context before the final label\./i }).click();
   await expect(page).toHaveURL(/clip=clip-2/);
+});
+
+test("multipart upload can be cancelled and returns a retryable error state", async ({ page }) => {
+  const uploadSessionId = "session-cancel";
+
+  await page.route("**/api/uploads/init", async (route) => {
+    await route.fulfill({
+      status: 201,
+      contentType: "application/json",
+      body: JSON.stringify({
+        uploadSessionId,
+        jobId: "job-cancel",
+        fileName: "cancel-me.mp4",
+        partSizeBytes: 16 * 1024 * 1024,
+        expiresAt: "2026-04-02T12:30:00.000Z",
+        parts: [{ partNumber: 1, url: `https://uploads.example/${uploadSessionId}/part/1` }],
+      }),
+    });
+  });
+
+  await page.route(`https://uploads.example/${uploadSessionId}/part/1`, async (route) => {
+    await new Promise((resolve) => setTimeout(resolve, 5_000));
+    await route.fulfill({
+      status: 200,
+      headers: {
+        ETag: '"etag-cancel"',
+      },
+      body: "",
+    });
+  });
+
+  await page.route(`**/api/uploads/${uploadSessionId}`, async (route) => {
+    await route.fulfill({
+      status: 204,
+      body: "",
+    });
+  });
+
+  await page.goto("/");
+  await page.locator('input[type="file"]').setInputFiles({
+    name: "cancel-me.mp4",
+    mimeType: "video/mp4",
+    buffer: Buffer.alloc(2 * 1024 * 1024, 7),
+  });
+  await page.getByRole("button", { name: "Upload video" }).click();
+
+  await expect(page.getByText("Upload progress")).toBeVisible();
+  await page.getByRole("button", { name: "Cancel" }).click();
+
+  await expect(page.getByText("Upload was cancelled before processing started.")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Retry upload" })).toBeVisible();
 });
 
 test("timeline tab is shareable with query params", async ({ page }) => {

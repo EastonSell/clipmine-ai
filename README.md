@@ -25,7 +25,7 @@ Raw transcripts are noisy. Raw video is slow to review. Most dataset builders ne
 
 ### Product Experience
 
-- Upload `.mp4` and `.mov` files through a direct browser-to-backend flow
+- Upload `.mp4` and `.mov` files through a direct local upload flow or a production multipart object-storage flow
 - Support large source uploads up to `1 GB` by default
 - Move each upload into a persistent workspace URL for processing and review
 - Review ranked clips, a usefulness timeline, and JSON export from the same workspace
@@ -49,23 +49,23 @@ Raw transcripts are noisy. Raw video is slow to review. Most dataset builders ne
 
 ## Upcoming Features
 
-- [ ] Direct object storage uploads and resumable transfer support for larger production uploads
-- [ ] Job recovery, retry controls, retention cleanup, and richer health reporting
+- [ ] Resume multipart uploads across full browser restarts
+- [ ] Split processing into a separate worker queue once throughput pressure justifies it
 - [ ] Richer export presets with optional CSV and more processing metadata
-- [ ] Production browser smoke coverage in CI once the local macOS browser sandbox issue is removed
 - [ ] Stronger production observability and workflow analytics
+- [ ] Workspace comparison tools for evaluating multiple shortlisted clips side by side
 
 ## Architecture
 
 - `apps/web`: Next.js 16 App Router frontend with Tailwind CSS, SWR, and Framer Motion
-- `backend`: FastAPI processing API with a disk-backed job store
+- `backend`: FastAPI processing API with a disk-backed job store and optional S3-compatible source-video storage
 - `backend/src/clipmine_api/media.py`: ffmpeg-based audio extraction and media probing
 - `backend/src/clipmine_api/transcription.py`: CPU transcription via `faster-whisper`
 - `backend/src/clipmine_api/segmentation.py`: candidate clip building from timestamped words
 - `backend/src/clipmine_api/scoring.py`: transparent training-usefulness scoring
 - `backend/src/clipmine_api/presentation.py`: summary, timeline, and export serialization
 
-The frontend talks directly to the backend API for upload, polling, video playback, and export. Local disk storage keeps the current build simple and reliable while the product scope stays focused on clip curation.
+The frontend talks directly to the backend API for upload session creation, polling, video playback, and export. Local development keeps a direct upload path for simplicity. Production deployments can switch to multipart uploads backed by S3-compatible object storage while the backend continues to own job orchestration, processing, and same-origin playback.
 
 ## Scoring Model
 
@@ -117,6 +117,7 @@ Copy `.env.example` to `.env` at the repo root and adjust values if needed.
 Important defaults:
 
 - `NEXT_PUBLIC_MAX_UPLOAD_MB=1024`
+- `NEXT_PUBLIC_UPLOAD_MODE=direct`
 - `LOG_LEVEL=DEBUG`
 - `MAX_UPLOAD_MB=1024`
 - `BACKEND_CORS_ORIGINS=http://localhost:3000,http://127.0.0.1:3000`
@@ -199,6 +200,7 @@ In this current macOS sandbox, Playwright browser launch can fail before page co
 1. Open the landing page.
 2. Upload a `.mp4` or `.mov` video with speech.
    Large uploads up to `1 GB` are supported by default.
+   Local development uses direct uploads by default. Production deployments should use multipart object-storage uploads.
 3. Wait while the backend moves through audio extraction, transcription, segmentation, and scoring.
 4. Review the ranked clips in `Best clips`.
 5. Inspect strong and weak regions in `Timeline`.
@@ -218,6 +220,15 @@ The backend has been verified against a generated test video:
 - Upload succeeded
 - Processing reached `ready`
 - 4 clips were ranked
+
+## Production Upload Path
+
+ClipMine now supports two upload transports:
+
+- `direct`: browser sends the file to `POST /api/jobs`
+- `multipart`: browser requests signed part URLs from the backend, uploads chunks directly to object storage, then calls `complete`
+
+Use `NEXT_PUBLIC_UPLOAD_MODE=direct` for local development and `NEXT_PUBLIC_UPLOAD_MODE=multipart` with `STORAGE_BACKEND=s3` for production deployments.
 - Timeline bins were generated
 - Export payload shape was returned
 

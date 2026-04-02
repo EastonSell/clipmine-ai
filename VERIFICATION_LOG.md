@@ -218,6 +218,76 @@ curl -I -sSf http://127.0.0.1:3000/jobs/demo-job
 - Added Playwright smoke coverage for:
   - landing page and recent jobs rendering
   - invalid upload validation
+
+## Reliability-First Upload Pass
+
+- Added backend support for S3-compatible multipart uploads with additive endpoints:
+  - `POST /api/uploads/init`
+  - `POST /api/uploads/{uploadSessionId}/complete`
+  - `DELETE /api/uploads/{uploadSessionId}`
+- Added a backend artifact-store abstraction with:
+  - `LocalArtifactStore`
+  - `S3ArtifactStore`
+- Preserved `POST /api/jobs` for local development while enabling `STORAGE_BACKEND=s3` for production source-video storage.
+- Added upload-session persistence, expiration cleanup, and best-effort multipart abort cleanup on startup.
+- Extended `/api/health` with:
+  - `checks.objectStoreReachable`
+  - `checks.tempDiskWritable`
+  - `activeWorkers`
+- Added same-origin S3 video proxy support for `/api/jobs/{jobId}/video` so the frontend playback URL does not change in object-storage mode.
+- Standardized backend error payloads around `detail: { code, message, retryable }`.
+
+## Reliability-First Frontend Pass
+
+- Added upload transport selection with:
+  - `NEXT_PUBLIC_UPLOAD_MODE=direct`
+  - `NEXT_PUBLIC_UPLOAD_MODE=multipart`
+- Preserved direct local uploads while adding multipart init → part upload → complete support for production.
+- Added explicit upload phases:
+  - `validating`
+  - `transferring`
+  - `finalizing`
+  - `processing`
+- Added multipart part-upload progress aggregation, typed retryability, and cancel support.
+- Updated the upload surface to show phase-aware messaging and only show retry when the failure is retryable.
+
+## Reliability Features Tested
+
+- Backend API tests now cover:
+  - multipart upload session initialization
+  - multipart upload completion and manifest creation
+  - multipart upload abort and session cleanup
+  - upload-session expiration cleanup
+  - health readiness fields for object storage and temp disk
+- Frontend unit tests now cover:
+  - upload mode selection
+  - multipart progress aggregation
+  - backend error-code mapping into user-facing messages
+  - retryable error detection
+
+## Reliability Checks Run
+
+```bash
+TMPDIR='/Users/easton/Codex Creator Challenge/.tmp-pytest' npm run test:api
+npm_config_cache=/tmp/clipmine-npm-cache npm run test:web
+npm_config_cache=/tmp/clipmine-npm-cache npm run lint:web
+npm_config_cache=/tmp/clipmine-npm-cache npm run build:web
+PLAYWRIGHT_BROWSERS_PATH=/tmp/clipmine-playwright-browsers npm run test:e2e
+```
+
+## Reliability Browser Smoke Status
+
+- The Playwright suite is now configured to run the app in `NEXT_PUBLIC_UPLOAD_MODE=multipart` and mocks:
+  - upload session init
+  - signed-part uploads
+  - upload completion
+  - shortlist persistence
+  - timeline deep links
+  - export pending state
+- Local execution on this macOS environment still fails before page code runs because Chromium cannot open a Mach rendezvous port:
+  - `bootstrap_check_in org.chromium.Chromium.MachPortRendezvousServer: Permission denied (1100)`
+- This is an environment-level browser-launch restriction, not an application test failure.
+- CI is configured to run the same Playwright suite on `ubuntu-latest` with Chromium installed, which is the intended execution environment for the browser smoke tests.
   - upload-to-workspace route transition
   - shareable timeline tab state
   - shortlist persistence across refresh

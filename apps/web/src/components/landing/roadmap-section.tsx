@@ -2,19 +2,19 @@ import { SectionHeader } from "@/components/ui/section-header";
 
 const roadmapItems = [
   {
-    title: "Production upload path",
+    title: "Resumable transfers",
     description:
-      "Add direct object storage uploads and a resumable transfer path for larger source files in production.",
+      "Persist multipart upload checkpoints so large source transfers can survive a full browser refresh or restart.",
   },
   {
-    title: "Search and shortlist",
+    title: "Worker separation",
     description:
-      "Introduce transcript search, clip filters, and pinned selections so longer videos are easier to review.",
+      "Move processing onto a dedicated worker service once production throughput outgrows the current single-service model.",
   },
   {
-    title: "Recovery and operations",
+    title: "Recovery and observability",
     description:
-      "Improve restart recovery, retries, retention cleanup, and health reporting for more reliable deployments.",
+      "Add stronger job tracing, object-storage metrics, and deployment-level alerts so failures are easier to diagnose.",
   },
   {
     title: "Richer export presets",

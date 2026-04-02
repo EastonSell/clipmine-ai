@@ -38,7 +38,7 @@ const proofPoints = [
 const footerNotes = [
   {
     label: "Uploads",
-    body: "ClipMine defaults to direct browser-to-backend uploads and supports source files up to 1 GB by default.",
+    body: "Local development defaults to direct uploads, while production deployments can switch to multipart object-storage transfers for larger sources.",
   },
   {
     label: "Processing",

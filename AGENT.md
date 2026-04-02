@@ -7,7 +7,7 @@ ClipMine AI is not a transcript browser and not a generic exporter. Keep the pro
 ## Product Guardrails
 
 - Preserve the split architecture: Next.js frontend, FastAPI backend.
-- Keep storage file-backed unless a real scaling need appears.
+- Keep local development simple, but prefer S3-compatible object storage for production uploads.
 - Keep scoring transparent and explainable. Avoid fake research language.
 - Do not add auth, team features, or a database in v1.
 - Use one shared source video player in the workspace rather than detached clip video files.
@@ -15,11 +15,15 @@ ClipMine AI is not a transcript browser and not a generic exporter. Keep the pro
 ## Important Interfaces
 
 - `POST /api/jobs`
+- `POST /api/uploads/init`
+- `POST /api/uploads/{uploadSessionId}/complete`
+- `DELETE /api/uploads/{uploadSessionId}`
 - `GET /api/jobs/{jobId}`
 - `GET /api/jobs/{jobId}/video`
 - `GET /api/jobs/{jobId}/export.json`
 
 The frontend expects top-level camelCase fields such as `jobId`, `progressPhase`, and `sourceVideo`. Clip and timeline records are snake_case.
+Local development defaults to direct uploads. Production deployments should use `NEXT_PUBLIC_UPLOAD_MODE=multipart` with `STORAGE_BACKEND=s3`.
 
 ## Local Commands
 
@@ -49,6 +53,12 @@ Backend checks:
 
 ```bash
 npm run test:api
+```
+
+Browser smoke tests:
+
+```bash
+PLAYWRIGHT_BROWSERS_PATH=/tmp/clipmine-playwright-browsers npm run test:e2e
 ```
 
 ## Code Guidance

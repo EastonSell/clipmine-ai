@@ -9,9 +9,9 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { ProgressBar } from "@/components/ui/progress-bar";
 import { SectionHeader } from "@/components/ui/section-header";
-import { createJob } from "@/lib/api";
+import { ApiError, createJob, getUploadMode, isRetryableApiError } from "@/lib/api";
 import { formatBytes } from "@/lib/format";
-import type { UploadProgress } from "@/lib/types";
+import type { UploadPhase, UploadProgress } from "@/lib/types";
 
 import { UploadDropzone } from "./upload-dropzone";
 
@@ -39,30 +39,37 @@ export function UploadSection() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<ApiError | null>(null);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [uploadStats, setUploadStats] = useState<UploadProgress | null>(null);
-  const [uploadPhase, setUploadPhase] = useState<"idle" | "uploading" | "opening">("idle");
+  const [uploadPhase, setUploadPhase] = useState<UploadPhase | "idle">("idle");
   const activeUploadCancelRef = useRef<(() => void) | null>(null);
+  const uploadMode = getUploadMode();
 
   async function runUpload() {
     if (!selectedFile) {
-      setError("Choose an .mp4 or .mov file to continue.");
+      setError(new ApiError({ code: "unsupported_file_type", message: "Choose an .mp4 or .mov file to continue.", retryable: false }));
       return;
     }
 
     if (!isAcceptedFile(selectedFile)) {
-      setError("Only .mp4 and .mov files are supported.");
+      setError(new ApiError({ code: "unsupported_file_type", message: "Only .mp4 and .mov files are supported.", retryable: false }));
       return;
     }
 
     if (isOversizeFile(selectedFile)) {
-      setError(`The selected file is larger than the ${MAX_UPLOAD_MB} MB upload limit.`);
+      setError(
+        new ApiError({
+          code: "file_too_large",
+          message: `The selected file is larger than the ${MAX_UPLOAD_MB} MB upload limit.`,
+          retryable: false,
+        })
+      );
       return;
     }
 
     setIsUploading(true);
-    setUploadPhase("uploading");
+    setUploadPhase("validating");
     setUploadProgress(0);
     setUploadStats({
       loaded: 0,
@@ -73,12 +80,12 @@ export function UploadSection() {
 
     try {
       const uploadTask = createJob(selectedFile, {
+        onPhaseChange(phase) {
+          setUploadPhase(phase);
+        },
         onUploadProgress(progress) {
           setUploadProgress(progress.percentage);
           setUploadStats(progress);
-        },
-        onUploadComplete() {
-          setUploadPhase("opening");
         },
       });
       activeUploadCancelRef.current = uploadTask.cancel;
@@ -87,7 +94,11 @@ export function UploadSection() {
         router.push(`/jobs/${job.jobId}`);
       });
     } catch (uploadError) {
-      setError(uploadError instanceof Error ? uploadError.message : "Upload failed.");
+      setError(
+        uploadError instanceof ApiError
+          ? uploadError
+          : new ApiError({ code: "request_failed", message: "Upload failed.", retryable: false })
+      );
       setIsUploading(false);
       setUploadProgress(0);
       setUploadStats(null);
@@ -108,7 +119,7 @@ export function UploadSection() {
     setUploadPhase("idle");
     setUploadProgress(0);
     setUploadStats(null);
-    setError("Upload was cancelled before processing started.");
+    setError(new ApiError({ code: "upload_cancelled", message: "Upload was cancelled before processing started.", retryable: true }));
   }
 
   function handleRetryUpload() {
@@ -183,16 +194,24 @@ export function UploadSection() {
                   <div className="space-y-1 text-sm text-[var(--muted)]">
                     <p>
                       {isUploading
-                        ? uploadPhase === "opening"
-                          ? "Upload finished. Opening the processing workspace."
-                          : "Uploading directly to the processing API."
-                        : "Uploads go directly to the processing API."}
+                        ? uploadPhase === "validating"
+                          ? "Validating the file before transfer begins."
+                          : uploadPhase === "transferring"
+                            ? uploadMode === "multipart"
+                              ? "Uploading directly to object storage with multipart transfer."
+                              : "Uploading directly to the processing API."
+                            : uploadPhase === "finalizing"
+                              ? "Finalizing the upload before processing starts."
+                              : "Transfer complete. Opening the processing workspace."
+                        : uploadMode === "multipart"
+                          ? "Production uploads can transfer directly to object storage."
+                          : "Uploads go directly to the processing API."}
                     </p>
                     <p>
                       {isUploading
-                        ? uploadProgress >= 100
-                          ? "Upload complete. Opening the processing workspace."
-                          : "The workspace will open automatically as soon as the upload completes."
+                        ? uploadPhase === "processing"
+                          ? "The workspace will open automatically while backend processing continues."
+                          : "The workspace will open automatically as soon as transfer finalization completes."
                         : "The workspace URL remains stable while large uploads, transcription, and scoring run."}
                     </p>
                   </div>
@@ -220,9 +239,15 @@ export function UploadSection() {
                       <div>
                         <p className="metric-label text-[var(--muted)]">Upload progress</p>
                         <p className="mt-2 text-sm text-[var(--muted-strong)]">
-                          {uploadPhase === "opening"
-                            ? "Upload complete. Preparing the workspace."
-                            : `Sending ${selectedFile.name} to the processing API.`}
+                          {uploadPhase === "validating"
+                            ? `Validating ${selectedFile.name} before transfer begins.`
+                            : uploadPhase === "transferring"
+                              ? uploadMode === "multipart"
+                                ? `Streaming ${selectedFile.name} to object storage in resumable parts.`
+                                : `Sending ${selectedFile.name} to the processing API.`
+                              : uploadPhase === "finalizing"
+                                ? "Finishing the upload and creating the processing job."
+                                : "Upload finalized. Opening the processing workspace."}
                         </p>
                         <p className="mt-1 text-xs text-[var(--muted)]">
                           {formatBytes(uploadStats?.loaded ?? 0)} of {formatBytes(uploadStats?.total ?? selectedFile.size)}
@@ -245,8 +270,8 @@ export function UploadSection() {
                       <AlertCircle className="size-4" />
                       Upload failed
                     </div>
-                    <p className="mt-2 leading-6">{error}</p>
-                    {selectedFile ? (
+                    <p className="mt-2 leading-6">{error.message}</p>
+                    {selectedFile && isRetryableApiError(error) ? (
                       <div className="mt-4">
                         <Button type="button" variant="secondary" size="sm" onClick={handleRetryUpload}>
                           <RotateCcw className="size-4" />
