@@ -23,6 +23,7 @@ def build_summary(clips: list[ClipRecord], *, duration_seconds: float, transcrip
         weak_count=weak,
         average_score=average_score,
         top_score=top_score,
+        shortlist_recommended_count=sum(1 for clip in clips if clip.selection_recommendation == "shortlist"),
     )
 
 

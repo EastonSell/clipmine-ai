@@ -9,10 +9,11 @@ from time import perf_counter
 from .artifact_store import ArtifactStore
 from .media import extract_audio, load_mono_wave, probe_media_duration
 from .multimodal import enrich_scored_clips
+from .precision import apply_precision_selection
 from .presentation import build_summary, build_timeline
 from .schemas import ClipRecord, JobManifest, JobStatus, ProcessingStats, ProgressPhase
 from .scoring import score_candidate_clips
-from .segmentation import segment_words
+from .segmentation import segment_words_detailed
 from .storage import JobStore
 from .transcription import transcribe_audio
 
@@ -174,9 +175,15 @@ class JobProcessor:
 
             stage_started_at = perf_counter()
             job = self._save_state(job, status=JobStatus.PROCESSING, progress_phase=ProgressPhase.SEGMENTING)
-            candidates = segment_words(transcription.words)
+            segmentation_result = segment_words_detailed(transcription.words)
+            candidates = segmentation_result.clips
             processing_timings[ProgressPhase.SEGMENTING.value] = round((perf_counter() - stage_started_at) * 1000, 1)
-            processing_stats = processing_stats.model_copy(update={"candidate_clip_count": len(candidates)})
+            processing_stats = processing_stats.model_copy(
+                update={
+                    "candidate_clip_count": segmentation_result.candidate_count,
+                    "discarded_candidate_count": segmentation_result.discarded_count,
+                }
+            )
             job = self.store.save_job(
                 job.model_copy(update={"processing_timings": processing_timings, "processing_stats": processing_stats})
             )
@@ -209,6 +216,8 @@ class JobProcessor:
                 sample_rate=sample_rate,
                 video_path=video_path,
             )
+            precision_result = apply_precision_selection(clips)
+            clips = precision_result.clips
             timeline = build_timeline(clips, duration_seconds=duration_seconds)
             summary = build_summary(clips, duration_seconds=duration_seconds, transcript_text=transcription.transcript_text)
             processing_timings[ProgressPhase.SCORING.value] = round((perf_counter() - stage_started_at) * 1000, 1)
@@ -217,6 +226,8 @@ class JobProcessor:
                 update={
                     "clip_count": len(clips),
                     "timeline_bin_count": len(timeline),
+                    "deduped_candidate_count": precision_result.deduped_count,
+                    "shortlist_recommended_count": precision_result.shortlist_recommended_count,
                 }
             )
             warnings = _build_warnings(clips, processing_stats)

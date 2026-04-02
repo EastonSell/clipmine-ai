@@ -68,6 +68,8 @@ def test_enrich_scored_clips_adds_multimodal_fields(monkeypatch) -> None:
     assert clip.audio_features.volume.normalized == 0.78
     assert clip.linguistic_features.word_count == 6
     assert clip.word_alignments[0].token == "We"
+    assert 0.0 <= clip.quality_breakdown.boundary_cleanliness <= 1.0
+    assert 0.0 <= clip.quality_breakdown.speech_density <= 1.0
     assert 0.0 <= clip.quality_breakdown.visual_readiness <= 1.0
     assert clip.quality_reasoning.summary
     assert clip.recommended_use

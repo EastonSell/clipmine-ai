@@ -20,6 +20,7 @@ from .schemas import (
     VisualFeatures,
     WordAlignment,
 )
+from .text_heuristics import FILLER_SINGLE_WORDS, detect_fillers, normalize_token
 
 logger = logging.getLogger("uvicorn.error")
 
@@ -102,8 +103,6 @@ VERB_LEXICON = {
     "talk",
     "talking",
 }
-FILLER_SINGLE_WORDS = {"um", "uh", "erm", "ah", "like"}
-FILLER_PHRASES = ("you know", "kind of", "sort of", "i mean")
 POS_CATEGORIES = (
     "noun",
     "verb",
@@ -217,7 +216,7 @@ def _build_linguistic_features(words: list[WordToken], clip_text: str) -> Lingui
     word_count = len(normalized_tokens)
     unique_words = len(set(normalized_tokens))
     lexical_diversity = round(_safe_divide(unique_words, word_count), 3)
-    filler_hits = _detect_fillers(normalized_tokens, clip_text)
+    filler_hits = detect_fillers(normalized_tokens, clip_text)
     filler_word_count = len(filler_hits)
     pos_distribution = _build_pos_distribution(normalized_tokens)
 
@@ -327,6 +326,9 @@ def _build_quality_breakdown(
         stability=round(_clamp(1.0 - clip.instability), 3),
         linguistic_clarity=round(linguistic_clarity, 3),
         visual_readiness=round(visual_readiness, 3),
+        boundary_cleanliness=round(_boundary_cleanliness(clip), 3),
+        speech_density=round(clip.candidate_metrics.speech_density, 3),
+        dedupe_confidence=1.0,
         overall=round(_clamp(clip.score / 100.0), 3),
     )
 
@@ -363,6 +365,11 @@ def _build_quality_reasoning(
         strengths.append("Language stays concise with low filler")
     elif linguistic_features.filler_word_count > 0:
         cautions.append("Filler words may require extra review")
+
+    if quality_breakdown.boundary_cleanliness >= 0.72:
+        strengths.append("Boundaries are clean enough for short-clip export")
+    elif quality_breakdown.boundary_cleanliness < 0.45:
+        cautions.append("Clip boundaries may need manual cleanup")
 
     if visual_features.face_detection.normalized >= 0.55 and visual_features.visibility.normalized >= 0.55:
         strengths.append("Face remains visible enough for multimodal review")
@@ -535,24 +542,6 @@ def _sample_video_frames(video_path: Path, *, start: float, end: float, max_fram
     return frames
 
 
-def _detect_fillers(tokens: list[str], clip_text: str) -> list[str]:
-    hits: list[str] = []
-    seen: set[str] = set()
-
-    for token in tokens:
-        if token in FILLER_SINGLE_WORDS and token not in seen:
-            hits.append(token)
-            seen.add(token)
-
-    lowered_text = re.sub(r"\s+", " ", clip_text.lower())
-    for phrase in FILLER_PHRASES:
-        if phrase in lowered_text and phrase not in seen:
-            hits.append(phrase)
-            seen.add(phrase)
-
-    return hits
-
-
 def _build_pos_distribution(tokens: list[str]) -> dict[str, float]:
     counts = {category: 0 for category in POS_CATEGORIES}
     if not tokens:
@@ -672,7 +661,7 @@ def _pace_fit(speech_rate: float) -> float:
 
 
 def _normalize_token(value: str) -> str:
-    return re.sub(r"[^a-z0-9']+", "", value.lower()).strip("'")
+    return normalize_token(value)
 
 
 def _safe_divide(numerator: float, denominator: float) -> float:
@@ -689,3 +678,15 @@ def _sentence_case(text: str) -> str:
 
 def _clamp(value: float, minimum: float = 0.0, maximum: float = 1.0) -> float:
     return max(minimum, min(maximum, value))
+
+
+def _boundary_cleanliness(clip: ClipRecord) -> float:
+    edge_filler_penalty = max(
+        clip.candidate_metrics.leading_filler_ratio,
+        clip.candidate_metrics.trailing_filler_ratio,
+    )
+    return _clamp(
+        0.5 * clip.candidate_metrics.boundary_punctuation_strength
+        + 0.25 * clip.candidate_metrics.speech_density
+        + 0.25 * (1.0 - edge_filler_penalty)
+    )

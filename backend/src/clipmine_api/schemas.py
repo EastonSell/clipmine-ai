@@ -96,6 +96,16 @@ class VisualFeatures(BaseModel):
     visibility: ScalarFeature = Field(default_factory=ScalarFeature)
 
 
+class CandidateMetrics(BaseModel):
+    pause_count: int = 0
+    max_gap_seconds: float = 0.0
+    speech_density: float = 0.0
+    low_confidence_ratio: float = 0.0
+    leading_filler_ratio: float = 0.0
+    trailing_filler_ratio: float = 0.0
+    boundary_punctuation_strength: float = 0.0
+
+
 class QualityBreakdown(BaseModel):
     transcription_confidence: float = 0.0
     pacing: float = 0.0
@@ -104,6 +114,9 @@ class QualityBreakdown(BaseModel):
     stability: float = 0.0
     linguistic_clarity: float = 0.0
     visual_readiness: float = 0.0
+    boundary_cleanliness: float = 0.0
+    speech_density: float = 0.0
+    dedupe_confidence: float = 1.0
     overall: float = 0.0
 
 
@@ -133,11 +146,14 @@ class ClipRecord(BaseModel):
     linguistic_features: LinguisticFeatures = Field(default_factory=LinguisticFeatures)
     word_alignments: list[WordAlignment] = Field(default_factory=list)
     visual_features: VisualFeatures = Field(default_factory=VisualFeatures)
+    candidate_metrics: CandidateMetrics = Field(default_factory=CandidateMetrics)
     quality_breakdown: QualityBreakdown = Field(default_factory=QualityBreakdown)
     quality_reasoning: QualityReasoning = Field(default_factory=QualityReasoning)
     tags: list[str] = Field(default_factory=list)
     recommended_use: list[str] = Field(default_factory=list)
     embedding_vector: list[float] | None = None
+    selection_recommendation: str = "review"
+    quality_penalties: list[str] = Field(default_factory=list)
 
 
 class TimelineBin(BaseModel):
@@ -157,14 +173,18 @@ class JobSummary(BaseModel):
     weak_count: int
     average_score: float
     top_score: float
+    shortlist_recommended_count: int = 0
 
 
 class ProcessingStats(BaseModel):
     source_duration_seconds: float = 0.0
     transcript_word_count: int = 0
     candidate_clip_count: int = 0
+    discarded_candidate_count: int = 0
     clip_count: int = 0
     timeline_bin_count: int = 0
+    deduped_candidate_count: int = 0
+    shortlist_recommended_count: int = 0
 
 
 class UploadSessionRecord(BaseModel):

@@ -5,7 +5,8 @@ from statistics import mean
 import numpy as np
 
 from .pipeline_types import CandidateClip
-from .schemas import ClipRecord, PlaybackMetadata
+from .schemas import CandidateMetrics as CandidateMetricsModel, ClipRecord, PlaybackMetadata
+from .text_heuristics import is_weak_boundary_token
 
 
 def score_candidate_clips(
@@ -61,11 +62,19 @@ def score_candidate_clips(
         pace_fit = _pace_fit(speech_rate)
         continuity = _clamp(1.0 - silence_ratio)
         duration_penalty = _duration_penalty(clip.duration)
+        boundary_cleanliness = _boundary_cleanliness(clip)
+        edge_filler_penalty = clip.candidate_metrics.leading_filler_ratio + clip.candidate_metrics.trailing_filler_ratio
+        speech_density = clip.candidate_metrics.speech_density
+        low_confidence_penalty = clip.candidate_metrics.low_confidence_ratio
 
         score = 100 * (0.45 * confidence + 0.20 * pace_fit + 0.20 * energy_norm + 0.15 * continuity)
         score -= 15 * silence_ratio
         score -= 8 * instability
         score -= 5 * duration_penalty
+        score += 7 * (boundary_cleanliness - 0.5)
+        score += 5 * (speech_density - 0.5)
+        score -= 12 * edge_filler_penalty
+        score -= 10 * low_confidence_penalty
         score = round(_clamp(score / 100.0) * 100, 1)
 
         quality_label = _quality_label(score)
@@ -76,6 +85,7 @@ def score_candidate_clips(
             silence_ratio=silence_ratio,
             instability=instability,
             speech_rate=speech_rate,
+            boundary_cleanliness=boundary_cleanliness,
         )
 
         scored.append(
@@ -98,6 +108,15 @@ def score_candidate_clips(
                     url=video_url,
                     start=round(clip.start, 3),
                     end=round(clip.end, 3),
+                ),
+                candidate_metrics=CandidateMetricsModel(
+                    pause_count=clip.candidate_metrics.pause_count,
+                    max_gap_seconds=round(clip.candidate_metrics.max_gap_seconds, 3),
+                    speech_density=round(clip.candidate_metrics.speech_density, 3),
+                    low_confidence_ratio=round(clip.candidate_metrics.low_confidence_ratio, 3),
+                    leading_filler_ratio=round(clip.candidate_metrics.leading_filler_ratio, 3),
+                    trailing_filler_ratio=round(clip.candidate_metrics.trailing_filler_ratio, 3),
+                    boundary_punctuation_strength=round(clip.candidate_metrics.boundary_punctuation_strength, 3),
                 ),
             )
         )
@@ -159,6 +178,7 @@ def _build_explanation(
     silence_ratio: float,
     instability: float,
     speech_rate: float,
+    boundary_cleanliness: float,
 ) -> str:
     positives: list[str] = []
     negatives: list[str] = []
@@ -185,6 +205,11 @@ def _build_explanation(
     elif silence_ratio > 0.28:
         negatives.append("pause-heavy")
 
+    if boundary_cleanliness >= 0.72:
+        positives.append("clean boundaries")
+    elif boundary_cleanliness < 0.42:
+        negatives.append("messy boundary")
+
     if instability > 0.55:
         negatives.append("uneven signal")
 
@@ -202,3 +227,17 @@ def _normalize(value: float, floor: float, ceiling: float) -> float:
 def _clamp(value: float, minimum: float = 0.0, maximum: float = 1.0) -> float:
     return max(minimum, min(maximum, value))
 
+
+def _boundary_cleanliness(clip: CandidateClip) -> float:
+    weak_start = 1.0 if is_weak_boundary_token(clip.words[0].text) else 0.0
+    weak_end = 1.0 if is_weak_boundary_token(clip.words[-1].text) else 0.0
+    edge_filler_penalty = max(
+        clip.candidate_metrics.leading_filler_ratio,
+        clip.candidate_metrics.trailing_filler_ratio,
+    )
+    return _clamp(
+        0.45 * clip.candidate_metrics.boundary_punctuation_strength
+        + 0.25 * (1.0 - edge_filler_penalty)
+        + 0.15 * (1.0 - weak_start)
+        + 0.15 * (1.0 - weak_end)
+    )
