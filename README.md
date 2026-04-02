@@ -123,9 +123,7 @@ npm run preview:web
 Backend:
 
 ```bash
-cd backend
-source .venv/bin/activate
-pytest
+npm run test:api
 ```
 
 ## How To Use The App
@@ -162,4 +160,4 @@ Then upload `/tmp/clipmine-test.mp4` through the UI.
 - Frontend: Vercel
 - Backend: Render Web Service with a persistent disk
 
-See [DEPLOYMENT.md](/Users/easton/Codex Creator Challenge/DEPLOYMENT.md) for the exact steps.
+See [DEPLOYMENT.md](./DEPLOYMENT.md) for the exact steps.

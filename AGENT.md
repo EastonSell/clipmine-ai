@@ -48,9 +48,7 @@ pip install -e ".[dev]"
 Backend checks:
 
 ```bash
-cd backend
-source .venv/bin/activate
-pytest
+npm run test:api
 ```
 
 ## Code Guidance
@@ -59,4 +57,3 @@ pytest
 - Add comments only when the reasoning is not obvious.
 - Keep upload validation, scoring, and serialization logic explicit.
 - If you change the response shape, update both `apps/web/src/lib/types.ts` and the backend serializer functions.
-
