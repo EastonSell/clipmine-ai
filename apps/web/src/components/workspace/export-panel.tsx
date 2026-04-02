@@ -40,7 +40,7 @@ export function ExportPanel({ job, exportUrl, disabled }: ExportPanelProps) {
           ].map((item) => (
             <div
               key={item}
-              className="rounded-[1.25rem] border border-[var(--line)] bg-[var(--surface-elevated)] px-4 py-4 text-sm leading-6 text-[var(--muted)]"
+              className="rounded-[1.25rem] border border-[var(--line)] bg-white/[0.04] px-4 py-4 text-sm leading-6 text-[var(--muted)]"
             >
               {item}
             </div>
@@ -73,7 +73,7 @@ export function ExportPanel({ job, exportUrl, disabled }: ExportPanelProps) {
           description="The app keeps the export intentionally simple: one source video, one ranked clip list, and one timeline summary."
         />
 
-        <pre className="mt-6 overflow-auto rounded-[1.5rem] border border-[var(--line)] bg-[var(--surface-dark)] p-5 text-xs leading-6 text-white/75">
+        <pre className="mt-6 overflow-auto rounded-[1.5rem] border border-[var(--line)] bg-[var(--surface-dark)] p-5 text-xs leading-6 text-white/75 shadow-[var(--shadow-soft)]">
 {JSON.stringify(
   {
     jobId: job.jobId,

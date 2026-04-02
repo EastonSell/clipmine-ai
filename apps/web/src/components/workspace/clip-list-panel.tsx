@@ -46,17 +46,19 @@ export function ClipListPanel({ clips, activeClipId, onSelect }: ClipListPanelPr
               type="button"
               onClick={() => onSelect(clip.start, clip.id)}
               className={[
-                "w-full px-5 py-5 text-left transition [content-visibility:auto] sm:px-6",
-                active ? "bg-[var(--accent-soft)]" : "hover:bg-white/[0.03]",
+                "w-full px-5 py-5 text-left transition duration-200 [content-visibility:auto] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-inset sm:px-6",
+                active
+                  ? "bg-[var(--accent-soft)]"
+                  : "hover:bg-white/[0.04]",
               ].join(" ")}
               aria-pressed={active}
             >
-              <div className="grid gap-4 xl:grid-cols-[auto_minmax(0,1fr)_auto] xl:items-start">
+              <div className="grid gap-4 xl:grid-cols-[5.5rem_minmax(0,1fr)_14rem] xl:items-start">
                 <div className="flex items-center gap-3 xl:flex-col xl:items-start">
                   <div className="font-mono text-2xl font-medium text-[var(--muted)]">
                     {String(index + 1).padStart(2, "0")}
                   </div>
-                  <div className="rounded-full border border-[var(--line)] bg-[var(--surface-elevated)] px-3 py-1 text-sm font-medium text-[var(--text)]">
+                  <div className="rounded-full border border-[var(--line)] bg-white/[0.04] px-3 py-1 text-sm font-medium text-[var(--text)]">
                     {formatSignedScore(clip.score)}
                   </div>
                 </div>
@@ -69,13 +71,13 @@ export function ClipListPanel({ clips, activeClipId, onSelect }: ClipListPanelPr
                     </span>
                   </div>
 
-                  <p className="mt-4 max-w-4xl text-xl font-semibold tracking-[-0.04em] text-[var(--text)] sm:text-2xl">
+                  <p className="mt-4 max-w-4xl text-lg font-semibold leading-tight tracking-[-0.04em] text-[var(--text)] sm:text-xl">
                     {clip.text}
                   </p>
                   <p className="mt-3 text-sm leading-6 text-[var(--muted)]">{clip.explanation}</p>
                 </div>
 
-                <div className="grid gap-3 text-sm text-[var(--muted)] sm:grid-cols-3 xl:min-w-[16rem] xl:grid-cols-1">
+                <div className="grid gap-3 text-sm text-[var(--muted)] sm:grid-cols-3 xl:grid-cols-1">
                   <MetricSummary label="Confidence" value={formatPercent(clip.confidence)} />
                   <MetricSummary label="Speech rate" value={`${clip.speech_rate.toFixed(1)} w/s`} />
                   <MetricSummary label="Signal" value={formatPercent(clip.energy)} />

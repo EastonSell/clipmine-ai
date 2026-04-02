@@ -40,7 +40,7 @@ export function TimelineChart({ bins, clips, activeClipId, onSeek }: TimelineCha
         />
 
         <div className="mt-8 overflow-x-auto">
-          <div className="min-w-[44rem]">
+          <div className="min-w-[44rem] rounded-[1.35rem] border border-[var(--line)] bg-[var(--surface-overlay)] p-4">
             <div className="flex items-center justify-between text-xs text-[var(--muted)]">
               <span>0:00</span>
               <span>25%</span>
@@ -60,10 +60,10 @@ export function TimelineChart({ bins, clips, activeClipId, onSeek }: TimelineCha
                     type="button"
                     onClick={() => onSeek(clip?.start ?? bin.start, clip?.id ?? null)}
                     className={[
-                      "flex flex-1 items-end rounded-[1rem] border bg-[var(--surface-elevated)] p-1 transition",
+                      "flex flex-1 items-end rounded-[1rem] border bg-white/[0.03] p-1 transition duration-200",
                       active
                         ? "border-[var(--accent)] bg-[var(--accent-soft)]"
-                        : "border-[var(--line)] hover:border-[var(--line-strong)] hover:bg-white/[0.04]",
+                        : "border-[var(--line)] hover:-translate-y-0.5 hover:border-[var(--line-strong)] hover:bg-white/[0.05]",
                     ].join(" ")}
                     aria-label={`Timeline segment ${index + 1}, score ${Math.round(bin.score)}`}
                     aria-pressed={active}
@@ -103,7 +103,7 @@ export function TimelineChart({ bins, clips, activeClipId, onSeek }: TimelineCha
                   key={`${bin.start}-${bin.end}`}
                   type="button"
                   onClick={() => onSeek(clip?.start ?? bin.start, clip?.id ?? null)}
-                  className="w-full rounded-[1.25rem] border border-[var(--line)] bg-[var(--surface-elevated)] px-4 py-4 text-left transition hover:border-[var(--line-strong)] hover:bg-white/[0.04]"
+                  className="w-full rounded-[1.25rem] border border-[var(--line)] bg-white/[0.04] px-4 py-4 text-left transition duration-200 hover:-translate-y-0.5 hover:border-[var(--line-strong)] hover:bg-white/[0.05]"
                 >
                   <div className="flex items-center justify-between gap-3">
                     <QualityBadge label={bin.quality_label} />

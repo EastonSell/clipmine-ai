@@ -125,7 +125,7 @@ export function ResultsWorkspace({ jobId }: ResultsWorkspaceProps) {
             <SourceVideoPanel videoRef={videoRef} videoUrl={videoUrl} />
             <ClipDetailPanel clip={selectedClip} onSeek={handleSeek} />
 
-            <div className="flex flex-wrap items-center justify-between gap-4">
+            <div className="flex flex-wrap items-center justify-between gap-4 rounded-[1.35rem] border border-[var(--line)] bg-white/[0.04] px-4 py-3 backdrop-blur-xl">
               <Tabs options={workspaceTabs} value={activeTab} onChange={handleTabChange} />
               <a
                 href={exportUrl}

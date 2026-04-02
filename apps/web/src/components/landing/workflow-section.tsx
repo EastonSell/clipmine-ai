@@ -26,17 +26,17 @@ export function WorkflowSection() {
           description="The app is designed to answer three questions clearly: what should I upload, which clips are useful, and what can I export?"
         />
 
-        <div className="grid gap-4">
-          {workflowSteps.map((step, index) => (
-            <Card key={step.title} tone="subtle" className="grid gap-4 sm:grid-cols-[auto_1fr]">
-              <div className="metric-label text-[var(--muted)]">{`0${index + 1}`}</div>
-              <div>
-                <h3 className="text-xl font-semibold tracking-[-0.03em]">{step.title}</h3>
-                <p className="mt-2 text-sm leading-6 text-[var(--muted)]">{step.description}</p>
+        <Card padded={false} className="overflow-hidden">
+          <div className="grid gap-px bg-[var(--line)] md:grid-cols-3">
+            {workflowSteps.map((step, index) => (
+              <div key={step.title} className="bg-[var(--surface)] px-5 py-6">
+                <div className="metric-label text-[var(--accent)]">{`0${index + 1}`}</div>
+                <h3 className="mt-3 text-xl font-semibold tracking-[-0.03em]">{step.title}</h3>
+                <p className="mt-3 text-sm leading-6 text-[var(--muted)]">{step.description}</p>
               </div>
-            </Card>
-          ))}
-        </div>
+            ))}
+          </div>
+        </Card>
       </div>
     </section>
   );

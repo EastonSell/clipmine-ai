@@ -25,7 +25,7 @@ export function JobStatusPanel({ job, onRefresh }: JobStatusPanelProps) {
       : job.error ?? "Processing completed and export is available.";
 
   return (
-    <Card>
+    <Card tone="subtle">
       <SectionHeader
         eyebrow="Processing"
         title={phaseCopy[job.progressPhase]}
@@ -38,7 +38,7 @@ export function JobStatusPanel({ job, onRefresh }: JobStatusPanelProps) {
         }
       />
 
-      <div className="mt-6 space-y-3">
+      <div className="mt-6 space-y-2">
         {phaseSteps.map((step, index) => {
           const state =
             job.status === "ready"
@@ -50,7 +50,15 @@ export function JobStatusPanel({ job, onRefresh }: JobStatusPanelProps) {
                   : "pending";
 
           return (
-            <div key={step.id} className="flex items-center gap-3">
+            <div
+              key={step.id}
+              className={[
+                "flex items-center gap-3 rounded-[1rem] border px-3 py-3",
+                state === "current"
+                  ? "border-[var(--accent-strong)] bg-[var(--accent-soft)]"
+                  : "border-[var(--line)] bg-white/[0.03]",
+              ].join(" ")}
+            >
               <div
                 className={[
                   "flex size-7 items-center justify-center rounded-full border text-xs font-semibold",

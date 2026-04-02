@@ -28,7 +28,7 @@ export function JobSummaryPanel({ job }: JobSummaryPanelProps) {
         {summaryItems.map((item) => (
           <div
             key={item.label}
-            className="rounded-[1.25rem] border border-[var(--line)] bg-[var(--surface-elevated)] px-4 py-4"
+            className="rounded-[1.15rem] border border-[var(--line)] bg-white/[0.04] px-4 py-4"
           >
             <div className="metric-label text-[var(--muted)]">{item.label}</div>
             <div className="mt-2 text-xl font-semibold tracking-[-0.04em] text-[var(--text)]">{item.value}</div>
@@ -36,7 +36,7 @@ export function JobSummaryPanel({ job }: JobSummaryPanelProps) {
         ))}
       </div>
 
-      <div className="mt-6 rounded-[1.25rem] border border-[var(--line)] bg-[var(--surface-elevated)] px-4 py-4">
+      <div className="mt-6 rounded-[1.15rem] border border-[var(--line)] bg-white/[0.04] px-4 py-4">
         <div className="metric-label text-[var(--muted)]">Transcript preview</div>
         <p className="mt-3 text-sm leading-6 text-[var(--muted)]">
           {summary?.transcript_preview || "Transcript preview will appear after transcription completes."}

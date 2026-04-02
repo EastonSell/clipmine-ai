@@ -6,7 +6,7 @@ type CardTone = "default" | "elevated" | "subtle";
 
 const toneClasses: Record<CardTone, string> = {
   default: "bg-[var(--surface)]",
-  elevated: "bg-[var(--surface-elevated)]",
+  elevated: "bg-[var(--surface-elevated)] border-[var(--line-strong)]",
   subtle: "bg-[var(--surface-strong)]",
 };
 
@@ -26,9 +26,9 @@ export function Card({
   return (
     <div
       className={cn(
-        "rounded-[1.75rem] border border-[var(--line)] shadow-[var(--shadow-soft)]",
+        "rounded-[1.5rem] border border-[var(--line)] backdrop-blur-xl shadow-[var(--shadow-soft)] ring-1 ring-inset ring-white/[0.04]",
         toneClasses[tone],
-        padded && "p-6",
+        padded && "p-5 sm:p-6",
         className
       )}
       {...props}

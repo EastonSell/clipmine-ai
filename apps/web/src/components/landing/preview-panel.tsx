@@ -1,4 +1,4 @@
-import { FileJson2, Waves } from "lucide-react";
+import { CircleDot, FileJson2, Waves } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
@@ -25,17 +25,20 @@ const heatmapHeights = [18, 24, 30, 44, 58, 65, 55, 35, 24, 42, 62, 88, 94, 76, 
 
 export function PreviewPanel() {
   return (
-    <Card tone="elevated" className="overflow-hidden">
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--line)] pb-4">
+    <Card tone="elevated" padded={false} className="overflow-hidden">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--line)] px-5 py-4 sm:px-6">
         <div>
-          <p className="metric-label text-[var(--accent)]">Product preview</p>
-          <h2 className="mt-2 text-2xl font-semibold tracking-[-0.04em]">Review the source. Keep the best clips.</h2>
+          <p className="metric-label text-[var(--accent)]">Workspace preview</p>
+          <h2 className="mt-2 text-2xl font-semibold tracking-[-0.05em]">From source video to ranked output</h2>
         </div>
-        <Badge tone="neutral">Training usefulness</Badge>
+        <Badge tone="accent" className="gap-2">
+          <CircleDot className="size-3.5" />
+          Ready
+        </Badge>
       </div>
 
-      <div className="mt-6 grid gap-4 xl:grid-cols-[0.72fr_1.28fr]">
-        <div className="rounded-[1.5rem] border border-[var(--line)] bg-[var(--surface-dark)] p-5">
+      <div className="grid gap-4 p-5 sm:p-6 xl:grid-cols-[0.8fr_1.2fr]">
+        <div className="rounded-[1.4rem] border border-[var(--line)] bg-[var(--surface-overlay)] p-5">
           <div className="metric-label text-[var(--muted)]">Top clip score</div>
           <div className="mt-3 text-6xl font-semibold tracking-[-0.08em]">91</div>
           <div className="mt-4 space-y-3 text-sm text-[var(--muted)]">
@@ -59,7 +62,10 @@ export function PreviewPanel() {
 
         <div className="space-y-3">
           {previewClips.map((clip) => (
-            <div key={clip.score} className="rounded-[1.4rem] border border-[var(--line)] bg-white/4 p-4">
+            <div
+              key={clip.score}
+              className="rounded-[1.25rem] border border-[var(--line)] bg-white/[0.035] px-4 py-4 backdrop-blur-md"
+            >
               <div className="flex items-center justify-between gap-3">
                 <Badge tone={clip.quality === "Excellent" ? "accent" : clip.quality === "Good" ? "neutral" : "danger"}>
                   {clip.quality}
@@ -72,14 +78,14 @@ export function PreviewPanel() {
         </div>
       </div>
 
-      <div className="mt-6 border-t border-[var(--line)] pt-5">
+      <div className="border-t border-[var(--line)] px-5 py-5 sm:px-6">
         <div className="flex items-center gap-2 text-sm font-medium text-[var(--muted-strong)]">
           <Waves className="size-4 text-[var(--accent)]" />
           Timeline preview
         </div>
-        <div className="mt-4 flex items-end gap-2">
+        <div className="mt-4 flex items-end gap-2 rounded-[1.3rem] border border-[var(--line)] bg-[var(--surface-overlay)] p-3">
           {heatmapHeights.map((height, index) => (
-            <div key={height + index} className="flex h-24 flex-1 items-end rounded-full bg-white/4 p-0.5">
+            <div key={height + index} className="flex h-24 flex-1 items-end rounded-full bg-white/[0.04] p-0.5">
               <div
                 className="w-full rounded-full bg-[linear-gradient(180deg,rgba(94,234,212,0.18),rgba(94,234,212,0.95))]"
                 style={{ height: `${height}%` }}

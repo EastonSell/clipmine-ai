@@ -19,8 +19,8 @@ export function SourceVideoPanel({ videoUrl, videoRef }: SourceVideoPanelProps) 
         />
       </div>
       <div className="p-5 pt-0 sm:p-6 sm:pt-0">
-        <div className="overflow-hidden rounded-[1.5rem] border border-[var(--line)] bg-[var(--surface-dark)]">
-          <video ref={videoRef} controls className="aspect-video w-full" src={videoUrl} />
+        <div className="overflow-hidden rounded-[1.35rem] border border-[var(--line)] bg-[var(--surface-dark)] shadow-[var(--shadow-panel)]">
+          <video ref={videoRef} controls className="aspect-video w-full bg-black" src={videoUrl} />
         </div>
       </div>
     </Card>
