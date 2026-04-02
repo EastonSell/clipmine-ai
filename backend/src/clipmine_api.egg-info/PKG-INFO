@@ -1,0 +1,16 @@
+Metadata-Version: 2.4
+Name: clipmine-api
+Version: 0.1.0
+Summary: FastAPI backend for ClipMine AI
+Requires-Python: >=3.11
+Requires-Dist: fastapi<1,>=0.117.1
+Requires-Dist: uvicorn[standard]<1,>=0.35.0
+Requires-Dist: python-multipart<1,>=0.0.20
+Requires-Dist: pydantic-settings<3,>=2.10.1
+Requires-Dist: orjson<4,>=3.10.18
+Requires-Dist: numpy<3,>=2.3.2
+Requires-Dist: imageio-ffmpeg<1,>=0.6.0
+Requires-Dist: faster-whisper<2,>=1.2.1
+Provides-Extra: dev
+Requires-Dist: httpx<1,>=0.28.1; extra == "dev"
+Requires-Dist: pytest<9,>=8.4.1; extra == "dev"

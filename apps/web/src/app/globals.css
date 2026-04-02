@@ -1,0 +1,79 @@
+@import "tailwindcss";
+
+:root {
+  color-scheme: light;
+  --background: #f4f0e8;
+  --surface: rgba(255, 252, 246, 0.72);
+  --surface-strong: rgba(255, 252, 246, 0.94);
+  --text: #161410;
+  --muted: #5b5447;
+  --line: rgba(22, 20, 16, 0.14);
+  --accent: #cbff49;
+  --accent-strong: #b6ef1d;
+  --shadow: 0 20px 60px rgba(32, 28, 18, 0.12);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  background: var(--background);
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at top left, rgba(203, 255, 73, 0.32), transparent 28%),
+    linear-gradient(180deg, #f8f5ee 0%, #f4f0e8 48%, #efe8dc 100%);
+  color: var(--text);
+  font-family: var(--font-sans), sans-serif;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button,
+input,
+textarea {
+  font: inherit;
+}
+
+::selection {
+  background: rgba(203, 255, 73, 0.85);
+}
+
+.app-shell {
+  position: relative;
+  min-height: 100vh;
+  overflow: hidden;
+}
+
+.ambient-grid {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    linear-gradient(rgba(22, 20, 16, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(22, 20, 16, 0.04) 1px, transparent 1px);
+  background-size: 64px 64px;
+  mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.5), transparent 85%);
+}
+
+.section-frame {
+  border: 1px solid var(--line);
+  background: var(--surface);
+  backdrop-filter: blur(18px);
+  box-shadow: var(--shadow);
+}
+
+.metric-label {
+  font-family: var(--font-mono), monospace;
+  font-size: 0.75rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+

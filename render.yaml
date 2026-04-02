@@ -1,0 +1,19 @@
+services:
+  - type: web
+    name: clipmine-ai-api
+    env: docker
+    dockerfilePath: ./backend/Dockerfile
+    plan: starter
+    disk:
+      name: clipmine-storage
+      mountPath: /var/data/clipmine
+      sizeGB: 10
+    envVars:
+      - key: PORT
+        value: "8000"
+      - key: STORAGE_DIR
+        value: /var/data/clipmine/storage
+      - key: MODEL_CACHE_DIR
+        value: /var/data/clipmine/models
+      - key: WHISPER_MODEL_SIZE
+        value: base
