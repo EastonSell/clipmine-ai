@@ -19,11 +19,13 @@
     "swr": "^2.3.6"
   },
   "devDependencies": {
+    "@tailwindcss/postcss": "^4.1.12",
     "@types/node": "^24.3.0",
     "@types/react": "^19.1.12",
     "@types/react-dom": "^19.1.9",
     "eslint": "^9.34.0",
     "eslint-config-next": "^16.2.2",
+    "postcss": "^8.5.6",
     "tailwindcss": "^4.1.12",
     "typescript": "^5.9.2",
     "vitest": "^4.1.2"
