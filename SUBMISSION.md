@@ -1,46 +1,46 @@
-# ClipMine AI Submission Notes
+# ClipMine AI Submission Package
 
 ## Title Options
 
 - ClipMine AI
 - ClipMine AI: Training-Ready Speech Clips
-- ClipMine AI: Find the Best Speech Moments Fast
+- ClipMine AI: Curate Better Speech Data Faster
 
-## Contest Description
+## Final Contest Description
 
-ClipMine AI uploads real-world video, extracts the strongest short speech segments, scores each clip for training usefulness, visualizes signal quality on a timeline, and exports clean JSON for downstream multimodal annotation and dataset workflows.
-
-## What It Does
-
-- Uploads `.mp4` and `.mov` video
-- Transcribes speech with timestamps
-- Segments candidate 1 to 3 second clips
-- Scores clips for confidence, pace, signal quality, and continuity
-- Surfaces the best moments in a ranked UI and timeline
-- Exports structured JSON
-
-## Why It Was Built
-
-Researchers and ML developers often need clean speech examples but start with noisy real-world video. ClipMine AI reduces the manual triage step and makes promising training clips immediately explorable.
-
-## How It Was Built
-
-- Next.js 16 App Router frontend
-- FastAPI backend
-- `imageio-ffmpeg` media extraction
-- `faster-whisper` CPU transcription
-- Disk-backed processing jobs and JSON exports
+ClipMine AI uploads real-world video, finds the best short speech moments, scores each clip for training usefulness, visualizes strong and weak regions on a timeline, and exports structured JSON for downstream multimodal annotation and dataset prep.
 
 ## One-Sentence Pitch
 
 Upload any video and instantly find, visualize, and export the best training-ready speech clips.
 
+## What The Project Does
+
+- Accepts `.mp4` and `.mov` uploads
+- Extracts and transcribes speech with timestamps
+- Builds candidate 1 to 3 second clips
+- Scores clips for confidence, pace, signal strength, silence, and stability
+- Surfaces ranked clips, a usefulness timeline, and JSON export
+
+## Why It Was Built
+
+ML teams often start from messy, long-form video but need short, clean speech examples for labeling, curation, and dataset construction. ClipMine AI reduces the manual screening step and turns a raw source video into an explorable clip set.
+
+## How It Was Built
+
+- Next.js 16 App Router frontend
+- FastAPI backend
+- `imageio-ffmpeg` for bundled ffmpeg extraction
+- `faster-whisper` on CPU for transcription
+- File-backed job manifests and artifacts
+- Timeline and export serialization for downstream tooling
+
 ## Demo Outline
 
-1. Open the landing page and state the problem in one sentence.
+1. Open the landing page and state the value prop in one sentence.
 2. Upload a short talking-head video.
-3. Watch the processing states move from upload to ranked clips.
-4. Open the best clips tab and show score explanations.
-5. Switch to timeline view and click a strong region.
-6. Download the JSON export and show the schema.
+3. Show the live processing phases in the job workspace.
+4. Open `Best Clips` and click through the top-ranked moments.
+5. Open `Timeline` and jump to a strong region in the source video.
+6. Open `Export` and download the structured JSON file.
 

@@ -1,25 +1,62 @@
 # AGENT.md
 
-## Project Rules
+## Project Intent
 
-- Keep the product focused on clip curation, not raw transcript browsing.
-- Preserve the split architecture: Next.js frontend, FastAPI backend, file-backed storage.
-- Do not introduce a database unless the file-backed job model becomes a proven blocker.
-- Keep scoring transparent and human-explainable.
-- Prefer stable CPU-first media/transcription paths over clever but brittle optimizations.
+ClipMine AI is not a transcript browser and not a generic exporter. Keep the product centered on finding training-ready speech clips from noisy real-world video.
+
+## Product Guardrails
+
+- Preserve the split architecture: Next.js frontend, FastAPI backend.
+- Keep storage file-backed unless a real scaling need appears.
+- Keep scoring transparent and explainable. Avoid fake research language.
+- Do not add auth, team features, or a database in v1.
+- Use one shared source video player in the workspace rather than detached clip video files.
+
+## Important Interfaces
+
+- `POST /api/jobs`
+- `GET /api/jobs/{jobId}`
+- `GET /api/jobs/{jobId}/video`
+- `GET /api/jobs/{jobId}/export.json`
+
+The frontend expects top-level camelCase fields such as `jobId`, `progressPhase`, and `sourceVideo`. Clip and timeline records are snake_case.
 
 ## Local Commands
 
-- Frontend install: `npm_config_cache=/tmp/clipmine-npm-cache npm install`
-- Frontend dev: `npm run dev:web`
-- Frontend checks: `npm run lint:web` and `npm run build:web`
-- Backend setup: `pip install -e ".[dev]"` from `backend/`
-- Backend dev: `uvicorn clipmine_api.main:app --reload --port 8000`
-- Backend tests: `pytest`
+Frontend install:
 
-## Code Style
+```bash
+npm_config_cache=/tmp/clipmine-npm-cache npm install
+```
 
-- Keep modules small and behavior-oriented.
-- Add comments only when the intent is not obvious from the code.
-- Prefer plain TypeScript and Python over framework-heavy abstractions.
+Frontend checks:
+
+```bash
+npm run lint:web
+npm run build:web
+```
+
+Backend setup:
+
+```bash
+cd backend
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -e ".[dev]"
+```
+
+Backend checks:
+
+```bash
+cd backend
+source .venv/bin/activate
+pytest
+```
+
+## Code Guidance
+
+- Prefer maintainable modules over framework-heavy abstractions.
+- Add comments only when the reasoning is not obvious.
+- Keep upload validation, scoring, and serialization logic explicit.
+- If you change the response shape, update both `apps/web/src/lib/types.ts` and the backend serializer functions.
 
