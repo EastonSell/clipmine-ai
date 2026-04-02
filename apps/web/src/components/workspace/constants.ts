@@ -26,3 +26,13 @@ export const workspaceTabs: Array<{ value: WorkspaceTab; label: string }> = [
   { value: "timeline", label: "Timeline" },
   { value: "export", label: "Export" },
 ];
+
+export const phaseProgressPercent: Record<JobResponse["progressPhase"], number> = {
+  queued: 8,
+  extracting_audio: 24,
+  transcribing: 56,
+  segmenting: 74,
+  scoring: 90,
+  ready: 100,
+  failed: 100,
+};

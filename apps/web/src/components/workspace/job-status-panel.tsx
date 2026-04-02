@@ -2,11 +2,12 @@ import { Clock3, RefreshCcw } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { ProgressBar } from "@/components/ui/progress-bar";
 import { SectionHeader } from "@/components/ui/section-header";
 import { formatDateTime } from "@/lib/format";
 import type { JobResponse } from "@/lib/types";
 
-import { phaseCopy, phaseSteps } from "./constants";
+import { phaseCopy, phaseProgressPercent, phaseSteps } from "./constants";
 
 type JobStatusPanelProps = {
   job: JobResponse;
@@ -18,6 +19,7 @@ export function JobStatusPanel({ job, onRefresh }: JobStatusPanelProps) {
     job.progressPhase === "failed"
       ? phaseSteps.length - 1
       : phaseSteps.findIndex((step) => step.id === job.progressPhase);
+  const progressValue = phaseProgressPercent[job.progressPhase];
 
   const description =
     job.status === "queued" || job.status === "processing"
@@ -37,6 +39,29 @@ export function JobStatusPanel({ job, onRefresh }: JobStatusPanelProps) {
           </Button>
         }
       />
+
+      <div className="mt-6 rounded-[1.1rem] border border-[var(--line)] bg-white/[0.03] px-4 py-4">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <p className="metric-label text-[var(--muted)]">Progress</p>
+            <p className="mt-2 text-sm text-[var(--muted-strong)]">
+              {job.status === "failed"
+                ? "Processing stopped before completion."
+                : job.status === "ready"
+                  ? "Processing complete."
+                  : "Estimated from the current processing stage."}
+            </p>
+          </div>
+          <div className={job.status === "failed" ? "text-sm font-semibold text-red-300" : "text-sm font-semibold text-[var(--text)]"}>
+            {job.status === "failed" ? "Failed" : `${progressValue}%`}
+          </div>
+        </div>
+        <ProgressBar
+          value={progressValue}
+          tone={job.status === "failed" ? "danger" : "accent"}
+          className="mt-4"
+        />
+      </div>
 
       <div className="mt-6 space-y-2">
         {phaseSteps.map((step, index) => {

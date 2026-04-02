@@ -7,8 +7,10 @@ import { startTransition, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { ProgressBar } from "@/components/ui/progress-bar";
 import { SectionHeader } from "@/components/ui/section-header";
 import { createJob } from "@/lib/api";
+import { formatBytes } from "@/lib/format";
 
 import { UploadDropzone } from "./upload-dropzone";
 
@@ -37,6 +39,7 @@ export function UploadSection() {
   const [isUploading, setIsUploading] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [uploadProgress, setUploadProgress] = useState(0);
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -57,16 +60,22 @@ export function UploadSection() {
     }
 
     setIsUploading(true);
+    setUploadProgress(0);
     setError(null);
 
     try {
-      const job = await createJob(selectedFile);
+      const job = await createJob(selectedFile, {
+        onUploadProgress(progress) {
+          setUploadProgress(progress.percentage);
+        },
+      });
       startTransition(() => {
         router.push(`/jobs/${job.jobId}`);
       });
     } catch (uploadError) {
       setError(uploadError instanceof Error ? uploadError.message : "Upload failed.");
       setIsUploading(false);
+      setUploadProgress(0);
     }
   }
 
@@ -132,8 +141,14 @@ export function UploadSection() {
 
                 <div className="flex flex-wrap items-center justify-between gap-4 border-t border-[var(--line)] pt-5">
                   <div className="space-y-1 text-sm text-[var(--muted)]">
-                    <p>Uploads go directly to the processing API.</p>
-                    <p>The workspace URL remains stable while large uploads, transcription, and scoring run.</p>
+                    <p>{isUploading ? "Uploading directly to the processing API." : "Uploads go directly to the processing API."}</p>
+                    <p>
+                      {isUploading
+                        ? uploadProgress >= 100
+                          ? "Upload complete. Opening the processing workspace."
+                          : "The workspace will open automatically as soon as the upload completes."
+                        : "The workspace URL remains stable while large uploads, transcription, and scoring run."}
+                    </p>
                   </div>
                   <Button type="submit" variant="primary" size="lg" disabled={isUploading}>
                     {isUploading ? (
@@ -144,6 +159,26 @@ export function UploadSection() {
                     {isUploading ? "Processing" : "Upload video"}
                   </Button>
                 </div>
+
+                {isUploading && selectedFile ? (
+                  <div className="rounded-[1.25rem] border border-[var(--line)] bg-white/[0.03] px-4 py-4">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <div>
+                        <p className="metric-label text-[var(--muted)]">Upload progress</p>
+                        <p className="mt-2 text-sm text-[var(--muted-strong)]">
+                          {uploadProgress >= 100
+                            ? "Upload complete. Preparing the workspace."
+                            : `Sending ${selectedFile.name} to the processing API.`}
+                        </p>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-sm font-semibold text-[var(--text)]">{uploadProgress}%</div>
+                        <div className="mt-1 text-xs text-[var(--muted)]">{formatBytes(selectedFile.size)}</div>
+                      </div>
+                    </div>
+                    <ProgressBar value={uploadProgress} className="mt-4" />
+                  </div>
+                ) : null}
               </form>
 
               {error ? (
