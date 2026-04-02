@@ -18,6 +18,7 @@ The deployment split avoids serverless timeouts and keeps video processing off t
 
 ```text
 NEXT_PUBLIC_API_BASE_URL=https://your-backend.onrender.com
+NEXT_PUBLIC_MAX_UPLOAD_MB=1024
 ```
 
 6. Deploy.
@@ -37,7 +38,7 @@ PORT=8000
 STORAGE_DIR=/var/data/clipmine/storage
 MODEL_CACHE_DIR=/var/data/clipmine/models
 WHISPER_MODEL_SIZE=base
-MAX_UPLOAD_MB=250
+MAX_UPLOAD_MB=1024
 BACKEND_CORS_ORIGINS=https://your-frontend.vercel.app
 ```
 
@@ -81,4 +82,3 @@ BACKEND_CORS_ORIGINS=https://your-frontend.vercel.app
 
 - The job is still `queued` or `processing`.
 - Refresh the workspace or wait for the polling cycle to complete.
-

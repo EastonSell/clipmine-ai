@@ -31,7 +31,7 @@ export function TimelineChart({ bins, clips, activeClipId, onSeek }: TimelineCha
     .slice(0, 4);
 
   return (
-    <div className="grid gap-6 xl:grid-cols-[minmax(0,1.3fr)_22rem]">
+    <div className="grid gap-6 lg:grid-cols-[minmax(0,1.15fr)_19rem] xl:grid-cols-[minmax(0,1.3fr)_22rem]">
       <Card>
         <SectionHeader
           eyebrow="Timeline"

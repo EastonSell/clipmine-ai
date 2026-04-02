@@ -12,7 +12,7 @@ class Settings(BaseSettings):
     environment: str = "development"
     port: int = 8000
     backend_cors_origins: str = "http://localhost:3000"
-    max_upload_mb: int = 250
+    max_upload_mb: int = 1024
     storage_dir: Path = Field(default=Path("./storage"))
     model_cache_dir: Path = Field(default=Path("./storage/models"))
     whisper_model_size: str = "base"

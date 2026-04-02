@@ -14,7 +14,7 @@ import { UploadDropzone } from "./upload-dropzone";
 
 const ACCEPTED_TYPES = ["video/mp4", "video/quicktime"];
 const ACCEPTED_EXTENSIONS = [".mp4", ".mov"];
-const MAX_UPLOAD_MB = 250;
+const MAX_UPLOAD_MB = Number(process.env.NEXT_PUBLIC_MAX_UPLOAD_MB ?? "1024");
 
 const uploadDetails = [
   ["Upload video", "Add one source file and move directly into a persistent workspace URL."],
@@ -79,7 +79,7 @@ export function UploadSection() {
         transition={{ duration: 0.55, ease: [0.16, 1, 0.3, 1] }}
       >
         <Card padded={false} className="overflow-hidden">
-          <div className="grid xl:grid-cols-[0.72fr_1.28fr]">
+          <div className="grid lg:grid-cols-[0.72fr_1.28fr]">
             <div className="border-b border-[var(--line)] p-6 sm:p-8 xl:border-b-0 xl:border-r">
               <SectionHeader
                 eyebrow="Upload"
@@ -109,7 +109,9 @@ export function UploadSection() {
                     .mov
                   </span>
                   <span className="rounded-full border border-[var(--line)] px-3 py-1 text-sm text-[var(--muted-strong)]">
-                    {MAX_UPLOAD_MB} MB default limit
+                    {MAX_UPLOAD_MB >= 1024
+                      ? `${Math.round(MAX_UPLOAD_MB / 1024)} GB default limit`
+                      : `${MAX_UPLOAD_MB} MB default limit`}
                   </span>
                 </div>
               </div>
@@ -131,7 +133,7 @@ export function UploadSection() {
                 <div className="flex flex-wrap items-center justify-between gap-4 border-t border-[var(--line)] pt-5">
                   <div className="space-y-1 text-sm text-[var(--muted)]">
                     <p>Uploads go directly to the processing API.</p>
-                    <p>The workspace URL remains stable while transcription and scoring run.</p>
+                    <p>The workspace URL remains stable while large uploads, transcription, and scoring run.</p>
                   </div>
                   <Button type="submit" variant="primary" size="lg" disabled={isUploading}>
                     {isUploading ? (

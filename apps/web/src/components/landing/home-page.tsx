@@ -6,7 +6,9 @@ import { ArrowDownRight } from "lucide-react";
 import { AppShell } from "@/components/ui/app-shell";
 import { Badge } from "@/components/ui/badge";
 import { buttonClassName } from "@/components/ui/button";
+import { FooterNotes } from "@/components/ui/footer-notes";
 import { PageContainer } from "@/components/ui/page-container";
+import { TopBar } from "@/components/ui/top-bar";
 
 import { PreviewPanel } from "./preview-panel";
 import { UploadSection } from "./upload-section";
@@ -14,36 +16,61 @@ import { WorkflowSection } from "./workflow-section";
 
 const proofPoints = [
   {
+    id: "best-clips",
     title: "Best clips",
     body: "Rank short speech windows by confidence, pace, signal strength, and continuity.",
   },
   {
+    id: "timeline",
     title: "Timeline",
     body: "Scan the full source video and jump straight to the strongest regions.",
   },
   {
+    id: "export",
     title: "JSON export",
     body: "Export structured clip data for annotation and dataset workflows.",
+  },
+];
+
+const footerNotes = [
+  {
+    label: "Uploads",
+    body: "ClipMine defaults to direct browser-to-backend uploads and supports source files up to 1 GB by default.",
+  },
+  {
+    label: "Processing",
+    body: "Large files take longer to transfer and transcribe, but the workspace URL remains stable while the backend keeps state current.",
+  },
+  {
+    label: "Output",
+    body: "Best clips, timeline bins, and JSON export all stay aligned to the same source video and scoring pass.",
   },
 ];
 
 export function HomePageView() {
   return (
     <AppShell>
-      <section className="relative border-b border-[var(--line)] pt-4 sm:pt-6">
+      <section id="top" className="relative border-b border-[var(--line)] pt-4 sm:pt-6">
         <PageContainer>
-          <header className="flex flex-wrap items-center justify-between gap-4 rounded-full border border-[var(--line)] bg-white/[0.04] px-4 py-3 backdrop-blur-xl ring-1 ring-inset ring-white/[0.04]">
-            <div>
-              <p className="metric-label text-[var(--muted-strong)]">ClipMine AI</p>
-              <p className="mt-1 text-sm text-[var(--muted)]">Speech clip curation for training workflows.</p>
-            </div>
-            <a href="#upload" className={buttonClassName({ variant: "secondary", size: "md" })}>
-              Upload video
-              <ArrowDownRight className="size-4" />
-            </a>
-          </header>
+          <TopBar
+            eyebrow="ClipMine AI"
+            subtitle="Speech clip curation for training workflows."
+            items={[
+              { label: "Best clips", href: "#best-clips" },
+              { label: "Timeline", href: "#timeline" },
+              { label: "Export", href: "#export" },
+              { label: "Upload", href: "#upload" },
+              { label: "Notes", href: "#notes" },
+            ]}
+            action={
+              <a href="#upload" className={buttonClassName({ variant: "secondary", size: "md" })}>
+                Upload video
+                <ArrowDownRight className="size-4" />
+              </a>
+            }
+          />
 
-          <div className="grid gap-14 pb-18 pt-14 lg:min-h-[calc(100svh-6.5rem)] lg:grid-cols-[1.03fr_0.97fr] lg:items-center">
+          <div className="grid gap-14 pb-18 pt-12 lg:min-h-[calc(100svh-7.25rem)] lg:grid-cols-[1.03fr_0.97fr] lg:items-center">
             <motion.div
               initial={{ opacity: 0, y: 22 }}
               animate={{ opacity: 1, y: 0 }}
@@ -78,6 +105,7 @@ export function HomePageView() {
                   return (
                     <motion.div
                       key={item.title}
+                      id={item.id}
                       initial={{ opacity: 0, y: 14 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ duration: 0.45, delay: 0.12 + index * 0.06, ease: [0.16, 1, 0.3, 1] }}
@@ -106,6 +134,7 @@ export function HomePageView() {
       <PageContainer className="space-y-0">
         <UploadSection />
         <WorkflowSection />
+        <FooterNotes id="notes" title="Operational notes" notes={footerNotes} />
       </PageContainer>
     </AppShell>
   );

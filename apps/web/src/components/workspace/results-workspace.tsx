@@ -7,10 +7,12 @@ import useSWR from "swr";
 
 import { buttonClassName } from "@/components/ui/button";
 import { ErrorState } from "@/components/ui/error-state";
+import { FooterNotes } from "@/components/ui/footer-notes";
 import { ProcessingState } from "@/components/ui/processing-state";
 import { Tabs } from "@/components/ui/tabs";
 import { AppShell } from "@/components/ui/app-shell";
 import { PageContainer } from "@/components/ui/page-container";
+import { TopBar } from "@/components/ui/top-bar";
 import { getApiBaseUrl, getJob } from "@/lib/api";
 import type { JobResponse } from "@/lib/types";
 
@@ -74,6 +76,30 @@ export function ResultsWorkspace({ jobId }: ResultsWorkspaceProps) {
     });
   }
 
+  function scrollToId(id: string) {
+    document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
+  function handleNavigate(target: "source" | "clips" | "timeline" | "export" | "notes") {
+    if (target === "source") {
+      scrollToId("source-video");
+      return;
+    }
+
+    if (target === "notes") {
+      scrollToId("workspace-notes");
+      return;
+    }
+
+    const nextTab: WorkspaceTab =
+      target === "clips" ? "clips" : target === "timeline" ? "timeline" : "export";
+
+    handleTabChange(nextTab);
+    requestAnimationFrame(() => {
+      scrollToId("workspace-features");
+    });
+  }
+
   if (isLoading) {
     return (
       <WorkspaceFrame>
@@ -109,23 +135,97 @@ export function ResultsWorkspace({ jobId }: ResultsWorkspaceProps) {
   const processing = data.status === "queued" || data.status === "processing";
   const exportUrl = `${getApiBaseUrl()}/api/jobs/${jobId}/export.json`;
   const videoUrl = `${getApiBaseUrl()}${data.sourceVideo.url}`;
+  const footerNotes = [
+    {
+      label: "Source handling",
+      body: "Uploads go straight to the backend job service, which keeps the original media available for playback throughout the workspace.",
+    },
+    {
+      label: "Large files",
+      body: "ClipMine now defaults to a 1 GB upload limit. Larger sources take longer to transfer, but the workspace URL stays stable while processing continues.",
+    },
+    {
+      label: "Export",
+      body: "JSON export stays aligned with the same clip ranking and timeline state shown in the workspace.",
+    },
+  ];
 
   return (
     <WorkspaceFrame>
       <div className="space-y-6">
+        <TopBar
+          eyebrow="ClipMine AI"
+          subtitle="Review the source, inspect ranked clips, and export structured output."
+          items={[
+            { label: "Source", onClick: () => handleNavigate("source") },
+            { label: "Best clips", onClick: () => handleNavigate("clips"), active: activeTab === "clips" },
+            { label: "Timeline", onClick: () => handleNavigate("timeline"), active: activeTab === "timeline" },
+            { label: "Export", onClick: () => handleNavigate("export"), active: activeTab === "export" },
+            { label: "Notes", onClick: () => handleNavigate("notes") },
+          ]}
+          action={
+            <a
+              href={exportUrl}
+              className={buttonClassName({
+                variant: processing ? "secondary" : "primary",
+                className: processing ? "pointer-events-none opacity-60" : "",
+              })}
+              aria-disabled={processing}
+              onClick={(event) => {
+                if (processing) {
+                  event.preventDefault();
+                }
+              }}
+            >
+              <Download className="size-4" />
+              {processing ? "Export pending" : "Export JSON"}
+            </a>
+          }
+        />
+
         <WorkspaceHeader
           title={data.sourceVideo.file_name}
           sourceVideo={data.sourceVideo}
           language={data.language}
           statusLabel={phaseCopy[data.progressPhase]}
+          navigation={
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => handleNavigate("clips")}
+                className={buttonClassName({ variant: "secondary", size: "sm" })}
+              >
+                Best clips
+              </button>
+              <button
+                type="button"
+                onClick={() => handleNavigate("timeline")}
+                className={buttonClassName({ variant: "secondary", size: "sm" })}
+              >
+                Timeline
+              </button>
+              <button
+                type="button"
+                onClick={() => handleNavigate("export")}
+                className={buttonClassName({ variant: "secondary", size: "sm" })}
+              >
+                Export
+              </button>
+            </div>
+          }
         />
 
-        <div className="grid gap-6 xl:grid-cols-[minmax(0,1.55fr)_22rem]">
+        <div className="grid gap-6 lg:grid-cols-[minmax(0,1.45fr)_20rem] xl:grid-cols-[minmax(0,1.55fr)_22rem]">
           <div className="space-y-6">
-            <SourceVideoPanel videoRef={videoRef} videoUrl={videoUrl} />
+            <div id="source-video">
+              <SourceVideoPanel videoRef={videoRef} videoUrl={videoUrl} />
+            </div>
             <ClipDetailPanel clip={selectedClip} onSeek={handleSeek} />
 
-            <div className="flex flex-wrap items-center justify-between gap-4 rounded-[1.35rem] border border-[var(--line)] bg-white/[0.04] px-4 py-3 backdrop-blur-xl">
+            <div
+              id="workspace-features"
+              className="flex flex-wrap items-center justify-between gap-4 rounded-[1.35rem] border border-[var(--line)] bg-white/[0.04] px-4 py-3 backdrop-blur-xl"
+            >
               <Tabs options={workspaceTabs} value={activeTab} onChange={handleTabChange} />
               <a
                 href={exportUrl}
@@ -176,6 +276,8 @@ export function ResultsWorkspace({ jobId }: ResultsWorkspaceProps) {
             <JobSummaryPanel job={data} />
           </aside>
         </div>
+
+        <FooterNotes id="workspace-notes" title="Workspace notes" notes={footerNotes} />
       </div>
     </WorkspaceFrame>
   );

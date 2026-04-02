@@ -9,6 +9,7 @@ Raw transcripts are noisy. Raw video is slower. Dataset builders usually need so
 ## What The App Does
 
 - Accepts `.mp4` and `.mov` uploads
+- Supports direct browser-to-backend uploads up to 1 GB by default
 - Extracts mono 16 kHz audio with a bundled ffmpeg binary
 - Transcribes speech with `faster-whisper`
 - Segments candidate clips around the 1 to 3 second range
@@ -76,6 +77,11 @@ Where `pace_fit` favors roughly `2.2` to `3.8` words per second and `continuity 
 
 Copy `.env.example` to `.env` at the repo root and adjust values if needed.
 
+Important defaults:
+
+- `NEXT_PUBLIC_MAX_UPLOAD_MB=1024`
+- `MAX_UPLOAD_MB=1024`
+
 ### 2. Install Frontend Dependencies
 
 The npm cache on this machine needs an alternate path:
@@ -130,6 +136,7 @@ npm run test:api
 
 1. Open the landing page.
 2. Upload a `.mp4` or `.mov` video with speech.
+   Large uploads up to 1 GB are supported by default.
 3. Wait while the backend moves through audio extraction, transcription, segmentation, and scoring.
 4. Review the ranked clips in `Best Clips`.
 5. Inspect strong and weak regions in `Timeline`.

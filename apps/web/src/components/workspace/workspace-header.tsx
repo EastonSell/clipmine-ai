@@ -1,4 +1,5 @@
 import Link from "next/link";
+import type { ReactNode } from "react";
 
 import { Badge } from "@/components/ui/badge";
 import { buttonClassName } from "@/components/ui/button";
@@ -11,6 +12,7 @@ type WorkspaceHeaderProps = {
   sourceVideo: SourceVideo;
   language: string | null;
   statusLabel: string;
+  navigation?: ReactNode;
 };
 
 export function WorkspaceHeader({
@@ -18,6 +20,7 @@ export function WorkspaceHeader({
   sourceVideo,
   language,
   statusLabel,
+  navigation,
 }: WorkspaceHeaderProps) {
   const statusTone =
     statusLabel === "Failed" ? "danger" : statusLabel === "Ready" ? "accent" : "neutral";
@@ -58,6 +61,10 @@ export function WorkspaceHeader({
           </div>
         ))}
       </div>
+
+      {navigation ? (
+        <div className="border-t border-[var(--line)] px-5 py-4 sm:px-6">{navigation}</div>
+      ) : null}
     </Card>
   );
 }

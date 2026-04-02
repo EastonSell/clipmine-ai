@@ -24,7 +24,7 @@ export function ExportPanel({ job, exportUrl, disabled }: ExportPanelProps) {
   }
 
   return (
-    <div className="grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
+    <div className="grid gap-6 lg:grid-cols-[0.9fr_1.1fr]">
       <Card>
         <SectionHeader
           eyebrow="Export"
