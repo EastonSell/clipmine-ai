@@ -3,6 +3,7 @@ from __future__ import annotations
 import logging
 from pathlib import Path
 
+import imageio_ffmpeg
 import orjson
 from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile, status
 from fastapi.responses import FileResponse, Response
@@ -33,8 +34,22 @@ def get_job_processor(request: Request) -> JobProcessor:
 
 
 @router.get("/health")
-async def healthcheck(request: Request) -> dict[str, str]:
-    return {"status": "ok", "service": request.app.state.settings.app_name}
+async def healthcheck(request: Request) -> dict[str, object]:
+    settings = request.app.state.settings
+    store = request.app.state.job_store
+    processor = request.app.state.job_processor
+    ffmpeg_path = Path(imageio_ffmpeg.get_ffmpeg_exe())
+    checks = {
+        "storageWritable": store.is_storage_writable(),
+        "ffmpegAvailable": ffmpeg_path.exists(),
+        "modelCacheReady": settings.model_cache_dir.exists() and settings.model_cache_dir.is_dir(),
+    }
+    return {
+        "status": "ok",
+        "service": settings.app_name,
+        "checks": checks,
+        "queueDepth": processor.queue_depth,
+    }
 
 
 @router.post("/jobs", status_code=status.HTTP_201_CREATED)

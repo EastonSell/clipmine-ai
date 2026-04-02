@@ -9,6 +9,7 @@ __pycache__/
 *.pyd
 *.egg-info/
 .pytest_cache/
+.tmp-pytest/
 .mypy_cache/
 .ruff_cache/
 node_modules/

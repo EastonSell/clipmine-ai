@@ -37,18 +37,24 @@ async def lifespan(app: FastAPI):
     settings = get_settings()
     configure_logging(settings.log_level)
     store = JobStore(settings)
-    processor = JobProcessor(store)
+    processor = JobProcessor(
+        store,
+        worker_concurrency=settings.worker_concurrency,
+        retention_hours=settings.job_retention_hours,
+    )
     app.state.settings = settings
     app.state.job_store = store
     app.state.job_processor = processor
     logger.info(
-        "app.startup environment=%s port=%s log_level=%s storage_dir=%s model_cache_dir=%s max_upload_mb=%s",
+        "app.startup environment=%s port=%s log_level=%s storage_dir=%s model_cache_dir=%s max_upload_mb=%s worker_concurrency=%s retention_hours=%s",
         settings.environment,
         settings.port,
         settings.log_level.upper(),
         settings.storage_dir,
         settings.model_cache_dir,
         settings.max_upload_mb,
+        settings.worker_concurrency,
+        settings.job_retention_hours,
     )
     await processor.start()
     yield

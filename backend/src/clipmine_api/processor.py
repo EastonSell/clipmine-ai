@@ -2,13 +2,14 @@ from __future__ import annotations
 
 import asyncio
 import logging
+from statistics import mean
 from contextlib import suppress
 from time import perf_counter
 
 from .media import extract_audio, load_mono_wave, probe_media_duration
 from .multimodal import enrich_scored_clips
 from .presentation import build_summary, build_timeline
-from .schemas import JobManifest, JobStatus, ProgressPhase
+from .schemas import ClipRecord, JobManifest, JobStatus, ProcessingStats, ProgressPhase
 from .scoring import score_candidate_clips
 from .segmentation import segment_words
 from .storage import JobStore
@@ -18,24 +19,40 @@ logger = logging.getLogger("uvicorn.error")
 
 
 class JobProcessor:
-    def __init__(self, store: JobStore):
+    def __init__(self, store: JobStore, *, worker_concurrency: int = 1, retention_hours: int = 168):
         self.store = store
         self.queue: asyncio.Queue[str] = asyncio.Queue()
-        self.worker_task: asyncio.Task[None] | None = None
+        self.worker_concurrency = max(1, worker_concurrency)
+        self.retention_hours = retention_hours
+        self.worker_tasks: list[asyncio.Task[None]] = []
+
+    @property
+    def queue_depth(self) -> int:
+        return self.queue.qsize()
 
     async def start(self) -> None:
-        if self.worker_task is None:
-            self.worker_task = asyncio.create_task(self._worker_loop())
+        if not self.worker_tasks:
+            removed_count = self.store.cleanup_expired_jobs(self.retention_hours)
+            self.worker_tasks = [
+                asyncio.create_task(self._worker_loop(worker_index))
+                for worker_index in range(self.worker_concurrency)
+            ]
             await self._recover_incomplete_jobs()
-            logger.info("processor.started")
+            logger.info(
+                "processor.started worker_concurrency=%s removed_expired_jobs=%s",
+                self.worker_concurrency,
+                removed_count,
+            )
 
     async def stop(self) -> None:
-        if self.worker_task is None:
+        if not self.worker_tasks:
             return
-        self.worker_task.cancel()
-        with suppress(asyncio.CancelledError):
-            await self.worker_task
-        self.worker_task = None
+        for worker_task in self.worker_tasks:
+            worker_task.cancel()
+        for worker_task in self.worker_tasks:
+            with suppress(asyncio.CancelledError):
+                await worker_task
+        self.worker_tasks = []
         logger.info("processor.stopped")
 
     async def enqueue(self, job_id: str) -> None:
@@ -62,10 +79,10 @@ class JobProcessor:
             logger.info("processor.recovered job_id=%s previous_status=%s", recovered_job.job_id, job.status.value)
         logger.info("processor.recovery_complete recovered_jobs=%s", recovered_count)
 
-    async def _worker_loop(self) -> None:
+    async def _worker_loop(self, worker_index: int) -> None:
         while True:
             job_id = await self.queue.get()
-            logger.info("processor.dequeue job_id=%s queue_size=%s", job_id, self.queue.qsize())
+            logger.info("processor.dequeue worker=%s job_id=%s queue_size=%s", worker_index, job_id, self.queue.qsize())
             try:
                 await asyncio.to_thread(self.process_job, job_id)
             except Exception:
@@ -78,20 +95,32 @@ class JobProcessor:
         video_path = self.store.source_video_path(job)
         audio_path = self.store.audio_path(job_id)
         started_at = perf_counter()
+        processing_timings = dict(job.processing_timings)
+        processing_stats = job.processing_stats.model_copy()
         logger.info("job.start job_id=%s video_path=%s audio_path=%s", job_id, video_path, audio_path)
 
         try:
             stage_started_at = perf_counter()
             job = self._save_state(job, status=JobStatus.PROCESSING, progress_phase=ProgressPhase.EXTRACTING_AUDIO)
             extract_audio(video_path, audio_path)
-            logger.info("job.stage_complete job_id=%s stage=extracting_audio duration_ms=%.1f", job_id, (perf_counter() - stage_started_at) * 1000)
+            processing_timings[ProgressPhase.EXTRACTING_AUDIO.value] = round((perf_counter() - stage_started_at) * 1000, 1)
+            job = self.store.save_job(job.model_copy(update={"processing_timings": processing_timings}))
+            logger.info(
+                "job.stage_complete job_id=%s stage=extracting_audio duration_ms=%.1f",
+                job_id,
+                processing_timings[ProgressPhase.EXTRACTING_AUDIO.value],
+            )
 
             stage_started_at = perf_counter()
             duration_seconds = probe_media_duration(video_path)
+            processing_stats = processing_stats.model_copy(
+                update={"source_duration_seconds": round(duration_seconds or 0.0, 3)}
+            )
             job = self.store.save_job(
                 job.model_copy(
                     update={
                         "source_video": job.source_video.model_copy(update={"duration_seconds": duration_seconds}),
+                        "processing_stats": processing_stats,
                     }
                 )
             )
@@ -100,10 +129,15 @@ class JobProcessor:
             stage_started_at = perf_counter()
             job = self._save_state(job, status=JobStatus.PROCESSING, progress_phase=ProgressPhase.TRANSCRIBING)
             transcription = transcribe_audio(audio_path)
+            processing_timings[ProgressPhase.TRANSCRIBING.value] = round((perf_counter() - stage_started_at) * 1000, 1)
+            processing_stats = processing_stats.model_copy(update={"transcript_word_count": len(transcription.words)})
+            job = self.store.save_job(
+                job.model_copy(update={"processing_timings": processing_timings, "processing_stats": processing_stats})
+            )
             logger.info(
                 "job.stage_complete job_id=%s stage=transcribing duration_ms=%.1f word_count=%s language=%s transcript_chars=%s",
                 job_id,
-                (perf_counter() - stage_started_at) * 1000,
+                processing_timings[ProgressPhase.TRANSCRIBING.value],
                 len(transcription.words),
                 transcription.language,
                 len(transcription.transcript_text),
@@ -112,10 +146,15 @@ class JobProcessor:
             stage_started_at = perf_counter()
             job = self._save_state(job, status=JobStatus.PROCESSING, progress_phase=ProgressPhase.SEGMENTING)
             candidates = segment_words(transcription.words)
+            processing_timings[ProgressPhase.SEGMENTING.value] = round((perf_counter() - stage_started_at) * 1000, 1)
+            processing_stats = processing_stats.model_copy(update={"candidate_clip_count": len(candidates)})
+            job = self.store.save_job(
+                job.model_copy(update={"processing_timings": processing_timings, "processing_stats": processing_stats})
+            )
             logger.info(
                 "job.stage_complete job_id=%s stage=segmenting duration_ms=%.1f candidate_count=%s",
                 job_id,
-                (perf_counter() - stage_started_at) * 1000,
+                processing_timings[ProgressPhase.SEGMENTING.value],
                 len(candidates),
             )
 
@@ -143,10 +182,19 @@ class JobProcessor:
             )
             timeline = build_timeline(clips, duration_seconds=duration_seconds)
             summary = build_summary(clips, duration_seconds=duration_seconds, transcript_text=transcription.transcript_text)
+            processing_timings[ProgressPhase.SCORING.value] = round((perf_counter() - stage_started_at) * 1000, 1)
+            processing_timings["total"] = round((perf_counter() - started_at) * 1000, 1)
+            processing_stats = processing_stats.model_copy(
+                update={
+                    "clip_count": len(clips),
+                    "timeline_bin_count": len(timeline),
+                }
+            )
+            warnings = _build_warnings(clips, processing_stats)
             logger.info(
                 "job.stage_complete job_id=%s stage=scoring duration_ms=%.1f clip_count=%s top_score=%s sample_rate=%s enriched_fields=%s",
                 job_id,
-                (perf_counter() - stage_started_at) * 1000,
+                processing_timings[ProgressPhase.SCORING.value],
                 len(clips),
                 summary.top_score if summary else None,
                 sample_rate,
@@ -164,6 +212,9 @@ class JobProcessor:
                     "timeline": timeline,
                     "summary": summary,
                     "source_video": job.source_video.model_copy(update={"duration_seconds": duration_seconds}),
+                    "processing_timings": processing_timings,
+                    "warnings": warnings,
+                    "processing_stats": processing_stats,
                 }
             )
             self.store.save_job(ready_job)
@@ -180,6 +231,7 @@ class JobProcessor:
                     "status": JobStatus.FAILED,
                     "progress_phase": ProgressPhase.FAILED,
                     "error": str(exc),
+                    "processing_timings": {**processing_timings, "total": round((perf_counter() - started_at) * 1000, 1)},
                 }
             )
             self.store.save_job(failed_job)
@@ -189,3 +241,26 @@ class JobProcessor:
         updated_job = job.model_copy(update={"status": status, "progress_phase": progress_phase, "error": None})
         logger.info("job.state job_id=%s status=%s phase=%s", job.job_id, status.value, progress_phase.value)
         return self.store.save_job(updated_job)
+
+
+def _build_warnings(clips: list[ClipRecord], processing_stats: ProcessingStats) -> list[str]:
+    if not clips:
+        return ["No usable speech clips were detected from the source video."]
+
+    warnings: list[str] = []
+    average_confidence = mean(clip.confidence for clip in clips)
+    average_visual_readiness = mean(clip.quality_breakdown.visual_readiness for clip in clips)
+    average_audio_signal = mean(clip.quality_breakdown.acoustic_signal for clip in clips)
+
+    if max((clip.score for clip in clips), default=0.0) < 78:
+        warnings.append("No clips reached the Excellent quality band.")
+    if average_confidence < 0.72:
+        warnings.append("Average transcription confidence is lower than ideal for direct training use.")
+    if average_visual_readiness < 0.45:
+        warnings.append("Visual track quality is weak, so audiovisual use may need manual review.")
+    if average_audio_signal < 0.5:
+        warnings.append("Audio signal quality is inconsistent across the strongest clips.")
+    if processing_stats.transcript_word_count < 40:
+        warnings.append("The source contains limited usable speech, so review coverage may be sparse.")
+
+    return warnings

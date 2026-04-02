@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import shutil
+import tempfile
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import BinaryIO
@@ -127,6 +128,40 @@ class JobStore:
         job = self.load_job(job_id)
         updated = job.model_copy(update={**changes, "updated_at": _utc_now()})
         return self.save_job(updated)
+
+    def cleanup_expired_jobs(self, retention_hours: int) -> int:
+        if retention_hours <= 0:
+            return 0
+
+        removed_count = 0
+        cutoff = datetime.now(tz=UTC).timestamp() - (retention_hours * 3600)
+
+        for job_dir in sorted(self.settings.jobs_dir.iterdir()) if self.settings.jobs_dir.exists() else []:
+            manifest_path = job_dir / "job.json"
+            if manifest_path.exists():
+                payload = orjson.loads(manifest_path.read_bytes())
+                updated_at = payload.get("updated_at") or payload.get("created_at")
+                if not updated_at:
+                    continue
+                updated_timestamp = datetime.fromisoformat(updated_at).timestamp()
+            else:
+                updated_timestamp = job_dir.stat().st_mtime
+
+            if updated_timestamp >= cutoff:
+                continue
+
+            shutil.rmtree(job_dir, ignore_errors=True)
+            removed_count += 1
+
+        return removed_count
+
+    def is_storage_writable(self) -> bool:
+        self.settings.storage_dir.mkdir(parents=True, exist_ok=True)
+        try:
+            with tempfile.NamedTemporaryFile(dir=self.settings.storage_dir, delete=True):
+                return True
+        except OSError:
+            return False
 
     def job_dir(self, job_id: str) -> Path:
         return self.settings.jobs_dir / job_id

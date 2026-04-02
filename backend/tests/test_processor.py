@@ -80,3 +80,12 @@ def test_job_processor_recovers_incomplete_jobs_on_start(tmp_path: Path) -> None
     assert store.load_job("processing-job").error is None
     assert store.load_job("ready-job").status == JobStatus.READY
     assert store.load_job("failed-job").status == JobStatus.FAILED
+
+
+def test_job_processor_defaults_to_single_worker(tmp_path: Path) -> None:
+    settings = Settings(storage_dir=tmp_path / "storage", model_cache_dir=tmp_path / "models")
+    store = JobStore(settings)
+
+    processor = JobProcessor(store, worker_concurrency=0)
+
+    assert processor.worker_concurrency == 1

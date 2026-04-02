@@ -158,6 +158,14 @@ class JobSummary(BaseModel):
     top_score: float
 
 
+class ProcessingStats(BaseModel):
+    source_duration_seconds: float = 0.0
+    transcript_word_count: int = 0
+    candidate_clip_count: int = 0
+    clip_count: int = 0
+    timeline_bin_count: int = 0
+
+
 class JobManifest(BaseModel):
     job_id: str
     status: JobStatus
@@ -171,3 +179,6 @@ class JobManifest(BaseModel):
     clips: list[ClipRecord] = Field(default_factory=list)
     timeline: list[TimelineBin] = Field(default_factory=list)
     summary: JobSummary | None = None
+    processing_timings: dict[str, float] = Field(default_factory=dict)
+    warnings: list[str] = Field(default_factory=list)
+    processing_stats: ProcessingStats = Field(default_factory=ProcessingStats)

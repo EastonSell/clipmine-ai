@@ -54,3 +54,6 @@ def test_serialize_job_and_export_shapes() -> None:
     assert "audio_features" in export_payload["clips"][0]
     assert "quality_breakdown" in export_payload["clips"][0]
     assert "word_alignments" in export_payload["clips"][0]
+    assert "processingTimings" in job_payload
+    assert "warnings" in job_payload
+    assert "processingStats" in export_payload

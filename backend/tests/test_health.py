@@ -8,5 +8,9 @@ def test_healthcheck() -> None:
         response = client.get("/api/health")
 
     assert response.status_code == 200
-    assert response.json()["status"] == "ok"
-
+    payload = response.json()
+    assert payload["status"] == "ok"
+    assert payload["checks"]["storageWritable"] is True
+    assert "ffmpegAvailable" in payload["checks"]
+    assert "modelCacheReady" in payload["checks"]
+    assert isinstance(payload["queueDepth"], int)

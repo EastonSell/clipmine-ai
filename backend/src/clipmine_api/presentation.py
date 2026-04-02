@@ -81,6 +81,9 @@ def serialize_job(job: JobManifest) -> dict[str, object]:
         "clips": [clip.model_dump(mode="json") for clip in job.clips],
         "timeline": [bin_item.model_dump(mode="json") for bin_item in job.timeline],
         "language": job.language,
+        "processingTimings": job.processing_timings,
+        "warnings": job.warnings,
+        "processingStats": job.processing_stats.model_dump(mode="json"),
         "createdAt": job.created_at,
         "updatedAt": job.updated_at,
     }
@@ -97,6 +100,9 @@ def serialize_export(job: JobManifest) -> dict[str, object]:
         "timeline": [bin_item.model_dump(mode="json") for bin_item in job.timeline],
         "transcriptText": job.transcript_text,
         "language": job.language,
+        "processingTimings": job.processing_timings,
+        "warnings": job.warnings,
+        "processingStats": job.processing_stats.model_dump(mode="json"),
     }
 
 
@@ -113,4 +119,3 @@ def _quality_label(score: float) -> str:
     if score >= 55:
         return "Good"
     return "Weak"
-
