@@ -13,19 +13,16 @@
   <text x="962" y="83" fill="#B9C7D7" font-family="Arial, sans-serif" font-size="16">Recent</text>
   <text x="1102" y="83" fill="#B9C7D7" font-family="Arial, sans-serif" font-size="16">Roadmap</text>
   <text x="1226" y="83" fill="#08202A" font-family="Arial, sans-serif" font-size="16" font-weight="700">Upload video</text>
-
   <text x="72" y="194" fill="#7BD9F3" font-family="Arial, sans-serif" font-size="15" letter-spacing="3">TRAINING-READY SPEECH CURATION</text>
   <text x="72" y="282" fill="#F0F5FA" font-family="Arial, sans-serif" font-size="78" font-weight="700">Queue uploads.</text>
   <text x="72" y="358" fill="#F0F5FA" font-family="Arial, sans-serif" font-size="78" font-weight="700">Review ranked clips.</text>
   <text x="72" y="434" fill="#F0F5FA" font-family="Arial, sans-serif" font-size="78" font-weight="700">Export one package.</text>
   <text x="74" y="492" fill="#8FA0B5" font-family="Arial, sans-serif" font-size="24">ClipMine AI turns raw talking-head video into a review surface with scoring,</text>
-  <text x="74" y="528" fill="#8FA0B5" font-family="Arial, sans-serif" font-size="24">timeline coverage, batch queue state, and training-package exports.</text>
-
+  <text x="74" y="528" fill="#8FA0B5" font-family="Arial, sans-serif" font-size="24">timeline coverage, queue status, and training-package exports.</text>
   <rect x="72" y="578" width="184" height="56" rx="22" fill="#82DFFF"/>
   <rect x="272" y="578" width="204" height="56" rx="22" fill="#121C28" stroke="#29384A"/>
   <text x="118" y="613" fill="#08202A" font-family="Arial, sans-serif" font-size="20" font-weight="700">Upload video</text>
   <text x="319" y="613" fill="#C2CEDA" font-family="Arial, sans-serif" font-size="20">Explore workspace</text>
-
   <rect x="72" y="676" width="210" height="96" rx="24" fill="#121C28" stroke="#29384A"/>
   <rect x="290" y="676" width="210" height="96" rx="24" fill="#121C28" stroke="#29384A"/>
   <rect x="508" y="676" width="210" height="96" rx="24" fill="#121C28" stroke="#29384A"/>
@@ -35,24 +32,20 @@
   <text x="314" y="748" fill="#E9F0F7" font-family="Arial, sans-serif" font-size="22" font-weight="700">Keep sources grouped</text>
   <text x="532" y="714" fill="#7BD9F3" font-family="Arial, sans-serif" font-size="13" letter-spacing="2">TRAINING PACKAGE</text>
   <text x="532" y="748" fill="#E9F0F7" font-family="Arial, sans-serif" font-size="22" font-weight="700">Export clips + manifest</text>
-
   <rect x="816" y="156" width="520" height="566" rx="30" fill="#101823" stroke="#223247"/>
   <rect x="848" y="188" width="456" height="70" rx="20" fill="#121D2A" stroke="#25354A"/>
   <text x="878" y="220" fill="#7BD9F3" font-family="Arial, sans-serif" font-size="13" letter-spacing="2">WORKSPACE PREVIEW</text>
   <text x="878" y="247" fill="#E9F0F7" font-family="Arial, sans-serif" font-size="28" font-weight="700">Single app surface</text>
-
   <rect x="848" y="286" width="176" height="220" rx="24" fill="#121C28" stroke="#26384D"/>
   <text x="874" y="320" fill="#8FA0B5" font-family="Arial, sans-serif" font-size="14">SELECTED PACKAGE</text>
   <text x="874" y="398" fill="#F0F5FA" font-family="Arial, sans-serif" font-size="76" font-weight="700">08</text>
   <text x="874" y="440" fill="#8FA0B5" font-family="Arial, sans-serif" font-size="16">Linked clip files and manifest</text>
-
   <rect x="1048" y="286" width="256" height="92" rx="22" fill="#121C28" stroke="#26384D"/>
   <rect x="1048" y="392" width="256" height="92" rx="22" fill="#121C28" stroke="#26384D"/>
   <text x="1072" y="322" fill="#7BD9F3" font-family="Arial, sans-serif" font-size="13" letter-spacing="2">QUEUE</text>
   <text x="1072" y="352" fill="#E9F0F7" font-family="Arial, sans-serif" font-size="24" font-weight="700">3 uploads grouped</text>
   <text x="1072" y="428" fill="#7BD9F3" font-family="Arial, sans-serif" font-size="13" letter-spacing="2">TIMELINE</text>
   <text x="1072" y="458" fill="#E9F0F7" font-family="Arial, sans-serif" font-size="24" font-weight="700">48 usefulness bins</text>
-
   <rect x="848" y="534" width="456" height="156" rx="24" fill="#121C28" stroke="#26384D"/>
   <text x="878" y="568" fill="#8FA0B5" font-family="Arial, sans-serif" font-size="14">TOP CLIPS</text>
   <rect x="878" y="596" width="396" height="28" rx="14" fill="#0E1621"/>
