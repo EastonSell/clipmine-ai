@@ -63,6 +63,7 @@ def test_package_export_returns_zip_with_manifest_and_clip_files(tmp_path: Path)
     assert "clipmine-export-package-job/manifest.json" in archive_names
     assert "clipmine-export-package-job/clips/clip_001__package-job-clip-001.mp4" in archive_names
     assert "clipmine-export-package-job/clips/clip_002__package-job-clip-002.mp4" in archive_names
+    assert archive.getinfo("clipmine-export-package-job/clips/clip_001__package-job-clip-001.mp4").compress_type == zipfile.ZIP_STORED
 
     manifest_payload = orjson.loads(archive.read("clipmine-export-package-job/manifest.json"))
     assert manifest_payload["jobId"] == job_id

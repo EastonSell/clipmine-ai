@@ -126,6 +126,26 @@ clipmine-batch-export-<label>/
 
 The frontend talks directly to the backend for upload initialization, polling, playback, and export. Local development stays simple with direct uploads. Production can switch to multipart uploads backed by object storage without changing the review workflow.
 
+## Why these metrics
+
+ClipMine does not use the metrics because they are fashionable. It uses them because each one answers a specific curation question:
+
+- `confidence`: a clip with weak ASR confidence is harder to trust as training supervision
+- `speech_rate`: clips that are too slow or too rushed are usually harder to label and less stable for downstream use
+- `energy` and `acoustic_signal`: low-signal or noisy clips often look acceptable in text while still being poor audio examples
+- `silence_ratio` and `continuity`: pause-heavy segments waste review time and usually produce weaker training slices
+- `boundary_cleanliness`: clips that start or end mid-thought create ambiguous supervision and messy exports
+- `speech_density`: denser clips usually carry more useful speech content per second
+- `linguistic_clarity`: filler-heavy or muddled text reduces how cleanly a clip can be reused
+- `visual_readiness`: for audiovisual use, the face needs to be visible and reasonably active; weak visual support should lower confidence without automatically discarding a strong audio clip
+- `dedupe_confidence`: near-duplicate clips crowd the shortlist without adding new supervision value
+- `selection_recommendation` and `quality_penalties`: the numeric score alone is not enough; users need a machine-readable recommendation plus reasons they can audit
+
+That combination is meant to balance two things:
+
+- practical review speed for humans
+- clip quality signals that map to real downstream training or annotation work
+
 ## README visuals stay current
 
 GitHub README pages cannot embed live iframe renders reliably, so this repo uses generated screenshots instead.

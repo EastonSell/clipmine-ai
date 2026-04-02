@@ -90,7 +90,11 @@ def build_package_export(
     with zipfile.ZipFile(archive_path, "w", compression=zipfile.ZIP_DEFLATED) as archive:
         for path in sorted(package_root.rglob("*")):
             if path.is_file():
-                archive.write(path, arcname=str(path.relative_to(cleanup_root)))
+                archive.write(
+                    path,
+                    arcname=str(path.relative_to(cleanup_root)),
+                    compress_type=_resolve_archive_compression(path),
+                )
 
     return PackageExportArtifact(
         archive_name=archive_name,
@@ -183,7 +187,11 @@ def build_batch_package_export(
     with zipfile.ZipFile(archive_path, "w", compression=zipfile.ZIP_DEFLATED) as archive:
         for path in sorted(package_root.rglob("*")):
             if path.is_file():
-                archive.write(path, arcname=str(path.relative_to(cleanup_root)))
+                archive.write(
+                    path,
+                    arcname=str(path.relative_to(cleanup_root)),
+                    compress_type=_resolve_archive_compression(path),
+                )
 
     return PackageExportArtifact(
         archive_name=archive_name,
@@ -220,7 +228,7 @@ def _resolve_source_video_path(
         return store.source_video_path(job)
 
     suffix = Path(job.source_video.file_name).suffix.lower() or ".mp4"
-    destination = cleanup_root / f"source-cache{suffix}"
+    destination = cleanup_root / f"source-cache-{job.job_id}{suffix}"
     artifact_store.download_source_video(job.source_video, destination)
     return destination
 
@@ -228,3 +236,7 @@ def _resolve_source_video_path(
 def _slugify(value: str) -> str:
     slug = re.sub(r"[^a-zA-Z0-9]+", "-", value.strip().lower()).strip("-")
     return slug or "batch"
+
+
+def _resolve_archive_compression(path: Path) -> int:
+    return zipfile.ZIP_STORED if path.suffix.lower() == ".mp4" else zipfile.ZIP_DEFLATED

@@ -17,6 +17,7 @@ const LOOPBACK_API_BASE_URLS: Record<string, string[]> = {
 const DEFAULT_UPLOAD_MODE: UploadMode = "direct";
 const MULTIPART_CONCURRENCY = 3;
 const MULTIPART_RETRY_LIMIT = 3;
+let lastSuccessfulApiBaseUrl: string | null = null;
 const API_ERROR_MESSAGES: Record<string, string> = {
   unsupported_file_type: "Only .mp4 and .mov files are supported.",
   file_too_large: "The selected file exceeds the configured upload limit.",
@@ -74,7 +75,11 @@ export class ApiError extends Error {
 }
 
 export function getApiBaseUrl() {
-  return getApiBaseUrls()[0];
+  return lastSuccessfulApiBaseUrl ?? getApiBaseUrls()[0];
+}
+
+export function resetApiBaseUrlMemory() {
+  lastSuccessfulApiBaseUrl = null;
 }
 
 export function getUploadMode(): UploadMode {
@@ -284,6 +289,7 @@ function createDirectJobAtBaseUrl(baseUrl: string, file: File, options: CreateJo
           options.onUploadProgress?.({ loaded: file.size, total: file.size, percentage: 100 });
           const payload = JSON.parse(request.responseText) as UploadJobResponse;
           options.onPhaseChange?.("processing");
+          recordSuccessfulApiBaseUrl(baseUrl);
           console.info("[ClipMine] Direct upload complete", {
             fileName: file.name,
             baseUrl,
@@ -607,6 +613,8 @@ async function requestJson<T>(url: string, init?: RequestInit): Promise<T> {
       throw await parseApiErrorFromResponse(response);
     }
 
+    recordSuccessfulApiBaseUrl(extractApiBaseUrl(url));
+
     if (response.status === 204) {
       return undefined as T;
     }
@@ -630,6 +638,8 @@ async function requestBlob(url: string, init?: RequestInit): Promise<{ blob: Blo
     if (!response.ok) {
       throw await parseApiErrorFromResponse(response);
     }
+
+    recordSuccessfulApiBaseUrl(extractApiBaseUrl(url));
 
     return {
       blob: await response.blob(),
@@ -727,6 +737,22 @@ function getApiBaseUrls() {
   }
 
   return [DEFAULT_API_BASE_URL];
+}
+
+function recordSuccessfulApiBaseUrl(baseUrl: string | null) {
+  if (!baseUrl) {
+    return;
+  }
+
+  lastSuccessfulApiBaseUrl = baseUrl.replace(/\/$/, "");
+}
+
+function extractApiBaseUrl(url: string) {
+  try {
+    return new URL(url).origin;
+  } catch {
+    return null;
+  }
 }
 
 function isAbortLikeError(error: unknown) {

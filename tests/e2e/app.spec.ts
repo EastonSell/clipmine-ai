@@ -410,3 +410,79 @@ test("batch workspace groups jobs and exports thresholded clips", async ({ page 
     { jobId: "job-beta", clipIds: ["job-beta-clip-1"] },
   ]);
 });
+
+test("landing page queues multiple uploads into one batch workspace", async ({ page }) => {
+  const alpha = createMockJob({
+    jobId: "queued-alpha",
+    sourceVideo: {
+      id: "queued-alpha",
+      file_name: "alpha.mp4",
+      content_type: "video/mp4",
+      size_bytes: 10_000_000,
+      duration_seconds: 140,
+      url: "/api/jobs/queued-alpha/video",
+    },
+  });
+  const beta = createMockJob({
+    jobId: "queued-beta",
+    sourceVideo: {
+      id: "queued-beta",
+      file_name: "beta.mp4",
+      content_type: "video/mp4",
+      size_bytes: 11_000_000,
+      duration_seconds: 155,
+      url: "/api/jobs/queued-beta/video",
+    },
+  });
+  let uploadCount = 0;
+
+  await page.route("**/api/jobs", async (route) => {
+    uploadCount += 1;
+    const payload = uploadCount === 1 ? alpha : beta;
+    await route.fulfill({
+      status: 201,
+      contentType: "application/json",
+      body: JSON.stringify({
+        jobId: payload.jobId,
+        status: "queued",
+        fileName: payload.sourceVideo.file_name,
+      }),
+    });
+  });
+
+  await page.route("**/api/jobs/queued-alpha", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(alpha),
+    });
+  });
+  await page.route("**/api/jobs/queued-beta", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(beta),
+    });
+  });
+
+  await page.goto("/");
+  await page.locator('input[type="file"]').setInputFiles([
+    {
+      name: "alpha.mp4",
+      mimeType: "video/mp4",
+      buffer: Buffer.from("alpha"),
+    },
+    {
+      name: "beta.mp4",
+      mimeType: "video/mp4",
+      buffer: Buffer.from("beta"),
+    },
+  ]);
+  await page.getByRole("button", { name: "Queue 2 videos" }).click();
+
+  await page.waitForURL("**/batches/*");
+  await expect(page.getByRole("heading", { name: "2 sources queued" })).toBeVisible();
+  await expect(page.getByText("alpha.mp4")).toBeVisible();
+  await expect(page.getByText("beta.mp4")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Top clips across the batch" })).toBeVisible();
+});

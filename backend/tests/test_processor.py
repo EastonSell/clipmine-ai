@@ -91,3 +91,30 @@ def test_job_processor_defaults_to_single_worker(tmp_path: Path) -> None:
     processor = JobProcessor(store, LocalArtifactStore(settings), worker_concurrency=0)
 
     assert processor.worker_concurrency == 1
+
+
+def test_job_processor_marks_corrupted_video_as_failed_with_clear_error(tmp_path: Path) -> None:
+    settings = Settings(storage_dir=tmp_path / "storage", model_cache_dir=tmp_path / "models")
+    store = JobStore(settings)
+    processor = JobProcessor(store, LocalArtifactStore(settings))
+
+    manifest = store.create_manifest_for_job(
+        job_id="corrupt-job",
+        file_name="corrupt.mp4",
+        content_type="video/mp4",
+        size_bytes=24,
+        relative_path="jobs/corrupt-job/source/corrupt.mp4",
+    )
+    source_path = store.source_video_path(manifest)
+    source_path.parent.mkdir(parents=True, exist_ok=True)
+    source_path.write_bytes(b"this-is-not-a-real-mp4")
+
+    processor.process_job("corrupt-job")
+
+    failed_job = store.load_job("corrupt-job")
+    assert failed_job.status == JobStatus.FAILED
+    assert failed_job.progress_phase == ProgressPhase.FAILED
+    assert (
+        failed_job.error
+        == "Source video could not be decoded. Try another MP4 or MOV file with a readable audio track."
+    )

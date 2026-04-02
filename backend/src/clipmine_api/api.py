@@ -40,6 +40,7 @@ CANONICAL_CONTENT_TYPES = {
     ".mp4": "video/mp4",
     ".mov": "video/quicktime",
 }
+UPLOAD_READ_CHUNK_BYTES = 4 * 1024 * 1024
 
 
 def get_job_store(request: Request) -> JobStore:
@@ -122,7 +123,7 @@ async def create_job(
 
     try:
         with file_path.open("wb") as handle:
-            while chunk := await file.read(1024 * 1024):
+            while chunk := await file.read(UPLOAD_READ_CHUNK_BYTES):
                 size_bytes += len(chunk)
                 if size_bytes > settings.max_upload_bytes:
                     raise build_http_error(

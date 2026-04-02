@@ -154,6 +154,37 @@ def test_create_job_rejects_oversize_upload_and_removes_reserved_job_dir(tmp_pat
     assert list((tmp_path / "storage" / "jobs").glob("*")) == []
 
 
+def test_create_job_accepts_upload_at_exact_size_limit(tmp_path: Path) -> None:
+    with TestClient(app) as client:
+        settings = client.app.state.settings
+        original_storage = settings.storage_dir
+        original_model_cache = settings.model_cache_dir
+        original_max_upload_mb = settings.max_upload_mb
+        original_enqueue = client.app.state.job_processor.enqueue
+        settings.storage_dir = tmp_path / "storage"
+        settings.model_cache_dir = tmp_path / "models"
+        settings.max_upload_mb = 1
+
+        async def noop_enqueue(job_id: str) -> None:
+            return None
+
+        client.app.state.job_processor.enqueue = noop_enqueue
+
+        try:
+            response = client.post(
+                "/api/jobs",
+                files={"file": ("limit.mp4", b"x" * settings.max_upload_bytes, "video/mp4")},
+            )
+        finally:
+            settings.storage_dir = original_storage
+            settings.model_cache_dir = original_model_cache
+            settings.max_upload_mb = original_max_upload_mb
+            client.app.state.job_processor.enqueue = original_enqueue
+
+    assert response.status_code == 201
+    assert response.json()["fileName"] == "limit.mp4"
+
+
 def test_export_returns_conflict_while_job_is_incomplete(tmp_path: Path) -> None:
     with TestClient(app) as client:
         settings = client.app.state.settings
@@ -221,6 +252,39 @@ def test_initialize_multipart_upload_returns_session_and_parts(tmp_path: Path) -
     assert len(payload["parts"]) == 2
     assert payload["parts"][0]["url"].startswith("https://uploads.example/upload-123/part/1")
     assert saved_session.upload_id == "upload-123"
+
+
+def test_initialize_multipart_upload_scales_part_count_for_large_sources(tmp_path: Path) -> None:
+    with TestClient(app) as client:
+        settings = client.app.state.settings
+        original_storage = settings.storage_dir
+        original_model_cache = settings.model_cache_dir
+        original_storage_backend = settings.storage_backend
+        original_artifact_store = client.app.state.artifact_store
+        settings.storage_dir = tmp_path / "storage"
+        settings.model_cache_dir = tmp_path / "models"
+        settings.storage_backend = "s3"
+        client.app.state.artifact_store = FakeMultipartArtifactStore()
+
+        try:
+            response = client.post(
+                "/api/uploads/init",
+                json={
+                    "fileName": "large.mp4",
+                    "contentType": "video/mp4",
+                    "sizeBytes": (16 * 1024 * 1024 * 4) + (3 * 1024 * 1024),
+                },
+            )
+        finally:
+            settings.storage_dir = original_storage
+            settings.model_cache_dir = original_model_cache
+            settings.storage_backend = original_storage_backend
+            client.app.state.artifact_store = original_artifact_store
+
+    assert response.status_code == 201
+    payload = response.json()
+    assert payload["partSizeBytes"] == 16 * 1024 * 1024
+    assert len(payload["parts"]) == 5
 
 
 def test_complete_multipart_upload_writes_manifest_and_enqueues_job(tmp_path: Path) -> None:

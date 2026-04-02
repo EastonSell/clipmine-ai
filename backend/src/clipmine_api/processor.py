@@ -7,7 +7,7 @@ from statistics import mean
 from time import perf_counter
 
 from .artifact_store import ArtifactStore
-from .media import extract_audio, load_mono_wave, probe_media_duration
+from .media import MediaProcessingError, extract_audio, load_mono_wave, probe_media_duration
 from .multimodal import enrich_scored_clips
 from .precision import apply_precision_selection
 from .presentation import build_summary, build_timeline
@@ -266,16 +266,23 @@ class JobProcessor:
                 len(timeline),
             )
         except Exception as exc:
+            error_message = _normalize_processing_error(exc)
             failed_job = self.store.load_job(job_id).model_copy(
                 update={
                     "status": JobStatus.FAILED,
                     "progress_phase": ProgressPhase.FAILED,
-                    "error": str(exc),
+                    "error": error_message,
                     "processing_timings": {**processing_timings, "total": round((perf_counter() - started_at) * 1000, 1)},
                 }
             )
             self.store.save_job(failed_job)
-            logger.exception("job.failed job_id=%s total_duration_ms=%.1f error=%s", job_id, (perf_counter() - started_at) * 1000, exc)
+            logger.exception(
+                "job.failed job_id=%s total_duration_ms=%.1f error=%s user_message=%s",
+                job_id,
+                (perf_counter() - started_at) * 1000,
+                exc,
+                error_message,
+            )
         finally:
             if job.source_video.storage_backend != "local":
                 video_path.unlink(missing_ok=True)
@@ -307,3 +314,13 @@ def _build_warnings(clips: list[ClipRecord], processing_stats: ProcessingStats) 
         warnings.append("The source contains limited usable speech, so review coverage may be sparse.")
 
     return warnings
+
+
+def _normalize_processing_error(exc: Exception) -> str:
+    if isinstance(exc, MediaProcessingError):
+        return str(exc)
+
+    if isinstance(exc, FileNotFoundError):
+        return "A required source artifact was missing while processing the job."
+
+    return "Processing failed unexpectedly before clips could be generated. Check backend logs and retry the upload."

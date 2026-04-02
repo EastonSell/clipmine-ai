@@ -258,6 +258,82 @@ curl -I -sSf http://127.0.0.1:3000/jobs/demo-job
   - landing page and recent jobs rendering
   - invalid upload validation
 
+## Reliability And Edge-Case Pass
+
+Date/Time: 2026-04-02 14:11:39 PDT
+
+### Bugs fixed
+
+#### 11. Workspace media/export URLs could still point at the wrong loopback host
+
+- Fixed a frontend client bug where `getJob()` could succeed through the fallback API host, but source-video playback and raw JSON export still used the original preferred host.
+- The API client now remembers the last successful API base URL and reuses it for workspace media and export links.
+
+#### 12. Corrupted MP4 uploads failed with raw decoder noise
+
+- Fixed backend processing so unreadable or corrupted video files now fail with a concise user-facing error:
+  - `Source video could not be decoded. Try another MP4 or MOV file with a readable audio track.`
+- Detailed ffmpeg errors are still preserved in backend logs for debugging.
+
+#### 13. Direct upload path used small server-side chunks
+
+- Increased the direct upload read chunk size from `1 MiB` to `4 MiB` to reduce Python I/O overhead on larger uploads.
+
+#### 14. Package export was wasting CPU by recompressing MP4 files in the zip
+
+- Updated package export so `.mp4` clip files are stored with `ZIP_STORED` instead of `ZIP_DEFLATED`.
+- This keeps clip packaging faster because the media files are already compressed.
+
+### Features tested
+
+- Frontend unit tests:
+  - API upload helper coverage now includes successful fallback base URL memory
+- Backend API tests:
+  - exact upload-size limit acceptance
+  - multipart init part-count scaling for larger source sizes
+- Backend processor tests:
+  - corrupted MP4 processing fails cleanly with the expected user-facing error
+- Backend package export tests:
+  - exported `.mp4` clip files are stored without extra zip recompression
+- Browser smoke coverage added in code for:
+  - multi-file queue flow from the landing page into `/batches/[batchId]`
+
+### Runtime verification
+
+- Started the backend locally on `http://127.0.0.1:8001`
+- Verified `GET /api/health` returns healthy readiness checks
+- Uploaded a real corrupted file:
+  - `/tmp/clipmine-corrupt.mp4`
+  - result: job reached `failed`
+  - user-facing error: `Source video could not be decoded. Try another MP4 or MOV file with a readable audio track.`
+- Uploaded the real sample source:
+  - `/Users/easton/Desktop/videoplayback.mp4`
+  - size: `19,824,297` bytes
+  - upload accepted in roughly `0.105s` locally
+  - processing result:
+    - `ready`
+    - `50` clips
+    - top score `100.0`
+    - warning: `Audio signal quality is inconsistent across the strongest clips.`
+    - timings:
+      - `extracting_audio`: `270.1 ms`
+      - `transcribing`: `9700.2 ms`
+      - `segmenting`: `1.5 ms`
+      - `scoring`: `6603.5 ms`
+      - `total`: `16641.7 ms`
+
+### Commands run
+
+```bash
+npm_config_cache=/tmp/clipmine-npm-cache npm run test:web
+TMPDIR='/Users/easton/Codex Creator Challenge/.tmp-pytest' npm run test:api
+npm_config_cache=/tmp/clipmine-npm-cache npm run lint:web
+npm_config_cache=/tmp/clipmine-npm-cache npm run build:web
+curl -s http://127.0.0.1:8001/api/health
+curl -s -F "file=@/tmp/clipmine-corrupt.mp4;type=video/mp4" http://127.0.0.1:8001/api/jobs
+time curl -s -F "file=@/Users/easton/Desktop/videoplayback.mp4;type=video/mp4" http://127.0.0.1:8001/api/jobs
+```
+
 ## Reliability-First Upload Pass
 
 - Added backend support for S3-compatible multipart uploads with additive endpoints:

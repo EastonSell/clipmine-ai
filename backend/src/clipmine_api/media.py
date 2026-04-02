@@ -11,6 +11,14 @@ import numpy as np
 
 logger = logging.getLogger("uvicorn.error")
 
+DECODE_FAILURE_MESSAGE = (
+    "Source video could not be decoded. Try another MP4 or MOV file with a readable audio track."
+)
+
+
+class MediaProcessingError(RuntimeError):
+    pass
+
 
 def extract_audio(video_path: Path, output_path: Path) -> None:
     output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -33,7 +41,7 @@ def extract_audio(video_path: Path, output_path: Path) -> None:
     completed = subprocess.run(command, capture_output=True, text=True)
     if completed.returncode != 0:
         logger.error("media.extract_audio failed video_path=%s stderr=%s", video_path, completed.stderr.strip())
-        raise RuntimeError(completed.stderr.strip() or "ffmpeg audio extraction failed")
+        raise MediaProcessingError(DECODE_FAILURE_MESSAGE)
     logger.info("media.extract_audio complete output_path=%s", output_path)
 
 
@@ -88,10 +96,14 @@ def extract_video_clip(video_path: Path, output_path: Path, *, start_time: float
 
 def probe_media_duration(media_path: Path) -> float | None:
     logger.debug("media.probe_duration path=%s", media_path)
-    with av.open(str(media_path)) as container:
-        if container.duration is None:
-            return None
-        return float(container.duration / av.time_base)
+    try:
+        with av.open(str(media_path)) as container:
+            if container.duration is None:
+                return None
+            return float(container.duration / av.time_base)
+    except Exception as exc:
+        logger.error("media.probe_duration failed path=%s error=%s", media_path, exc)
+        raise MediaProcessingError(DECODE_FAILURE_MESSAGE) from exc
 
 
 def load_mono_wave(audio_path: Path) -> tuple[np.ndarray, int]:
