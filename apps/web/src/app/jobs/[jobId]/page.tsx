@@ -1,4 +1,4 @@
-import { ResultsWorkspace } from "@/components/results-workspace";
+import { ResultsWorkspace } from "@/components/workspace/results-workspace";
 
 type JobPageProps = {
   params: Promise<{ jobId: string }>;
