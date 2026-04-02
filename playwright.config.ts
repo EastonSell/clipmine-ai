@@ -21,7 +21,8 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: "FORCE_COLOR=0 NEXT_PUBLIC_UPLOAD_MODE=multipart npm_config_cache=/tmp/clipmine-npm-cache npm run preview:web",
+    command:
+      "env -u FORCE_COLOR -u NO_COLOR NEXT_PUBLIC_UPLOAD_MODE=multipart npm_config_cache=/tmp/clipmine-npm-cache npm run preview:web",
     url: "http://127.0.0.1:3000",
     reuseExistingServer: !process.env.CI,
     timeout: 180_000,

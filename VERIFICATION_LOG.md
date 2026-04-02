@@ -609,3 +609,30 @@ npm run test:e2e
 - `npm run lint:web`: passed
 - `npm run build:web`: passed
 - `npm run test:e2e`: 10 / 10 tests passed
+
+## Playwright Script Environment Pass
+
+- Removed the lingering local browser warning caused by conflicting color environment variables during `npm run test:e2e`.
+- The repo-level scripts now unset both `FORCE_COLOR` and `NO_COLOR` for:
+  - `npm run test:e2e`
+  - `npm run generate:readme-assets`
+  - the Playwright preview web-server command
+
+## Playwright Script Bug Fixed
+
+### 16. Browser smoke startup printed a noisy color-env warning
+
+- The browser suite still emitted `The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.` even after the tests were already passing.
+- The root cause was the repo script layer: a `FORCE_COLOR` setting in the npm command path could still conflict with inherited shell environment.
+- The fix was to unset both env vars explicitly at the repo script boundary so Playwright and its preview server start from a clean color environment.
+
+## Playwright Script Checks Run
+
+```bash
+npm run test:e2e
+```
+
+## Playwright Script Result
+
+- `npm run test:e2e`: 10 / 10 tests passed
+- no `NO_COLOR` / `FORCE_COLOR` startup warning was emitted during the run

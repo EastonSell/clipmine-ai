@@ -49,7 +49,8 @@
 
 ## Bugs Found
 
-- [ ] Node still prints `NO_COLOR` / `FORCE_COLOR` warnings during Playwright startup even though the suite passes.
+- [x] Node printed `NO_COLOR` / `FORCE_COLOR` warnings during Playwright startup even though the suite passed.
+  Notes: Fixed on 2026-04-02 by unsetting both env vars at the repo script boundary for Playwright and README asset generation.
 - [ ] The workspace-local `.git` directory in the main repo root is not trustworthy for normal commit workflows, so publish still uses the temp-checkout workaround.
 
 ## Needs Testing
@@ -135,8 +136,16 @@
 
 ## Testing Tasks
 
-- [ ] Remove Playwright color warnings
+- [x] Remove Playwright color warnings
   Prompt: "Trace the remaining `NO_COLOR` / `FORCE_COLOR` conflict during Playwright startup and eliminate the warnings without breaking the local browser test path."
+  Notes: Completed on 2026-04-02 by unsetting both `FORCE_COLOR` and `NO_COLOR` in the repo-level Playwright scripts and preview server command.
+  Verified: `npm run test:e2e`
+
+- [ ] Add a smoke assertion for the finished batch summary action row
+  Prompt: "Ensure the completed queue state always renders the open-workspace and queue-more actions together so the landing page never strands the user after a finished batch."
+
+- [ ] Add a console-warning guard around the browser smoke runner
+  Prompt: "Teach the browser smoke path to fail or flag when known startup warnings reappear so regressions like duplicate keys or color-env conflicts are caught immediately."
 
 - [ ] Add non-mocked browser verification against the local API
   Prompt: "Create a dedicated Playwright job that talks to the real local FastAPI backend for one smoke path instead of mocking every API response."
@@ -163,3 +172,6 @@
 - 2026-04-02: Added `Surface the latest finished batch session from the landing page` before implementing the queue completion summary flow.
 - 2026-04-02: Completed `Add queue completion toast and summary state` after web unit, lint, build, and Playwright verification.
 - 2026-04-02: Added `Add per-source ETA hints to the active queue card` as the next frontend queue follow-up.
+- 2026-04-02: Added `Add a smoke assertion for the finished batch summary action row` before fixing the remaining Playwright color-env warning.
+- 2026-04-02: Completed `Remove Playwright color warnings` after confirming `npm run test:e2e` no longer prints the startup warning.
+- 2026-04-02: Added `Add a console-warning guard around the browser smoke runner` as the next testing follow-up.
