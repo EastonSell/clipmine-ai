@@ -80,7 +80,11 @@ export async function createJob(file: File, options: CreateJobOptions = {}) {
       console.error("[ClipMine] Upload network error", {
         fileName: file.name,
       });
-      reject(new Error("Upload failed."));
+      reject(
+        new Error(
+          "Upload failed. The processing API may be offline or blocked by browser origin settings."
+        )
+      );
     });
 
     xhr.addEventListener("abort", () => {

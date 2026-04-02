@@ -189,6 +189,10 @@ export function UploadSection() {
                       Upload failed
                     </div>
                     <p className="mt-2 leading-6">{error}</p>
+                    <p className="mt-2 text-xs leading-5 text-red-200/80">
+                      If you are running locally, make sure both the frontend and backend are running and that the API
+                      allows the current browser origin.
+                    </p>
                   </div>
                 </div>
               ) : null}

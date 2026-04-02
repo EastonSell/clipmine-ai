@@ -12,7 +12,7 @@ class Settings(BaseSettings):
     environment: str = "development"
     port: int = 8000
     log_level: str = "DEBUG"
-    backend_cors_origins: str = "http://localhost:3000"
+    backend_cors_origins: str = "http://localhost:3000,http://127.0.0.1:3000"
     max_upload_mb: int = 1024
     storage_dir: Path = Field(default=Path("./storage"))
     model_cache_dir: Path = Field(default=Path("./storage/models"))

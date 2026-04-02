@@ -117,6 +117,7 @@ Important defaults:
 - `NEXT_PUBLIC_MAX_UPLOAD_MB=1024`
 - `LOG_LEVEL=DEBUG`
 - `MAX_UPLOAD_MB=1024`
+- `BACKEND_CORS_ORIGINS=http://localhost:3000,http://127.0.0.1:3000`
 
 ### 2. Install Frontend Dependencies
 

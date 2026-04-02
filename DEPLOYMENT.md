@@ -72,6 +72,7 @@ BACKEND_CORS_ORIGINS=https://your-frontend.vercel.app
 
 - Confirm `NEXT_PUBLIC_API_BASE_URL` points to the live backend.
 - Confirm `BACKEND_CORS_ORIGINS` includes the exact frontend origin.
+- For local development, include both `http://localhost:3000` and `http://127.0.0.1:3000` if you use both.
 - Confirm the upload is `.mp4` or `.mov`.
 
 ### Backend job never reaches `ready`

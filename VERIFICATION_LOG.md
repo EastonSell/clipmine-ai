@@ -27,6 +27,9 @@ This log records the debugging pass completed for the current ClipMine AI reposi
   - processing reached `ready`
   - transcription completed successfully
   - clip ranking and timeline generation completed successfully
+- Verified local browser-origin support for both:
+  - `http://localhost:3000`
+  - `http://127.0.0.1:3000`
 
 ## Bugs Fixed
 
@@ -52,6 +55,11 @@ This log records the debugging pass completed for the current ClipMine AI reposi
 ### 5. Missing backend dependency declaration
 
 - Added the `av` dependency to backend project metadata so media probing is installed reliably in fresh environments instead of depending on a pre-existing local package.
+
+### 6. Local browser upload origin mismatch
+
+- Fixed the default backend CORS configuration so local uploads work from both `localhost:3000` and `127.0.0.1:3000`.
+- This resolves the common case where the backend was healthy and direct uploads worked in `curl`, but the browser still showed `Upload failed` because the origin was blocked.
 
 ## Features Tested
 
@@ -94,6 +102,9 @@ npm_config_cache=/tmp/clipmine-npm-cache npm run build:web
   - export conflict while processing
 - `backend/tests/test_processor.py`
   - restart recovery and requeue behavior for incomplete jobs
+- `backend/tests/test_cors.py`
+  - localhost browser origin is allowed
+  - 127.0.0.1 browser origin is allowed
 - Existing test coverage retained for:
   - API serialization shapes
   - scoring behavior

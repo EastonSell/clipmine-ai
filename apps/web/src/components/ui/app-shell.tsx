@@ -9,7 +9,7 @@ type AppShellProps = {
 
 export function AppShell({ children, className }: AppShellProps) {
   return (
-    <main className={cn("relative isolate min-h-screen overflow-hidden pb-16", className)}>
+    <main className={cn("relative isolate min-h-screen overflow-hidden pb-20", className)}>
       <div className="pointer-events-none absolute inset-0 -z-10">
         <div className="absolute inset-x-0 top-0 h-40 bg-[linear-gradient(180deg,rgba(255,255,255,0.04),transparent)]" />
         <div className="absolute left-[-10rem] top-24 size-[24rem] rounded-full bg-[var(--accent-soft)] blur-[120px]" />
