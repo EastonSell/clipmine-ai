@@ -6,6 +6,10 @@ ClipMine AI is a multimodal speech curation tool for dataset builders. It sits b
 
 ![ClipMine AI overview](docs/readme/landing-overview.svg)
 
+## Live execution plan
+
+The active implementation backlog lives in [PLAN.md](PLAN.md). It tracks shipped work, tested status, open bugs, milestone phases, and the next task the agent should take on.
+
 ## Why this is useful
 
 Most teams do not need “more transcript.” They need fewer, cleaner clips that are already organized enough to use. ClipMine AI focuses on:

@@ -189,6 +189,68 @@ test("multipart upload can be cancelled and returns a retryable error state", as
   await expect(page.getByRole("button", { name: "Retry upload" })).toBeVisible();
 });
 
+test("batch queue shows current source progress before completion", async ({ page }) => {
+  const uploadSessionId = "session-batch-progress";
+  const uploadPartUrl = buildMultipartPartUrl(uploadSessionId, 1);
+
+  await page.route("**/api/uploads/init", async (route) => {
+    await route.fulfill({
+      status: 201,
+      contentType: "application/json",
+      body: JSON.stringify({
+        uploadSessionId,
+        jobId: "job-batch-progress",
+        fileName: "alpha.mp4",
+        partSizeBytes: 16 * 1024 * 1024,
+        expiresAt: "2026-04-02T12:30:00.000Z",
+        parts: [{ partNumber: 1, url: uploadPartUrl }],
+      }),
+    });
+  });
+
+  await page.route(uploadPartUrl, async (route) => {
+    await new Promise((resolve) => setTimeout(resolve, 5_000));
+    await route.fulfill({
+      status: 200,
+      headers: {
+        ETag: '"etag-batch-progress"',
+      },
+      body: "",
+    });
+  });
+
+  await page.route(`**/api/uploads/${uploadSessionId}`, async (route) => {
+    await route.fulfill({
+      status: 204,
+      body: "",
+    });
+  });
+
+  await page.goto("/");
+  await page.locator('input[type="file"]').setInputFiles([
+    {
+      name: "alpha.mp4",
+      mimeType: "video/mp4",
+      buffer: Buffer.alloc(2 * 1024 * 1024, 7),
+    },
+    {
+      name: "beta.mp4",
+      mimeType: "video/mp4",
+      buffer: Buffer.alloc(2 * 1024 * 1024, 8),
+    },
+  ]);
+  await page.getByRole("button", { name: "Queue 2 videos" }).click();
+
+  await expect(page.getByText("Queue progress")).toBeVisible();
+  await expect(page.getByText("Current source")).toBeVisible();
+  await expect(page.getByText("Source 1 of 2")).toBeVisible();
+  await expect(page.getByText("Backend ready")).toBeVisible();
+  await expect(page.getByText("Failed / cancelled")).toBeVisible();
+
+  await page.getByRole("button", { name: "Cancel", exact: true }).click();
+  await expect(page.getByText("The batch queue was cancelled before any upload reached the processing stage.")).toBeVisible();
+});
+
 test("timeline tab is shareable with query params", async ({ page }) => {
   const job = createMockJob();
 

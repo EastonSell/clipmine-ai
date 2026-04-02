@@ -18,9 +18,11 @@ import { formatBytes } from "@/lib/format";
 import type {
   BatchSessionRecord,
   BatchUploadItemRecord,
+  BatchUploadItemStatus,
   UploadPhase,
   UploadProgress,
 } from "@/lib/types";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { ProgressBar } from "@/components/ui/progress-bar";
@@ -97,6 +99,61 @@ function formatOverallQueueProgress(items: BatchUploadItemRecord[]) {
   return Math.round(weighted / items.length);
 }
 
+function formatPhaseLabel(phase: BatchUploadItemRecord["uploadPhase"]) {
+  if (phase === "queued") {
+    return "Waiting";
+  }
+  if (phase === "validating") {
+    return "Validating";
+  }
+  if (phase === "transferring") {
+    return "Uploading";
+  }
+  if (phase === "finalizing") {
+    return "Finalizing";
+  }
+  if (phase === "processing") {
+    return "Processing";
+  }
+  return "Queued on backend";
+}
+
+function formatBatchItemSummary(item: BatchUploadItemRecord) {
+  if (item.status === "uploading") {
+    return `${formatPhaseLabel(item.uploadPhase)} · ${item.uploadProgress}%`;
+  }
+
+  if (item.status === "processing") {
+    return "Queued on backend";
+  }
+
+  if (item.status === "ready") {
+    return "Ready in workspace";
+  }
+
+  if (item.status === "failed" || item.status === "cancelled") {
+    return item.error ?? (item.status === "failed" ? "Upload failed" : "Queue cancelled");
+  }
+
+  return "Waiting in queue";
+}
+
+function getBatchItemTone(status: BatchUploadItemStatus) {
+  if (status === "ready" || status === "processing") {
+    return "accent" as const;
+  }
+
+  if (status === "failed" || status === "cancelled") {
+    return "danger" as const;
+  }
+
+  if (status === "uploading") {
+    return "neutral" as const;
+  }
+
+  return "muted" as const;
+}
+
 export function UploadSection() {
   const router = useRouter();
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
@@ -117,6 +174,9 @@ export function UploadSection() {
   const overallQueueProgress = useMemo(() => formatOverallQueueProgress(batchQueue), [batchQueue]);
   const completedQueueCount = batchQueue.filter((item) => item.status === "processing" || item.status === "ready").length;
   const failedQueueCount = batchQueue.filter((item) => item.status === "failed").length;
+  const cancelledQueueCount = batchQueue.filter((item) => item.status === "cancelled").length;
+  const waitingQueueCount = batchQueue.filter((item) => item.status === "queued").length;
+  const activeQueueOrdinal = currentBatchIndex !== null ? currentBatchIndex + 1 : null;
 
   function replaceQueueItem(index: number, updater: (current: BatchUploadItemRecord) => BatchUploadItemRecord) {
     setBatchQueue((currentItems) => {
@@ -559,7 +619,39 @@ export function UploadSection() {
                     </div>
                     <ProgressBar value={isBatchMode ? overallQueueProgress : uploadProgress} className="mt-4" />
                     {isBatchMode ? (
-                      <div className="mt-4 space-y-2">
+                      <div className="mt-4 space-y-4">
+                        <div className="grid gap-3 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)]">
+                          <div className="rounded-[1rem] border border-[var(--line)] bg-[var(--surface-overlay)] px-4 py-4">
+                            <div className="flex flex-wrap items-start justify-between gap-3">
+                              <div>
+                                <div className="metric-label text-[var(--accent)]">Current source</div>
+                                <div className="mt-2 text-sm font-medium text-[var(--muted-strong)]">
+                                  {activeQueueOrdinal ? `Source ${activeQueueOrdinal} of ${batchQueue.length}` : "Waiting to start"}
+                                </div>
+                                <div className="mt-2 text-lg font-semibold tracking-[-0.03em] text-[var(--text)]">
+                                  {activeQueueItem?.fileName ?? "No active source"}
+                                </div>
+                                <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
+                                  {activeQueueItem
+                                    ? formatBatchItemSummary(activeQueueItem)
+                                    : "The queue will begin with the first source as soon as validation completes."}
+                                </p>
+                              </div>
+                              {activeQueueItem ? (
+                                <Badge tone={getBatchItemTone(activeQueueItem.status)}>
+                                  {formatPhaseLabel(activeQueueItem.uploadPhase)}
+                                </Badge>
+                              ) : null}
+                            </div>
+                          </div>
+
+                          <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-1 xl:grid-cols-3">
+                            <QueueMetric label="Backend ready" value={String(completedQueueCount)} />
+                            <QueueMetric label="Waiting" value={String(waitingQueueCount)} />
+                            <QueueMetric label="Failed / cancelled" value={`${failedQueueCount} / ${cancelledQueueCount}`} />
+                          </div>
+                        </div>
+
                         {batchQueue.map((item, index) => (
                           <div
                             key={item.id}
@@ -568,16 +660,11 @@ export function UploadSection() {
                             <div>
                               <div className="font-medium text-[var(--text)]">{item.fileName}</div>
                               <div className="mt-1 text-xs text-[var(--muted)]">
-                                {item.status === "uploading"
-                                  ? `${item.uploadPhase} · ${item.uploadProgress}%`
-                                  : item.status === "processing"
-                                    ? "Queued on backend"
-                                    : item.status === "failed"
-                                      ? item.error ?? "Upload failed"
-                                      : item.status}
+                                {formatBatchItemSummary(item)}
                               </div>
                             </div>
                             <div className="flex items-center gap-3">
+                              <Badge tone={getBatchItemTone(item.status)}>{item.status}</Badge>
                               <span className="font-mono text-xs text-[var(--muted)]">{`0${index + 1}`}</span>
                               <div className="w-24">
                                 <ProgressBar value={item.uploadProgress} />
@@ -637,5 +724,14 @@ export function UploadSection() {
         </Card>
       </motion.div>
     </section>
+  );
+}
+
+function QueueMetric({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-[1rem] border border-[var(--line)] bg-white/[0.03] px-4 py-4">
+      <div className="metric-label text-[var(--muted)]">{label}</div>
+      <div className="mt-2 text-lg font-semibold tracking-[-0.03em] text-[var(--text)]">{value}</div>
+    </div>
   );
 }

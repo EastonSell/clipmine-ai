@@ -2,6 +2,45 @@
 
 Date: 2026-04-02
 
+## Plan And Queue Status Pass
+
+- Added `PLAN.md` as the living implementation plan for the repository.
+- `PLAN.md` now tracks:
+  - current goals
+  - implemented features and tested status
+  - bugs found
+  - testing gaps
+  - milestone phases
+  - categorized frontend, backend, testing, and docs tasks
+  - the operating rule to add at least one task every time the plan is opened
+- Linked the active plan from `README.md`.
+- Completed the first task taken directly from the plan:
+  - improved the live batch queue status area on the landing upload surface
+- The landing upload progress panel now shows:
+  - current source position in the queue
+  - current source name and phase
+  - backend-ready count
+  - waiting count
+  - failed / cancelled count
+  - clearer per-file status badges inside the queue list
+- Added browser coverage for the new queue-status behavior in Playwright.
+
+### Checks run
+
+```bash
+npm_config_cache=/tmp/clipmine-npm-cache npm run test:web
+npm_config_cache=/tmp/clipmine-npm-cache npm run lint:web
+npm_config_cache=/tmp/clipmine-npm-cache npm run build:web
+npm run test:e2e
+```
+
+### Result
+
+- `19 / 19` web unit tests passed
+- frontend lint passed
+- frontend production build passed
+- `10 / 10` Playwright browser smoke tests passed
+
 ## Playwright Recovery Pass
 
 - Re-ran the local Playwright suite after terminal and system access were enabled.
