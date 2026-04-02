@@ -182,3 +182,60 @@ curl -sSf http://127.0.0.1:8000/api/health
 curl -I -sSf http://127.0.0.1:3000/
 curl -I -sSf http://127.0.0.1:3000/jobs/demo-job
 ```
+
+## Review Workflow And Test Harness Pass
+
+- Added workspace review controls and shareable URL state:
+  - `tab`
+  - `clip`
+  - transcript search
+  - quality filter
+  - tag filter
+  - sort order
+  - pinned-only mode
+- Added local-storage backed:
+  - recent jobs on the landing page
+  - shortlist persistence per job
+- Added upload cancel / retry controls and clearer transfer state messaging.
+- Extended backend-facing frontend types to include:
+  - `processingTimings`
+  - `warnings`
+  - `processingStats`
+
+## Review Workflow Features Tested
+
+- Frontend unit tests cover:
+  - tab parsing defaults
+  - filter parsing and serialization
+  - clip filtering and sort behavior
+  - recent-job persistence ordering
+  - shortlist normalization and cleanup
+- Backend regression suite still passes after the additive metadata work.
+- Frontend lint and production build still pass after the review workflow refactor.
+
+## Browser Smoke Coverage Status
+
+- Added Playwright smoke coverage for:
+  - landing page and recent jobs rendering
+  - invalid upload validation
+  - upload-to-workspace route transition
+  - shareable timeline tab state
+  - shortlist persistence across refresh
+  - export disabled state while processing
+- Attempted to run `npm run test:e2e` locally with:
+  - Playwright bundled Chromium
+  - system Google Chrome channel
+- Result:
+  - both browser launch paths fail in this macOS sandbox before any page code runs
+  - the failure is environmental, not an application assertion failure
+
+## Latest Checks Run
+
+```bash
+npm_config_cache=/tmp/clipmine-npm-cache npm run test:web
+TMPDIR='/Users/easton/Codex Creator Challenge/.tmp-pytest' npm run test:api
+npm_config_cache=/tmp/clipmine-npm-cache npm run lint:web
+npm_config_cache=/tmp/clipmine-npm-cache npm run build:web
+PLAYWRIGHT_BROWSERS_PATH=/tmp/clipmine-playwright-browsers npx playwright install chromium
+PLAYWRIGHT_BROWSERS_PATH=/tmp/clipmine-playwright-browsers npm run test:e2e
+```

@@ -10,7 +10,12 @@
     "start:web": "npm_config_cache=/tmp/clipmine-npm-cache npm run start --workspace apps/web",
     "preview:web": "npm run build:web && npm run start:web",
     "lint:web": "npm_config_cache=/tmp/clipmine-npm-cache npm run lint --workspace apps/web",
+    "test:web": "npm_config_cache=/tmp/clipmine-npm-cache npm run test --workspace apps/web",
+    "test:e2e": "PLAYWRIGHT_BROWSERS_PATH=/tmp/clipmine-playwright-browsers playwright test",
     "dev:api": "cd backend && . .venv/bin/activate && uvicorn clipmine_api.main:app --reload --host 127.0.0.1 --port 8000",
     "test:api": "cd backend && . .venv/bin/activate && pytest"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.59.1"
   }
 }

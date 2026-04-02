@@ -42,16 +42,18 @@ Raw transcripts are noisy. Raw video is slow to review. Most dataset builders ne
 
 - Rank clips by training usefulness
 - Visualize the full source video with a `48`-bin usefulness timeline
+- Filter clips by transcript text, quality label, tag, and sort order
+- Keep a local shortlist of pinned clips and reopen recent jobs from the landing page
 - Keep source playback aligned with timestamps from the ranking output
 - Export structured JSON for annotation or dataset curation workflows
 
 ## Upcoming Features
 
 - [ ] Direct object storage uploads and resumable transfer support for larger production uploads
-- [ ] Transcript search, clip filters, and shortlist tooling for faster review on long videos
 - [ ] Job recovery, retry controls, retention cleanup, and richer health reporting
 - [ ] Richer export presets with optional CSV and more processing metadata
-- [ ] Stronger end-to-end smoke testing and production observability
+- [ ] Production browser smoke coverage in CI once the local macOS browser sandbox issue is removed
+- [ ] Stronger production observability and workflow analytics
 
 ## Architecture
 
@@ -162,6 +164,8 @@ npm run start:web
 npm run lint:web
 npm run dev:api
 npm run test:api
+npm run test:web
+npm run test:e2e
 ```
 
 ## Verification Commands
@@ -171,7 +175,14 @@ Frontend:
 ```bash
 npm run lint:web
 npm run build:web
+npm run test:web
 npm run preview:web
+```
+
+Browser smoke coverage:
+
+```bash
+PLAYWRIGHT_BROWSERS_PATH=/tmp/clipmine-playwright-browsers npm run test:e2e
 ```
 
 Backend:
@@ -181,6 +192,7 @@ npm run test:api
 ```
 
 Verbose backend request and processing logs are enabled by default in local development with `LOG_LEVEL=DEBUG`.
+In this current macOS sandbox, Playwright browser launch can fail before page code runs. The smoke suite is included in the repo and should run normally in CI or a less restricted local environment.
 
 ## How To Use The App
 

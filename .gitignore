@@ -16,6 +16,8 @@ node_modules/
 apps/web/.next/
 apps/web/out/
 apps/web/coverage/
+playwright-report/
+test-results/
 backend/.venv/
 backend/.coverage
 storage/
