@@ -24,6 +24,7 @@ class JobProcessor:
     async def start(self) -> None:
         if self.worker_task is None:
             self.worker_task = asyncio.create_task(self._worker_loop())
+            await self._recover_incomplete_jobs()
 
     async def stop(self) -> None:
         if self.worker_task is None:
@@ -35,6 +36,22 @@ class JobProcessor:
 
     async def enqueue(self, job_id: str) -> None:
         await self.queue.put(job_id)
+
+    async def _recover_incomplete_jobs(self) -> None:
+        for job in self.store.list_jobs():
+            if job.status not in {JobStatus.QUEUED, JobStatus.PROCESSING}:
+                continue
+
+            recovered_job = self.store.save_job(
+                job.model_copy(
+                    update={
+                        "status": JobStatus.QUEUED,
+                        "progress_phase": ProgressPhase.QUEUED,
+                        "error": None,
+                    }
+                )
+            )
+            await self.queue.put(recovered_job.job_id)
 
     async def _worker_loop(self) -> None:
         while True:

@@ -15,6 +15,11 @@ router = APIRouter(prefix="/api")
 
 ALLOWED_EXTENSIONS = {".mp4", ".mov"}
 ALLOWED_CONTENT_TYPES = {"video/mp4", "video/quicktime"}
+FALLBACK_CONTENT_TYPES = {"application/octet-stream", "binary/octet-stream"}
+CANONICAL_CONTENT_TYPES = {
+    ".mp4": "video/mp4",
+    ".mov": "video/quicktime",
+}
 
 
 def get_job_store(request: Request) -> JobStore:
@@ -41,12 +46,18 @@ async def create_job(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="A video file is required.")
 
     extension = Path(file.filename).suffix.lower()
-    content_type = (file.content_type or "").lower()
-    if extension not in ALLOWED_EXTENSIONS or content_type not in ALLOWED_CONTENT_TYPES:
+    content_type = (file.content_type or "").split(";", 1)[0].strip().lower()
+    if extension not in ALLOWED_EXTENSIONS:
         raise HTTPException(
             status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
             detail="ClipMine AI accepts .mp4 and .mov video uploads only.",
         )
+    if content_type and content_type not in ALLOWED_CONTENT_TYPES and content_type not in FALLBACK_CONTENT_TYPES:
+        raise HTTPException(
+            status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
+            detail="ClipMine AI accepts .mp4 and .mov video uploads only.",
+        )
+    normalized_content_type = CANONICAL_CONTENT_TYPES[extension]
 
     settings = request.app.state.settings
     job_id, file_path, relative_path = store.reserve_upload_path(file.filename)
@@ -58,21 +69,26 @@ async def create_job(
                 size_bytes += len(chunk)
                 if size_bytes > settings.max_upload_bytes:
                     raise HTTPException(
-                        status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+                        status_code=status.HTTP_413_CONTENT_TOO_LARGE,
                         detail=f"Upload exceeds the {settings.max_upload_mb} MB limit.",
                     )
                 handle.write(chunk)
     except HTTPException:
-        if file_path.exists():
-            file_path.unlink()
+        store.discard_reserved_job(job_id)
         raise
+    except Exception as exc:
+        store.discard_reserved_job(job_id)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Upload failed before processing could start.",
+        ) from exc
     finally:
         await file.close()
 
     manifest = store.create_manifest_for_job(
         job_id=job_id,
         file_name=file.filename,
-        content_type=content_type,
+        content_type=normalized_content_type,
         size_bytes=size_bytes,
         relative_path=relative_path,
     )

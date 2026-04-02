@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import shutil
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import BinaryIO
@@ -108,6 +109,19 @@ class JobStore:
         (self.job_dir(job_id) / "artifacts").mkdir(parents=True, exist_ok=True)
         self.save_job(manifest)
         return manifest
+
+    def discard_reserved_job(self, job_id: str) -> None:
+        shutil.rmtree(self.job_dir(job_id), ignore_errors=True)
+
+    def list_jobs(self) -> list[JobManifest]:
+        jobs: list[JobManifest] = []
+        jobs_dir = self.settings.jobs_dir
+        for job_dir in sorted(jobs_dir.iterdir()) if jobs_dir.exists() else []:
+            manifest_path = job_dir / "job.json"
+            if not manifest_path.exists():
+                continue
+            jobs.append(JobManifest.model_validate(orjson.loads(manifest_path.read_bytes())))
+        return sorted(jobs, key=lambda job: job.created_at)
 
     def update_job(self, job_id: str, **changes: object) -> JobManifest:
         job = self.load_job(job_id)
