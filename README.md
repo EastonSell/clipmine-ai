@@ -115,6 +115,7 @@ Copy `.env.example` to `.env` at the repo root and adjust values if needed.
 Important defaults:
 
 - `NEXT_PUBLIC_MAX_UPLOAD_MB=1024`
+- `LOG_LEVEL=DEBUG`
 - `MAX_UPLOAD_MB=1024`
 
 ### 2. Install Frontend Dependencies
@@ -177,6 +178,8 @@ Backend:
 ```bash
 npm run test:api
 ```
+
+Verbose backend request and processing logs are enabled by default in local development with `LOG_LEVEL=DEBUG`.
 
 ## How To Use The App
 

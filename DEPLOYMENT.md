@@ -38,6 +38,7 @@ PORT=8000
 STORAGE_DIR=/var/data/clipmine/storage
 MODEL_CACHE_DIR=/var/data/clipmine/models
 WHISPER_MODEL_SIZE=base
+LOG_LEVEL=DEBUG
 MAX_UPLOAD_MB=1024
 BACKEND_CORS_ORIGINS=https://your-frontend.vercel.app
 ```
@@ -51,6 +52,7 @@ BACKEND_CORS_ORIGINS=https://your-frontend.vercel.app
 | --- | --- | --- |
 | `NEXT_PUBLIC_API_BASE_URL` | frontend | Public backend base URL |
 | `BACKEND_CORS_ORIGINS` | backend | Allowed browser origins |
+| `LOG_LEVEL` | backend | Backend runtime logging verbosity |
 | `MAX_UPLOAD_MB` | backend | Upload size limit |
 | `STORAGE_DIR` | backend | Job artifacts and manifests |
 | `MODEL_CACHE_DIR` | backend | Whisper model cache |

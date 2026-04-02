@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import os
 from functools import lru_cache
 from pathlib import Path
@@ -9,12 +10,19 @@ from faster_whisper import WhisperModel
 from .config import get_settings
 from .pipeline_types import TranscriptionResult, WordToken
 
+logger = logging.getLogger("uvicorn.error")
+
 
 @lru_cache(maxsize=1)
 def get_model() -> WhisperModel:
     settings = get_settings()
     os.environ.setdefault("HF_HOME", str(settings.model_cache_dir))
     settings.model_cache_dir.mkdir(parents=True, exist_ok=True)
+    logger.info(
+        "transcription.model_load size=%s cache_dir=%s device=cpu compute_type=int8",
+        settings.whisper_model_size,
+        settings.model_cache_dir,
+    )
     return WhisperModel(
         settings.whisper_model_size,
         device="cpu",
@@ -25,6 +33,7 @@ def get_model() -> WhisperModel:
 
 def transcribe_audio(audio_path: Path) -> TranscriptionResult:
     model = get_model()
+    logger.info("transcription.start audio_path=%s", audio_path)
     segments, info = model.transcribe(
         str(audio_path),
         beam_size=1,
@@ -59,10 +68,17 @@ def transcribe_audio(audio_path: Path) -> TranscriptionResult:
 
     duration = float(getattr(info, "duration", 0.0) or 0.0) if info is not None else None
     language = getattr(info, "language", None) if info is not None else None
+    logger.info(
+        "transcription.complete audio_path=%s words=%s transcript_chars=%s language=%s duration_seconds=%s",
+        audio_path,
+        len(words),
+        len(" ".join(transcript_parts).strip()),
+        language,
+        duration,
+    )
     return TranscriptionResult(
         words=words,
         transcript_text=" ".join(transcript_parts).strip(),
         language=language,
         duration_seconds=duration,
     )
-

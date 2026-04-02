@@ -11,6 +11,7 @@ class Settings(BaseSettings):
     app_name: str = "ClipMine AI API"
     environment: str = "development"
     port: int = 8000
+    log_level: str = "DEBUG"
     backend_cors_origins: str = "http://localhost:3000"
     max_upload_mb: int = 1024
     storage_dir: Path = Field(default=Path("./storage"))

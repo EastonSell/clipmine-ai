@@ -13,6 +13,11 @@ export function getApiBaseUrl() {
 export async function createJob(file: File, options: CreateJobOptions = {}) {
   const formData = new FormData();
   formData.append("file", file);
+  console.info("[ClipMine] Upload starting", {
+    fileName: file.name,
+    sizeBytes: file.size,
+    type: file.type || "unknown",
+  });
 
   return await new Promise<UploadJobResponse>((resolve, reject) => {
     const xhr = new XMLHttpRequest();
@@ -26,6 +31,12 @@ export async function createJob(file: File, options: CreateJobOptions = {}) {
       }
 
       const percentage = Math.max(0, Math.min(100, Math.round((event.loaded / total) * 100)));
+      console.info("[ClipMine] Upload progress", {
+        fileName: file.name,
+        loaded: event.loaded,
+        total,
+        percentage,
+      });
       options.onUploadProgress?.({
         loaded: event.loaded,
         total,
@@ -41,21 +52,41 @@ export async function createJob(file: File, options: CreateJobOptions = {}) {
             total: file.size,
             percentage: 100,
           });
+          console.info("[ClipMine] Upload complete", {
+            fileName: file.name,
+            status: xhr.status,
+          });
           resolve(JSON.parse(xhr.responseText) as UploadJobResponse);
         } catch {
+          console.error("[ClipMine] Upload response parse failed", {
+            fileName: file.name,
+            status: xhr.status,
+            responseText: xhr.responseText,
+          });
           reject(new Error("Upload completed, but the API response could not be read."));
         }
         return;
       }
 
+      console.error("[ClipMine] Upload request failed", {
+        fileName: file.name,
+        status: xhr.status,
+        responseText: xhr.responseText,
+      });
       reject(new Error(getErrorMessageFromText(xhr.responseText)));
     });
 
     xhr.addEventListener("error", () => {
+      console.error("[ClipMine] Upload network error", {
+        fileName: file.name,
+      });
       reject(new Error("Upload failed."));
     });
 
     xhr.addEventListener("abort", () => {
+      console.warn("[ClipMine] Upload aborted", {
+        fileName: file.name,
+      });
       reject(new Error("Upload was cancelled."));
     });
 

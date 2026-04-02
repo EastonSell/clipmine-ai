@@ -6,6 +6,28 @@ Date: 2026-04-01
 
 This log records the debugging pass completed for the current ClipMine AI repository before pushing the latest updates.
 
+## Additional Runtime Logging Pass
+
+- Added verbose backend runtime logs for:
+  - request start and completion
+  - upload validation and chunk progress
+  - job enqueue and dequeue
+  - extraction, transcription, segmentation, and scoring stage transitions
+  - export and video retrieval
+- Added frontend browser console logs for upload start, progress, completion, and failure states.
+- Added `LOG_LEVEL` as a documented backend environment variable.
+
+## Real-File Verification
+
+- Verified upload and processing with `/Users/easton/Desktop/videoplayback.mp4`
+- File size: approximately `19 MB`
+- Result:
+  - upload accepted
+  - progress logs emitted during transfer
+  - processing reached `ready`
+  - transcription completed successfully
+  - clip ranking and timeline generation completed successfully
+
 ## Bugs Fixed
 
 ### 1. Upload MIME validation conflict
@@ -26,6 +48,10 @@ This log records the debugging pass completed for the current ClipMine AI reposi
 ### 4. Deprecated 413 status constant
 
 - Replaced a deprecated FastAPI/Starlette status constant with the current `413 content too large` status code constant so the test suite runs cleanly without warnings.
+
+### 5. Missing backend dependency declaration
+
+- Added the `av` dependency to backend project metadata so media probing is installed reliably in fresh environments instead of depending on a pre-existing local package.
 
 ## Features Tested
 
