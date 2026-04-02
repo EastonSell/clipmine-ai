@@ -1,26 +1,47 @@
 "use client";
 
-import { AnimatePresence, motion } from "framer-motion";
-import { Download, LoaderCircle, RefreshCcw } from "lucide-react";
+import { AnimatePresence, LayoutGroup, motion } from "framer-motion";
+import {
+  CircleAlert,
+  CircleDashed,
+  Clock3,
+  Download,
+  FileJson2,
+  Gauge,
+  LoaderCircle,
+  Play,
+  RefreshCcw,
+  Video,
+  Waves,
+} from "lucide-react";
 import Link from "next/link";
-import { useRef, useState } from "react";
+import { startTransition, useDeferredValue, useRef, useState } from "react";
 import useSWR from "swr";
 
 import { getApiBaseUrl, getJob } from "@/lib/api";
-import { formatPercent, formatSeconds, formatSignedScore } from "@/lib/format";
+import { formatBytes, formatDateTime, formatPercent, formatSeconds, formatSignedScore } from "@/lib/format";
 import type { ClipRecord, JobResponse, TimelineBin } from "@/lib/types";
 
 type WorkspaceTab = "clips" | "timeline" | "export";
 
-const statusCopy: Record<JobResponse["progressPhase"], string> = {
-  queued: "Queued for processing",
-  extracting_audio: "Extracting mono audio",
-  transcribing: "Running Whisper transcription",
-  segmenting: "Building candidate clips",
-  scoring: "Scoring signal quality",
+const phaseCopy: Record<JobResponse["progressPhase"], string> = {
+  queued: "Queued",
+  extracting_audio: "Extracting audio",
+  transcribing: "Transcribing",
+  segmenting: "Segmenting",
+  scoring: "Scoring",
   ready: "Ready",
-  failed: "Processing failed",
+  failed: "Failed",
 };
+
+const phaseSteps: Array<{ id: JobResponse["progressPhase"]; label: string }> = [
+  { id: "queued", label: "Queued" },
+  { id: "extracting_audio", label: "Audio" },
+  { id: "transcribing", label: "Transcript" },
+  { id: "segmenting", label: "Segments" },
+  { id: "scoring", label: "Score" },
+  { id: "ready", label: "Ready" },
+];
 
 const tabLabels: Array<{ id: WorkspaceTab; label: string }> = [
   { id: "clips", label: "Best Clips" },
@@ -31,6 +52,7 @@ const tabLabels: Array<{ id: WorkspaceTab; label: string }> = [
 export function ResultsWorkspace({ jobId }: { jobId: string }) {
   const [activeTab, setActiveTab] = useState<WorkspaceTab>("clips");
   const [activeClipId, setActiveClipId] = useState<string | null>(null);
+  const deferredActiveClipId = useDeferredValue(activeClipId);
   const videoRef = useRef<HTMLVideoElement | null>(null);
 
   const { data, error, isLoading, mutate } = useSWR<JobResponse>(
@@ -48,9 +70,10 @@ export function ResultsWorkspace({ jobId }: { jobId: string }) {
   );
 
   const selectedClip =
-    data?.clips.find((clip) => clip.id === activeClipId) ??
+    data?.clips.find((clip) => clip.id === deferredActiveClipId) ??
     data?.clips[0] ??
     null;
+  const resolvedClipId = deferredActiveClipId ?? selectedClip?.id ?? null;
 
   function handleSeek(start: number, clipId?: string | null) {
     if (videoRef.current) {
@@ -58,8 +81,16 @@ export function ResultsWorkspace({ jobId }: { jobId: string }) {
       void videoRef.current.play().catch(() => undefined);
     }
     if (clipId) {
-      setActiveClipId(clipId);
+      startTransition(() => {
+        setActiveClipId(clipId);
+      });
     }
+  }
+
+  function handleTabChange(tab: WorkspaceTab) {
+    startTransition(() => {
+      setActiveTab(tab);
+    });
   }
 
   if (isLoading) {
@@ -73,9 +104,12 @@ export function ResultsWorkspace({ jobId }: { jobId: string }) {
   if (error || !data) {
     return (
       <WorkspaceFrame title="Workspace unavailable">
-        <div className="section-frame rounded-[2rem] p-6">
-          <p className="text-lg font-medium">The job workspace could not be loaded.</p>
-          <p className="mt-3 max-w-xl text-sm text-[var(--muted)]">
+        <div className="section-frame rounded-[2.25rem] p-6 sm:p-8">
+          <div className="inline-flex items-center gap-3 rounded-full border border-red-200 bg-[var(--danger-soft)] px-4 py-2 text-sm font-medium text-red-700">
+            <CircleAlert className="size-4" />
+            The workspace could not be loaded
+          </div>
+          <p className="mt-4 max-w-xl text-sm leading-6 text-[var(--muted)]">
             {error instanceof Error ? error.message : "The backend response was unavailable."}
           </p>
           <button
@@ -94,59 +128,159 @@ export function ResultsWorkspace({ jobId }: { jobId: string }) {
   const processing = data.status === "queued" || data.status === "processing";
   const exportUrl = `${getApiBaseUrl()}/api/jobs/${jobId}/export.json`;
   const videoUrl = `${getApiBaseUrl()}${data.sourceVideo.url}`;
+  const strongestRegions = [...data.timeline]
+    .filter((bin) => bin.top_clip_id)
+    .sort((left, right) => right.score - left.score)
+    .slice(0, 4);
+  const telemetryItems = [
+    ["Clip count", data.summary ? String(data.summary.clip_count) : "Pending"],
+    ["Top score", data.summary ? formatSignedScore(data.summary.top_score) : "Pending"],
+    ["Average", data.summary ? formatSignedScore(data.summary.average_score) : "Pending"],
+    ["Excellent", data.summary ? String(data.summary.excellent_count) : "Pending"],
+  ];
 
   return (
     <WorkspaceFrame title={data.sourceVideo.file_name}>
-      <div className="grid gap-6 xl:grid-cols-[1.25fr_0.75fr]">
-        <div className="section-frame rounded-[2rem] p-4 sm:p-6">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <div className="metric-label text-[var(--muted)]">Source video</div>
-              <h2 className="mt-2 text-2xl font-semibold tracking-[-0.04em]">{data.sourceVideo.file_name}</h2>
-            </div>
-            <div className="rounded-full border border-[var(--line)] bg-[var(--surface-strong)] px-4 py-2 text-sm">
-              {formatSeconds(data.sourceVideo.duration_seconds ?? 0)}
-            </div>
+      <section className="telemetry-strip rounded-[2rem] p-5 sm:p-6">
+        <div className="grid gap-4 lg:grid-cols-[0.74fr_1.26fr] lg:items-end">
+          <div>
+            <div className="metric-label text-[var(--muted)]">Workspace overview</div>
+            <h2 className="mt-3 text-3xl font-semibold tracking-[-0.05em]">Inspect the source once, promote the best clips, export only signal.</h2>
           </div>
-          <div className="mt-4 overflow-hidden rounded-[1.5rem] border border-[var(--line)] bg-black">
-            <video ref={videoRef} controls className="aspect-video w-full" src={videoUrl} />
+          <div className="grid gap-3 sm:grid-cols-4">
+            {telemetryItems.map(([label, value]) => (
+              <div key={label} className="rounded-[1.4rem] border border-[var(--line)] bg-white/55 px-4 py-4">
+                <div className="metric-label text-[var(--muted)]">{label}</div>
+                <div className="mt-2 text-2xl font-semibold tracking-[-0.04em]">{value}</div>
+              </div>
+            ))}
           </div>
-          {selectedClip ? (
-            <div className="mt-4 rounded-[1.5rem] border border-[var(--line)] bg-[var(--surface-strong)] px-4 py-4">
-              <div className="metric-label text-[var(--muted)]">Selected clip</div>
-              <p className="mt-2 text-lg font-medium leading-relaxed">{selectedClip.text}</p>
-              <div className="mt-4 flex flex-wrap gap-3 text-sm text-[var(--muted)]">
-                <span>{formatSignedScore(selectedClip.score)}</span>
-                <span>
-                  {formatSeconds(selectedClip.start)} - {formatSeconds(selectedClip.end)}
-                </span>
-                <span>{selectedClip.quality_label}</span>
+        </div>
+      </section>
+
+      <div className="grid gap-6 2xl:grid-cols-[minmax(0,1.32fr)_22rem]">
+        <section className="workspace-shell section-frame overflow-hidden rounded-[2.4rem]">
+          <div className="flex flex-wrap items-center justify-between gap-4 border-b border-[var(--line)] px-5 py-4 sm:px-6">
+            <div className="space-y-2">
+              <div className="metric-label text-[var(--muted)]">Source analysis</div>
+              <div className="flex flex-wrap items-center gap-3 text-sm text-[var(--muted)]">
+                <span>{formatBytes(data.sourceVideo.size_bytes)}</span>
+                <span>{formatSeconds(data.sourceVideo.duration_seconds ?? 0)}</span>
+                <span>{data.language ? data.language.toUpperCase() : "Language pending"}</span>
               </div>
             </div>
-          ) : null}
-        </div>
-
-        <div className="space-y-4">
-          <StatusPanel data={data} onRefresh={() => void mutate()} />
-          <SummaryPanel summary={data.summary} />
-        </div>
-      </div>
-
-      <div className="mt-8 flex flex-wrap items-center justify-between gap-4">
-        <div className="flex flex-wrap gap-2 rounded-full border border-[var(--line)] bg-[var(--surface-strong)] p-1">
-          {tabLabels.map((tab) => (
-            <button
-              key={tab.id}
-              type="button"
-              onClick={() => setActiveTab(tab.id)}
-              className={`rounded-full px-4 py-2 text-sm font-medium transition ${
-                activeTab === tab.id ? "bg-[var(--text)] text-white" : "text-[var(--muted)]"
+            <div
+              className={`rounded-full px-4 py-2 text-sm font-medium ${
+                data.status === "ready"
+                  ? "bg-[var(--accent)] text-[var(--text)]"
+                  : data.status === "failed"
+                    ? "bg-[var(--danger-soft)] text-red-700"
+                    : "border border-[var(--line)] bg-[var(--surface-strong)] text-[var(--muted-strong)]"
               }`}
             >
-              {tab.label}
-            </button>
-          ))}
-        </div>
+              {phaseCopy[data.progressPhase]}
+            </div>
+          </div>
+
+          <div className="grid gap-6 p-5 sm:p-6 xl:grid-cols-[minmax(0,1fr)_18rem]">
+            <div className="space-y-5">
+              <div className="workspace-gridline overflow-hidden rounded-[2rem] border border-[var(--line)] bg-black">
+                <video ref={videoRef} controls className="aspect-video w-full" src={videoUrl} />
+              </div>
+
+              <div className="grid gap-4 lg:grid-cols-[1.15fr_0.85fr]">
+                <div className="rounded-[2rem] border border-[var(--line)] bg-[var(--surface-elevated)] px-5 py-5 soft-shadow">
+                  <div className="metric-label text-[var(--muted)]">Selected clip</div>
+                  {selectedClip ? (
+                    <>
+                      <div className="mt-3 flex flex-wrap items-center gap-3">
+                        <span className={qualityBadgeClass(selectedClip.quality_label)}>{selectedClip.quality_label}</span>
+                        <span className="rounded-full border border-[var(--line)] px-3 py-1 text-sm font-medium">
+                          {formatSignedScore(selectedClip.score)}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => handleSeek(selectedClip.start, selectedClip.id)}
+                          className="inline-flex items-center gap-2 rounded-full border border-[var(--line)] px-3 py-1 text-sm font-medium"
+                        >
+                          <Play className="size-4" />
+                          Jump to clip
+                        </button>
+                      </div>
+                      <div className="mt-4 flex flex-wrap gap-2">
+                        {[
+                          `${formatSeconds(selectedClip.start)} - ${formatSeconds(selectedClip.end)}`,
+                          `${selectedClip.duration.toFixed(1)}s`,
+                          `${selectedClip.speech_rate.toFixed(1)} words/s`,
+                          `${Math.round(selectedClip.confidence * 100)}% confidence`,
+                        ].map((item) => (
+                          <span
+                            key={item}
+                            className="rounded-full border border-[var(--line)] bg-white/70 px-3 py-1 text-xs font-medium text-[var(--muted-strong)]"
+                          >
+                            {item}
+                          </span>
+                        ))}
+                      </div>
+                      <p className="mt-4 text-2xl font-semibold leading-tight tracking-[-0.04em]">{selectedClip.text}</p>
+                      <p className="mt-3 text-sm leading-6 text-[var(--muted)]">{selectedClip.explanation}</p>
+                    </>
+                  ) : (
+                    <p className="mt-3 text-sm leading-6 text-[var(--muted)]">
+                      The first ranked clip will appear here once processing completes.
+                    </p>
+                  )}
+                </div>
+
+                <div className="rounded-[2rem] border border-[var(--line)] bg-[var(--surface-strong)] px-5 py-5">
+                  <div className="metric-label text-[var(--muted)]">Transcript preview</div>
+                  <p className="mt-3 text-sm leading-7 text-[var(--muted)]">
+                    {data.summary?.transcript_preview || "Transcript preview will appear once the transcription phase completes."}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <aside className="space-y-4">
+              <SelectedClipInspector clip={selectedClip} />
+              <QuickStatsPanel data={data} />
+            </aside>
+          </div>
+        </section>
+
+        <aside className="space-y-4">
+          <StatusPanel data={data} onRefresh={() => void mutate()} />
+          <JobSummaryPanel data={data} />
+        </aside>
+      </div>
+
+      <div className="mt-7 flex flex-wrap items-center justify-between gap-4">
+        <LayoutGroup id="workspace-tabs">
+          <div className="relative flex flex-wrap gap-1 rounded-full border border-[var(--line)] bg-[var(--surface-strong)] p-1">
+            {tabLabels.map((tab) => {
+              const active = activeTab === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() => handleTabChange(tab.id)}
+                  className={`relative rounded-full px-4 py-2 text-sm font-medium transition ${
+                    active ? "text-[var(--text)]" : "text-[var(--muted)]"
+                  }`}
+                >
+                  {active ? (
+                    <motion.span
+                      layoutId="active-workspace-tab"
+                      className="absolute inset-0 rounded-full bg-[var(--accent)]"
+                      transition={{ type: "spring", stiffness: 380, damping: 34 }}
+                    />
+                  ) : null}
+                  <span className="relative z-10">{tab.label}</span>
+                </button>
+              );
+            })}
+          </div>
+        </LayoutGroup>
 
         <div className="flex flex-wrap gap-3">
           <button
@@ -162,7 +296,7 @@ export function ResultsWorkspace({ jobId }: { jobId: string }) {
             className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium ${
               processing
                 ? "cursor-not-allowed border border-[var(--line)] text-[var(--muted)]"
-                : "bg-[var(--accent)] text-[var(--text)]"
+                : "bg-[var(--text)] text-white"
             }`}
             aria-disabled={processing}
             onClick={(event) => {
@@ -187,13 +321,14 @@ export function ResultsWorkspace({ jobId }: { jobId: string }) {
           className="mt-6"
         >
           {activeTab === "clips" ? (
-            <BestClipsPanel clips={data.clips} activeClipId={selectedClip?.id ?? null} onSelect={handleSeek} />
+            <BestClipsPanel clips={data.clips} activeClipId={resolvedClipId} onSelect={handleSeek} />
           ) : null}
           {activeTab === "timeline" ? (
             <TimelinePanel
               bins={data.timeline}
               clips={data.clips}
-              activeClipId={selectedClip?.id ?? null}
+              activeClipId={resolvedClipId}
+              strongestRegions={strongestRegions}
               onSeek={handleSeek}
             />
           ) : null}
@@ -208,13 +343,13 @@ export function ResultsWorkspace({ jobId }: { jobId: string }) {
 
 function WorkspaceFrame({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <main className="mx-auto flex min-h-screen max-w-6xl flex-col gap-8 px-6 py-8 sm:px-10 lg:px-12">
-      <header className="flex flex-wrap items-end justify-between gap-4">
+    <main className="mx-auto flex min-h-screen max-w-[96rem] flex-col gap-8 px-4 py-4 sm:px-6 lg:px-8">
+      <header className="flex flex-wrap items-end justify-between gap-4 rounded-[2rem] border border-[var(--line)] bg-[var(--surface-strong)]/90 px-5 py-5 backdrop-blur-xl sm:px-6">
         <div>
           <p className="metric-label text-[var(--muted)]">ClipMine AI Workspace</p>
-          <h1 className="mt-2 text-4xl font-semibold tracking-[-0.05em]">{title}</h1>
-          <p className="mt-3 max-w-2xl text-[var(--muted)]">
-            Ranked clips, timeline signal, and export controls for one upload job.
+          <h1 className="mt-2 text-4xl font-semibold tracking-[-0.06em] sm:text-5xl">{title}</h1>
+          <p className="mt-3 max-w-2xl text-sm leading-6 text-[var(--muted)]">
+            One source video, one ranking surface, one export path.
           </p>
         </div>
         <Link href="/" className="rounded-full border border-[var(--line)] px-4 py-2 text-sm font-medium">
@@ -228,8 +363,8 @@ function WorkspaceFrame({ title, children }: { title: string; children: React.Re
 
 function LoadingState({ copy }: { copy: string }) {
   return (
-    <div className="section-frame rounded-[2rem] p-6">
-      <div className="inline-flex items-center gap-3 rounded-full border border-[var(--line)] px-4 py-2 text-sm text-[var(--muted)]">
+    <div className="section-frame rounded-[2.25rem] p-6 sm:p-8">
+      <div className="inline-flex items-center gap-3 rounded-full border border-[var(--line)] bg-[var(--surface-strong)] px-4 py-2 text-sm text-[var(--muted)]">
         <LoaderCircle className="size-4 animate-spin" />
         {copy}
       </div>
@@ -238,61 +373,86 @@ function LoadingState({ copy }: { copy: string }) {
 }
 
 function StatusPanel({ data, onRefresh }: { data: JobResponse; onRefresh: () => void }) {
+  const activeIndex = data.progressPhase === "failed" ? phaseSteps.length - 1 : phaseSteps.findIndex((step) => step.id === data.progressPhase);
   const processing = data.status === "queued" || data.status === "processing";
+
   return (
-    <div className="section-frame rounded-[2rem] p-6">
-      <div className="flex items-center justify-between gap-3">
+    <div className="section-frame rounded-[2.25rem] p-6">
+      <div className="flex items-start justify-between gap-3">
         <div>
-          <div className="metric-label text-[var(--muted)]">Status</div>
-          <div className="mt-2 text-2xl font-semibold tracking-[-0.04em]">{statusCopy[data.progressPhase]}</div>
+          <div className="metric-label text-[var(--muted)]">Pipeline status</div>
+          <div className="mt-2 text-2xl font-semibold tracking-[-0.04em]">{phaseCopy[data.progressPhase]}</div>
         </div>
         <div
           className={`rounded-full px-3 py-2 text-xs font-medium ${
             data.status === "ready"
               ? "bg-[var(--accent)] text-[var(--text)]"
               : data.status === "failed"
-                ? "bg-red-100 text-red-700"
+                ? "bg-[var(--danger-soft)] text-red-700"
                 : "border border-[var(--line)] bg-[var(--surface-strong)]"
           }`}
         >
           {data.status}
         </div>
       </div>
-      <p className="mt-4 text-sm leading-6 text-[var(--muted)]">
+
+      <div className="mt-5 space-y-3">
+        {phaseSteps.map((step, index) => {
+          const complete = activeIndex > index || (data.status === "ready" && index === phaseSteps.length - 1);
+          const current = data.progressPhase === step.id;
+          return (
+            <div key={step.id} className="flex items-center gap-3">
+              <div
+                className={`flex size-7 items-center justify-center rounded-full border text-xs font-semibold ${
+                  complete || current
+                    ? "border-[var(--text)] bg-[var(--accent)] text-[var(--text)]"
+                    : "border-[var(--line)] text-[var(--muted)]"
+                }`}
+              >
+                {index + 1}
+              </div>
+              <div className={`text-sm ${current ? "font-medium text-[var(--text)]" : "text-[var(--muted)]"}`}>{step.label}</div>
+            </div>
+          );
+        })}
+      </div>
+
+      <p className="mt-5 text-sm leading-6 text-[var(--muted)]">
         {processing
-          ? "The backend polls and updates this workspace automatically while extraction, transcription, segmentation, and scoring complete."
+          ? "This workspace refreshes automatically while extraction, transcription, segmentation, and scoring complete."
           : data.error ?? "Processing completed and export is available."}
       </p>
-      <button
-        type="button"
-        onClick={onRefresh}
-        className="mt-4 inline-flex items-center gap-2 rounded-full border border-[var(--line)] px-4 py-2 text-sm font-medium"
-      >
-        <RefreshCcw className="size-4" />
-        Refresh now
-      </button>
+
+      <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-[var(--line)] pt-4">
+        <div className="inline-flex items-center gap-2 text-sm text-[var(--muted)]">
+          <Clock3 className="size-4" />
+          Updated {formatDateTime(data.updatedAt)}
+        </div>
+        <button
+          type="button"
+          onClick={onRefresh}
+          className="inline-flex items-center gap-2 rounded-full border border-[var(--line)] px-4 py-2 text-sm font-medium"
+        >
+          <RefreshCcw className="size-4" />
+          Refresh
+        </button>
+      </div>
     </div>
   );
 }
 
-function SummaryPanel({ summary }: { summary: JobResponse["summary"] }) {
-  const items = summary
-    ? [
-        ["Clips", String(summary.clip_count)],
-        ["Top score", formatSignedScore(summary.top_score)],
-        ["Average", formatSignedScore(summary.average_score)],
-        ["Excellent", String(summary.excellent_count)],
-      ]
-    : [
-        ["Clips", "0"],
-        ["Top score", "0/100"],
-        ["Average", "0/100"],
-        ["Excellent", "0"],
-      ];
+function JobSummaryPanel({ data }: { data: JobResponse }) {
+  const summary = data.summary;
+  const items = [
+    ["Clips", summary ? String(summary.clip_count) : "0"],
+    ["Top", summary ? formatSignedScore(summary.top_score) : "0/100"],
+    ["Avg", summary ? formatSignedScore(summary.average_score) : "0/100"],
+    ["Excellent", summary ? String(summary.excellent_count) : "0"],
+  ];
 
   return (
-    <div className="section-frame rounded-[2rem] p-6">
-      <div className="metric-label text-[var(--muted)]">Summary</div>
+    <div className="section-frame rounded-[2.25rem] p-6">
+      <div className="metric-label text-[var(--muted)]">Job summary</div>
       <div className="mt-5 grid grid-cols-2 gap-3">
         {items.map(([label, value]) => (
           <div key={label} className="rounded-[1.5rem] border border-[var(--line)] bg-[var(--surface-strong)] px-4 py-4">
@@ -301,9 +461,67 @@ function SummaryPanel({ summary }: { summary: JobResponse["summary"] }) {
           </div>
         ))}
       </div>
-      <p className="mt-4 text-sm leading-6 text-[var(--muted)]">
-        {summary?.transcript_preview || "Transcript preview will appear once transcription completes."}
-      </p>
+      <div className="mt-4 space-y-2 text-sm text-[var(--muted)]">
+        <div className="flex items-center justify-between gap-3">
+          <span>Language</span>
+          <span className="font-medium text-[var(--text)]">{data.language ? data.language.toUpperCase() : "Pending"}</span>
+        </div>
+        <div className="flex items-center justify-between gap-3">
+          <span>Video size</span>
+          <span className="font-medium text-[var(--text)]">{formatBytes(data.sourceVideo.size_bytes)}</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function SelectedClipInspector({ clip }: { clip: ClipRecord | null }) {
+  return (
+    <div className="section-frame rounded-[2.25rem] p-6">
+      <div className="metric-label text-[var(--muted)]">Clip inspector</div>
+      {clip ? (
+        <>
+          <div className="mt-4 flex items-center justify-between gap-3">
+            <span className={qualityBadgeClass(clip.quality_label)}>{clip.quality_label}</span>
+            <div className="rounded-full border border-[var(--line)] px-3 py-1 text-sm font-medium">
+              {formatSignedScore(clip.score)}
+            </div>
+          </div>
+          <div className="mt-5 space-y-4">
+            <MetricBlock icon={Gauge} label="Confidence" value={formatPercent(clip.confidence)} />
+            <MetricBlock icon={Waves} label="Signal" value={formatPercent(clip.energy)} />
+            <MetricBlock icon={Video} label="Speech rate" value={`${clip.speech_rate.toFixed(1)} w/s`} />
+            <MetricBlock icon={CircleDashed} label="Silence ratio" value={formatPercent(clip.silence_ratio)} />
+          </div>
+        </>
+      ) : (
+        <p className="mt-4 text-sm leading-6 text-[var(--muted)]">
+          The ranked clip inspector will fill once the backend produces clip output.
+        </p>
+      )}
+    </div>
+  );
+}
+
+function QuickStatsPanel({ data }: { data: JobResponse }) {
+  return (
+    <div className="section-frame rounded-[2.25rem] p-6">
+      <div className="metric-label text-[var(--muted)]">Workspace notes</div>
+      <div className="mt-4 space-y-3">
+        {[
+          "One shared source player for every clip",
+          "Clickable timeline bins across the source video",
+          "Structured export for downstream workflows",
+        ].map((item) => (
+          <div key={item} className="rounded-[1.4rem] border border-[var(--line)] bg-[var(--surface-strong)] px-4 py-4 text-sm leading-6 text-[var(--muted-strong)]">
+            {item}
+          </div>
+        ))}
+      </div>
+      <div className="mt-5 rounded-[1.5rem] border border-[var(--line)] bg-black/95 px-4 py-4 text-white">
+        <div className="metric-label text-white/45">Job id</div>
+        <div className="mt-2 break-all text-sm text-white/75">{data.jobId}</div>
+      </div>
     </div>
   );
 }
@@ -319,55 +537,69 @@ function BestClipsPanel({
 }) {
   if (clips.length === 0) {
     return (
-      <div className="section-frame rounded-[2rem] p-6">
+      <div className="section-frame rounded-[2.25rem] p-6 sm:p-8">
         <p className="text-lg font-medium">No ranked clips yet.</p>
-        <p className="mt-3 max-w-xl text-sm text-[var(--muted)]">
-          If processing is still running, this panel will fill automatically. If the job is ready with no clips, the
-          source did not contain a confident 1 to 3 second speech segment.
+        <p className="mt-3 max-w-xl text-sm leading-6 text-[var(--muted)]">
+          If processing is still running, this table will fill automatically. If the job is already ready with no
+          output, the source did not produce a stable 1 to 3 second speech window.
         </p>
       </div>
     );
   }
 
   return (
-    <div className="grid gap-4 lg:grid-cols-2">
-      {clips.map((clip) => (
-        <button
-          key={clip.id}
-          type="button"
-          onClick={() => onSelect(clip.start, clip.id)}
-          className={`section-frame rounded-[2rem] p-5 text-left transition ${
-            activeClipId === clip.id ? "border-[var(--text)]" : ""
-          }`}
-        >
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="metric-label text-[var(--muted)]">{clip.quality_label}</div>
-            <div className="rounded-full bg-[var(--accent)] px-3 py-1 text-sm font-semibold">{formatSignedScore(clip.score)}</div>
-          </div>
-          <p className="mt-4 text-xl font-medium leading-relaxed tracking-[-0.02em]">{clip.text}</p>
-          <p className="mt-3 text-sm text-[var(--muted)]">{clip.explanation}</p>
-          <div className="mt-5 grid grid-cols-2 gap-3 text-sm text-[var(--muted)]">
-            <div>
-              <div className="metric-label">Timestamps</div>
-              <div className="mt-1">
-                {formatSeconds(clip.start)} - {formatSeconds(clip.end)}
+    <div className="section-frame overflow-hidden rounded-[2.25rem]">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--line)] px-5 py-4 sm:px-6">
+        <div>
+          <div className="metric-label text-[var(--muted)]">Best clips</div>
+          <h2 className="mt-2 text-2xl font-semibold tracking-[-0.04em]">Ranked for real training usefulness</h2>
+          <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
+            Click any row to seek the source video and keep one active inspection target.
+          </p>
+        </div>
+        <div className="text-sm text-[var(--muted)]">{clips.length} clips available</div>
+      </div>
+      <div className="divide-y divide-[var(--line)]">
+        {clips.map((clip, index) => {
+          const active = clip.id === activeClipId;
+          return (
+            <button
+              key={clip.id}
+              type="button"
+              onClick={() => onSelect(clip.start, clip.id)}
+              className={`clip-row w-full px-5 py-5 text-left transition sm:px-6 ${
+                active ? "bg-[var(--accent-soft)]" : "hover:bg-white/35"
+              }`}
+            >
+              <div className="grid gap-4 xl:grid-cols-[auto_minmax(0,1fr)_auto] xl:items-start">
+                <div className="flex items-center gap-3 xl:flex-col xl:items-start">
+                  <div className="text-3xl font-semibold tracking-[-0.05em] text-[var(--muted-strong)]">{String(index + 1).padStart(2, "0")}</div>
+                  <div className="rounded-full bg-[var(--text)] px-3 py-1 text-sm font-medium text-white">
+                    {formatSignedScore(clip.score)}
+                  </div>
+                </div>
+
+                <div>
+                  <div className="flex flex-wrap items-center gap-3">
+                    <span className={qualityBadgeClass(clip.quality_label)}>{clip.quality_label}</span>
+                    <span className="text-sm text-[var(--muted)]">
+                      {formatSeconds(clip.start)} - {formatSeconds(clip.end)}
+                    </span>
+                  </div>
+                  <p className="mt-4 max-w-4xl text-2xl font-semibold leading-tight tracking-[-0.04em]">{clip.text}</p>
+                  <p className="mt-3 text-sm leading-6 text-[var(--muted)]">{clip.explanation}</p>
+                </div>
+
+                <div className="grid gap-3 text-sm text-[var(--muted)] sm:grid-cols-3 xl:min-w-[17rem] xl:grid-cols-1">
+                  <MetricSummary label="Confidence" value={formatPercent(clip.confidence)} />
+                  <MetricSummary label="Speech rate" value={`${clip.speech_rate.toFixed(1)} w/s`} />
+                  <MetricSummary label="Signal" value={formatPercent(clip.energy)} />
+                </div>
               </div>
-            </div>
-            <div>
-              <div className="metric-label">Confidence</div>
-              <div className="mt-1">{formatPercent(clip.confidence)}</div>
-            </div>
-            <div>
-              <div className="metric-label">Speech rate</div>
-              <div className="mt-1">{clip.speech_rate.toFixed(1)} words/sec</div>
-            </div>
-            <div>
-              <div className="metric-label">Signal</div>
-              <div className="mt-1">{formatPercent(clip.energy)}</div>
-            </div>
-          </div>
-        </button>
-      ))}
+            </button>
+          );
+        })}
+      </div>
     </div>
   );
 }
@@ -376,46 +608,104 @@ function TimelinePanel({
   bins,
   clips,
   activeClipId,
+  strongestRegions,
   onSeek,
 }: {
   bins: TimelineBin[];
   clips: ClipRecord[];
   activeClipId: string | null;
+  strongestRegions: TimelineBin[];
   onSeek: (start: number, clipId?: string | null) => void;
 }) {
+  const activeBinId = clips.find((clip) => clip.id === activeClipId)?.id ?? null;
+
   return (
-    <div className="section-frame rounded-[2rem] p-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <div className="metric-label text-[var(--muted)]">Timeline signal</div>
-          <h2 className="mt-2 text-2xl font-semibold tracking-[-0.04em]">Clickable training usefulness map</h2>
+    <div className="grid gap-4 xl:grid-cols-[1.2fr_0.8fr]">
+      <div className="section-frame rounded-[2.25rem] p-6">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <div className="metric-label text-[var(--muted)]">Timeline signal</div>
+            <h2 className="mt-2 text-2xl font-semibold tracking-[-0.04em]">Read the strongest regions at a glance</h2>
+            <p className="mt-2 max-w-xl text-sm leading-6 text-[var(--muted)]">
+              Each column represents one slice of the source. Taller, brighter columns point to regions with stronger
+              ranked speech.
+            </p>
+          </div>
+          <div className="text-sm text-[var(--muted)]">48 bins across the source video</div>
         </div>
-        <div className="text-sm text-[var(--muted)]">48 bins across the source video</div>
+
+        <div className="mt-8 overflow-x-auto">
+          <div className="min-w-[56rem]">
+            <div className="flex items-center justify-between text-xs text-[var(--muted)]">
+              <span>0:00</span>
+              <span>25%</span>
+              <span>50%</span>
+              <span>75%</span>
+              <span>End</span>
+            </div>
+            <div className="mt-4 flex items-end gap-2">
+              {bins.map((bin, index) => {
+                const topClip = clips.find((clip) => clip.id === bin.top_clip_id) ?? null;
+                const active = topClip?.id === activeBinId;
+                const height = `${Math.max(26, bin.score)}%`;
+                return (
+                  <button
+                    key={`${bin.start}-${bin.end}-${index}`}
+                    type="button"
+                    onClick={() => onSeek(topClip?.start ?? bin.start, topClip?.id ?? null)}
+                    className={`timeline-column flex-1 rounded-t-[1rem] rounded-b-[0.7rem] transition ${
+                      active ? "border-[var(--text)]" : ""
+                    }`}
+                    style={{ ["--timeline-height" as string]: height }}
+                    aria-label={`Timeline segment ${index + 1}, score ${bin.score}`}
+                  />
+                );
+              })}
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-6 flex flex-wrap items-center gap-5 text-sm text-[var(--muted)]">
+          <span>Weak</span>
+          <div className="h-2 w-44 rounded-full bg-gradient-to-r from-black/10 via-[#e5ff96] to-[var(--accent)]" />
+          <span>Excellent</span>
+        </div>
       </div>
-      <div className="mt-6 grid grid-cols-12 gap-2 sm:grid-cols-16 xl:grid-cols-24">
-        {bins.map((bin, index) => {
-          const topClip = clips.find((clip) => clip.id === bin.top_clip_id) ?? null;
-          const active = topClip?.id === activeClipId;
-          return (
-            <button
-              key={`${bin.start}-${bin.end}-${index}`}
-              type="button"
-              onClick={() => onSeek(topClip?.start ?? bin.start, topClip?.id ?? null)}
-              className={`h-20 rounded-2xl border transition ${
-                active ? "border-[var(--text)]" : "border-transparent"
-              }`}
-              style={{
-                background: `linear-gradient(180deg, rgba(203, 255, 73, ${Math.max(bin.score / 100, 0.08)}) 0%, rgba(22, 20, 16, 0.06) 100%)`,
-              }}
-              aria-label={`Timeline segment ${index + 1}, score ${bin.score}`}
-            />
-          );
-        })}
-      </div>
-      <div className="mt-5 flex flex-wrap items-center gap-5 text-sm text-[var(--muted)]">
-        <span>Weak</span>
-        <div className="h-2 w-40 rounded-full bg-gradient-to-r from-black/10 via-[#d7ff77] to-[#cbff49]" />
-        <span>Excellent</span>
+
+      <div className="section-frame rounded-[2.25rem] p-6">
+        <div className="metric-label text-[var(--muted)]">Strongest windows</div>
+        <div className="mt-4 space-y-3">
+          {strongestRegions.length > 0 ? (
+            strongestRegions.map((bin) => {
+              const clip = clips.find((item) => item.id === bin.top_clip_id) ?? null;
+              return (
+                <button
+                  key={`${bin.start}-${bin.end}`}
+                  type="button"
+                  onClick={() => onSeek(clip?.start ?? bin.start, clip?.id ?? null)}
+                  className="w-full rounded-[1.5rem] border border-[var(--line)] bg-[var(--surface-strong)] px-4 py-4 text-left transition hover:border-[var(--text)]"
+                >
+                  <div className="flex items-center justify-between gap-3">
+                    <span className={qualityBadgeClass(bin.quality_label)}>{bin.quality_label}</span>
+                    <span className="rounded-full border border-[var(--line)] px-3 py-1 text-sm font-medium">
+                      {formatSignedScore(bin.score)}
+                    </span>
+                  </div>
+                  <div className="mt-3 text-sm font-medium text-[var(--text)]">
+                    {formatSeconds(bin.start)} - {formatSeconds(bin.end)}
+                  </div>
+                  <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
+                    {clip?.text || "Jump to this region in the source video."}
+                  </p>
+                </button>
+              );
+            })
+          ) : (
+            <p className="text-sm leading-6 text-[var(--muted)]">
+              Strong timeline regions will appear when clip scoring completes.
+            </p>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -431,18 +721,34 @@ function ExportPanel({
   disabled: boolean;
 }) {
   return (
-    <div className="grid gap-4 lg:grid-cols-[0.88fr_1.12fr]">
-      <div className="section-frame rounded-[2rem] p-6">
+    <div className="grid gap-4 xl:grid-cols-[0.82fr_1.18fr]">
+      <div className="section-frame rounded-[2.25rem] p-6">
         <div className="metric-label text-[var(--muted)]">Export</div>
-        <h2 className="mt-2 text-2xl font-semibold tracking-[-0.04em]">Structured JSON for downstream tooling</h2>
+        <h2 className="mt-2 text-3xl font-semibold tracking-[-0.05em]">Structured JSON for downstream tooling</h2>
         <p className="mt-4 text-sm leading-6 text-[var(--muted)]">
-          Export includes source metadata, summary stats, ranked clips, timeline bins, and transcript context. The file
-          is designed for annotation pipelines and dataset preparation rather than generic reporting.
+          Export contains source metadata, ranked clips, timeline bins, transcript context, and summary counts. It is
+          shaped for annotation and dataset workflows instead of generic reporting.
         </p>
+        <div className="mt-4 rounded-[1.5rem] border border-[var(--line)] bg-white/55 px-4 py-4 text-sm leading-6 text-[var(--muted)]">
+          The export stays intentionally simple: one source video, one ranked clip list, one timeline summary.
+        </div>
+
+        <div className="mt-6 space-y-3">
+          {[
+            "Source metadata and playback path",
+            "Per-clip confidence, pace, energy, and explanation text",
+            "Timeline bins for strong and weak regions",
+          ].map((item) => (
+            <div key={item} className="rounded-[1.5rem] border border-[var(--line)] bg-[var(--surface-strong)] px-4 py-4 text-sm leading-6 text-[var(--muted-strong)]">
+              {item}
+            </div>
+          ))}
+        </div>
+
         <a
           href={exportUrl}
           className={`mt-6 inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium ${
-            disabled ? "cursor-not-allowed border border-[var(--line)] text-[var(--muted)]" : "bg-[var(--accent)]"
+            disabled ? "cursor-not-allowed border border-[var(--line)] text-[var(--muted)]" : "bg-[var(--accent)] text-[var(--text)]"
           }`}
           aria-disabled={disabled}
           onClick={(event) => {
@@ -456,9 +762,19 @@ function ExportPanel({
         </a>
       </div>
 
-      <div className="section-frame rounded-[2rem] p-6">
-        <div className="metric-label text-[var(--muted)]">Schema preview</div>
-        <pre className="mt-4 overflow-auto rounded-[1.5rem] border border-[var(--line)] bg-[var(--surface-strong)] p-4 text-xs leading-6 text-[var(--muted)]">
+      <div className="section-frame rounded-[2.25rem] p-6">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <div className="metric-label text-[var(--muted)]">Schema preview</div>
+            <h3 className="mt-2 text-2xl font-semibold tracking-[-0.04em]">What leaves the system</h3>
+          </div>
+          <div className="inline-flex items-center gap-2 rounded-full border border-[var(--line)] px-3 py-2 text-sm text-[var(--muted)]">
+            <FileJson2 className="size-4" />
+            JSON
+          </div>
+        </div>
+
+        <pre className="mt-5 overflow-auto rounded-[1.8rem] border border-[var(--line)] bg-black/95 p-5 text-xs leading-6 text-white/72">
 {JSON.stringify(
   {
     jobId: data.jobId,
@@ -466,6 +782,7 @@ function ExportPanel({
     sourceVideo: {
       file_name: data.sourceVideo.file_name,
       duration_seconds: data.sourceVideo.duration_seconds,
+      size_bytes: data.sourceVideo.size_bytes,
     },
     summary: data.summary,
     clips: data.clips.slice(0, 2),
@@ -480,3 +797,43 @@ function ExportPanel({
   );
 }
 
+function MetricBlock({
+  icon: Icon,
+  label,
+  value,
+}: {
+  icon: typeof Gauge;
+  label: string;
+  value: string;
+}) {
+  return (
+    <div className="flex items-center justify-between gap-3 rounded-[1.4rem] border border-[var(--line)] bg-[var(--surface-strong)] px-4 py-3">
+      <div className="inline-flex items-center gap-3">
+        <div className="inline-flex size-9 items-center justify-center rounded-full border border-[var(--line)] bg-white/70">
+          <Icon className="size-4" />
+        </div>
+        <span className="text-sm text-[var(--muted)]">{label}</span>
+      </div>
+      <span className="text-sm font-semibold text-[var(--text)]">{value}</span>
+    </div>
+  );
+}
+
+function MetricSummary({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <div className="metric-label text-[var(--muted)]">{label}</div>
+      <div className="mt-1 font-medium text-[var(--text)]">{value}</div>
+    </div>
+  );
+}
+
+function qualityBadgeClass(label: ClipRecord["quality_label"] | TimelineBin["quality_label"]) {
+  if (label === "Excellent") {
+    return "rounded-full bg-[var(--accent)] px-3 py-1 text-sm font-medium text-[var(--text)]";
+  }
+  if (label === "Good") {
+    return "rounded-full border border-[var(--line)] bg-[var(--surface-strong)] px-3 py-1 text-sm font-medium text-[var(--muted-strong)]";
+  }
+  return "rounded-full bg-[var(--danger-soft)] px-3 py-1 text-sm font-medium text-red-700";
+}
