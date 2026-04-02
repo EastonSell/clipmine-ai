@@ -61,6 +61,13 @@ This log records the debugging pass completed for the current ClipMine AI reposi
 - Fixed the default backend CORS configuration so local uploads work from both `localhost:3000` and `127.0.0.1:3000`.
 - This resolves the common case where the backend was healthy and direct uploads worked in `curl`, but the browser still showed `Upload failed` because the origin was blocked.
 
+### 7. Loopback API host fallback in the frontend
+
+- Fixed the frontend API client so local development no longer assumes a single hardcoded loopback hostname.
+- When no explicit `NEXT_PUBLIC_API_BASE_URL` is set, the frontend now prefers the current browser hostname and falls back to the alternate local loopback API host automatically for:
+  - upload requests
+  - job polling requests
+
 ## Features Tested
 
 ### Backend API and job lifecycle
