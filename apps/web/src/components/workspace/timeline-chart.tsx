@@ -65,11 +65,12 @@ export function TimelineChart({ bins, clips, activeClipId, onSeek }: TimelineCha
                         ? "border-[var(--accent)] bg-[var(--accent-soft)]"
                         : "border-[var(--line)] hover:-translate-y-0.5 hover:border-[var(--line-strong)] hover:bg-white/[0.05]",
                     ].join(" ")}
-                    aria-label={`Timeline segment ${index + 1}, score ${Math.round(bin.score)}`}
+                    aria-label={`Timeline segment ${index + 1}, ${bin.quality_label}, score ${Math.round(bin.score)}`}
                     aria-pressed={active}
+                    title={`${bin.quality_label} region · ${formatSignedScore(bin.score)}`}
                   >
                     <span
-                      className="block w-full rounded-[0.75rem] bg-[linear-gradient(180deg,rgba(94,234,212,0.2),rgba(94,234,212,0.92))]"
+                      className={getTimelineBarClassName(bin.quality_label)}
                       style={{ height: `${Math.max(12, Math.round(bin.score))}%` }}
                     />
                   </button>
@@ -79,10 +80,26 @@ export function TimelineChart({ bins, clips, activeClipId, onSeek }: TimelineCha
           </div>
         </div>
 
-        <div className="mt-6 flex flex-wrap items-center gap-4 text-sm text-[var(--muted)]">
-          <span>Weak</span>
-          <div className="h-2 w-40 rounded-full bg-[linear-gradient(90deg,rgba(255,255,255,0.08),rgba(94,234,212,0.92))]" />
-          <span>Excellent</span>
+        <div className="mt-6 flex flex-wrap items-center gap-3 text-sm text-[var(--muted)]">
+          {[
+            {
+              label: "Excellent",
+              swatch: "linear-gradient(180deg,rgba(94,234,212,0.28),rgba(94,234,212,0.98))",
+            },
+            {
+              label: "Good",
+              swatch: "linear-gradient(180deg,rgba(148,163,184,0.2),rgba(148,163,184,0.82))",
+            },
+            {
+              label: "Weak",
+              swatch: "linear-gradient(180deg,rgba(71,85,105,0.16),rgba(71,85,105,0.72))",
+            },
+          ].map((item) => (
+            <div key={item.label} className="inline-flex items-center gap-2 rounded-full border border-[var(--line)] bg-white/[0.03] px-3 py-1.5">
+              <span className="h-2.5 w-2.5 rounded-full" style={{ background: item.swatch }} />
+              <span>{item.label}</span>
+            </div>
+          ))}
         </div>
       </Card>
 
@@ -129,4 +146,16 @@ export function TimelineChart({ bins, clips, activeClipId, onSeek }: TimelineCha
       </Card>
     </div>
   );
+}
+
+function getTimelineBarClassName(label: TimelineBin["quality_label"]) {
+  if (label === "Excellent") {
+    return "block w-full rounded-[0.75rem] bg-[linear-gradient(180deg,rgba(94,234,212,0.28),rgba(94,234,212,0.98))]";
+  }
+
+  if (label === "Good") {
+    return "block w-full rounded-[0.75rem] bg-[linear-gradient(180deg,rgba(148,163,184,0.2),rgba(148,163,184,0.82))]";
+  }
+
+  return "block w-full rounded-[0.75rem] bg-[linear-gradient(180deg,rgba(71,85,105,0.16),rgba(71,85,105,0.72))]";
 }

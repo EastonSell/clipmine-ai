@@ -51,3 +51,6 @@ def test_serialize_job_and_export_shapes() -> None:
     assert job_payload["sourceVideo"]["url"] == "/api/jobs/job123/video"
     assert len(job_payload["timeline"]) == 48
     assert export_payload["clips"][0]["quality_label"] == "Excellent"
+    assert "audio_features" in export_payload["clips"][0]
+    assert "quality_breakdown" in export_payload["clips"][0]
+    assert "word_alignments" in export_payload["clips"][0]

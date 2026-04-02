@@ -117,3 +117,68 @@ npm_config_cache=/tmp/clipmine-npm-cache npm run build:web
   - scoring behavior
   - segmentation behavior
   - health endpoint behavior
+
+## Multimodal Schema And UI Pass
+
+- Extended clip export data with:
+  - `audio_features`
+  - `linguistic_features`
+  - `word_alignments`
+  - `visual_features`
+  - `quality_breakdown`
+  - `quality_reasoning`
+  - `tags`
+  - `recommended_use`
+  - `embedding_vector`
+- Preserved all existing clip fields and ranking behavior while adding the new multimodal structure.
+- Updated the workspace UI to surface:
+  - quality breakdown bars
+  - tags
+  - recommended use badges
+  - quality reasoning
+  - alignment preview
+- Updated the timeline to label regions by quality color so stronger and weaker bins are easier to read at a glance.
+
+## Multimodal Bugs Fixed
+
+### 8. Export schema too shallow for multimodal review
+
+- Extended the backend clip schema and export serialization so downstream tooling now receives structured multimodal signals instead of only one summary score and explanation string.
+
+### 9. Timeline regions were not visually labeled by quality
+
+- Updated the frontend timeline chart so bars use quality-based color treatment and a visible legend for `Excellent`, `Good`, and `Weak`.
+
+### 10. Clip detail view hid the new signals
+
+- Refactored the selected clip workspace panel to show the most important new signals directly in the app instead of limiting them to the JSON export.
+
+## Multimodal Features Tested
+
+- Backend enrichment generates consistent nested structures for:
+  - audio features
+  - linguistic features
+  - visual features
+  - quality breakdown and reasoning
+  - tags and recommended use
+  - alignment timestamps
+  - embedding vector
+- Export payload includes the new multimodal clip fields without dropping legacy fields.
+- Real-file processing with `/Users/easton/Desktop/videoplayback.mp4` reached `ready` with:
+  - `50` clips
+  - `48` timeline bins
+  - enriched clip fields present in both `/api/jobs/{jobId}` and `/api/jobs/{jobId}/export.json`
+- Frontend routes remained healthy after the UI changes:
+  - `/`
+  - `/jobs/demo-job`
+
+## Additional Checks Run
+
+```bash
+TMPDIR='/Users/easton/Codex Creator Challenge/.tmp-pytest' npm run test:api
+npm_config_cache=/tmp/clipmine-npm-cache npm run lint:web
+npm_config_cache=/tmp/clipmine-npm-cache npm run build:web
+curl -sSf http://127.0.0.1:8000/api/health
+curl -I -sSf http://127.0.0.1:3000/
+curl -I -sSf http://127.0.0.1:3000/jobs/demo-job
+```

@@ -6,6 +6,8 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { formatPercent, formatSeconds, formatSignedScore } from "@/lib/format";
 import type { ClipRecord } from "@/lib/types";
 
+import { AlignmentPreview } from "./alignment-preview";
+import { ClipInsightsPanel } from "./clip-insights-panel";
 import { QualityBadge } from "./quality-badge";
 
 type ClipDetailPanelProps = {
@@ -44,7 +46,10 @@ export function ClipDetailPanel({ clip, onSeek }: ClipDetailPanelProps) {
           <h2 className="mt-4 text-2xl font-semibold leading-tight tracking-[-0.05em] sm:text-3xl">
             {clip.text}
           </h2>
-          <p className="mt-3 text-sm leading-6 text-[var(--muted)] sm:text-[0.98rem]">{clip.explanation}</p>
+          <p className="mt-3 text-sm leading-6 text-[var(--muted)] sm:text-[0.98rem]">
+            {clip.explanation}
+            {clip.quality_reasoning.summary ? ` · ${clip.quality_reasoning.summary}` : ""}
+          </p>
           <div className="mt-5 flex flex-wrap gap-2">
             {details.map((detail) => (
               <span
@@ -67,8 +72,11 @@ export function ClipDetailPanel({ clip, onSeek }: ClipDetailPanelProps) {
         <MetricCell label="Score" value={formatSignedScore(clip.score)} />
         <MetricCell label="Confidence" value={formatPercent(clip.confidence)} />
         <MetricCell label="Speech rate" value={`${clip.speech_rate.toFixed(1)} w/s`} />
-        <MetricCell label="Signal" value={formatPercent(clip.energy)} />
+        <MetricCell label="Audio signal" value={formatPercent(clip.quality_breakdown.acoustic_signal)} />
       </div>
+
+      <ClipInsightsPanel clip={clip} />
+      <AlignmentPreview clip={clip} />
     </Card>
   );
 }

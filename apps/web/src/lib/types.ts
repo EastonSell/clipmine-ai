@@ -19,6 +19,63 @@ export type PlaybackMetadata = {
   end: number;
 };
 
+export type ScalarFeature = {
+  value: number;
+  normalized: number;
+};
+
+export type AudioFeatures = {
+  volume: ScalarFeature;
+  speech_rate: ScalarFeature;
+  snr: ScalarFeature;
+  spectral: {
+    centroid_hz: ScalarFeature;
+    bandwidth_hz: ScalarFeature;
+    rolloff_hz: ScalarFeature;
+    flatness: ScalarFeature;
+    zero_crossing_rate: ScalarFeature;
+  };
+};
+
+export type LinguisticFeatures = {
+  word_count: number;
+  lexical_diversity: number;
+  filler_word_count: number;
+  filler_words: string[];
+  pos_distribution: Record<string, number>;
+};
+
+export type WordAlignment = {
+  token: string;
+  start: number;
+  end: number;
+  confidence: number;
+};
+
+export type VisualFeatures = {
+  sampled_frame_count: number;
+  face_detection: ScalarFeature;
+  mouth_movement: ScalarFeature;
+  visibility: ScalarFeature;
+};
+
+export type QualityBreakdown = {
+  transcription_confidence: number;
+  pacing: number;
+  acoustic_signal: number;
+  continuity: number;
+  stability: number;
+  linguistic_clarity: number;
+  visual_readiness: number;
+  overall: number;
+};
+
+export type QualityReasoning = {
+  summary: string;
+  strengths: string[];
+  cautions: string[];
+};
+
 export type ClipRecord = {
   id: string;
   text: string;
@@ -35,6 +92,15 @@ export type ClipRecord = {
   explanation: string;
   source_video_id: string;
   playback: PlaybackMetadata;
+  audio_features: AudioFeatures;
+  linguistic_features: LinguisticFeatures;
+  word_alignments: WordAlignment[];
+  visual_features: VisualFeatures;
+  quality_breakdown: QualityBreakdown;
+  quality_reasoning: QualityReasoning;
+  tags: string[];
+  recommended_use: string[];
+  embedding_vector: number[] | null;
 };
 
 export type TimelineBin = {
@@ -76,4 +142,3 @@ export type JobResponse = {
   createdAt: string;
   updatedAt: string;
 };
-

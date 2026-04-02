@@ -11,6 +11,21 @@ export function formatSeconds(value: number) {
   return `${minutes}:${seconds.toString().padStart(2, "0")}`;
 }
 
+export function formatPreciseSeconds(value: number) {
+  const totalSeconds = Math.max(0, value);
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+  const wholeSeconds = Math.floor(seconds);
+  const tenths = Math.floor((seconds - wholeSeconds) * 10);
+
+  if (hours > 0) {
+    return `${hours}:${minutes.toString().padStart(2, "0")}:${wholeSeconds.toString().padStart(2, "0")}.${tenths}`;
+  }
+
+  return `${minutes}:${wholeSeconds.toString().padStart(2, "0")}.${tenths}`;
+}
+
 export function formatSignedScore(value: number) {
   return `${Math.round(value)}/100`;
 }

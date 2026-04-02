@@ -6,6 +6,7 @@ from contextlib import suppress
 from time import perf_counter
 
 from .media import extract_audio, load_mono_wave, probe_media_duration
+from .multimodal import enrich_scored_clips
 from .presentation import build_summary, build_timeline
 from .schemas import JobManifest, JobStatus, ProgressPhase
 from .scoring import score_candidate_clips
@@ -133,15 +134,23 @@ class JobProcessor:
                 source_video_id=job.source_video.id,
                 video_url=f"/api/jobs/{job_id}/video",
             )
+            clips = enrich_scored_clips(
+                clips,
+                candidate_clips=candidates,
+                audio_samples=audio_samples,
+                sample_rate=sample_rate,
+                video_path=video_path,
+            )
             timeline = build_timeline(clips, duration_seconds=duration_seconds)
             summary = build_summary(clips, duration_seconds=duration_seconds, transcript_text=transcription.transcript_text)
             logger.info(
-                "job.stage_complete job_id=%s stage=scoring duration_ms=%.1f clip_count=%s top_score=%s sample_rate=%s",
+                "job.stage_complete job_id=%s stage=scoring duration_ms=%.1f clip_count=%s top_score=%s sample_rate=%s enriched_fields=%s",
                 job_id,
                 (perf_counter() - stage_started_at) * 1000,
                 len(clips),
                 summary.top_score if summary else None,
                 sample_rate,
+                "audio_features,linguistic_features,word_alignments,visual_features,quality_breakdown,quality_reasoning,tags,recommended_use,embedding_vector",
             )
 
             ready_job = job.model_copy(

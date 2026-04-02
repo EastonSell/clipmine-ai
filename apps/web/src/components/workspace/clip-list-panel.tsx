@@ -3,6 +3,7 @@ import { Play } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { SectionHeader } from "@/components/ui/section-header";
+import { Badge } from "@/components/ui/badge";
 import { formatPercent, formatSeconds, formatSignedScore } from "@/lib/format";
 import type { ClipRecord } from "@/lib/types";
 
@@ -75,12 +76,21 @@ export function ClipListPanel({ clips, activeClipId, onSelect }: ClipListPanelPr
                     {clip.text}
                   </p>
                   <p className="mt-3 text-sm leading-6 text-[var(--muted)]">{clip.explanation}</p>
+                  {clip.tags.length > 0 ? (
+                    <div className="mt-4 flex flex-wrap gap-2">
+                      {clip.tags.slice(0, 3).map((tag) => (
+                        <Badge key={tag} tone={tag === "training-ready" ? "accent" : "muted"}>
+                          {formatTagLabel(tag)}
+                        </Badge>
+                      ))}
+                    </div>
+                  ) : null}
                 </div>
 
                 <div className="grid gap-3 text-sm text-[var(--muted)] sm:grid-cols-3 xl:grid-cols-1">
                   <MetricSummary label="Confidence" value={formatPercent(clip.confidence)} />
                   <MetricSummary label="Speech rate" value={`${clip.speech_rate.toFixed(1)} w/s`} />
-                  <MetricSummary label="Signal" value={formatPercent(clip.energy)} />
+                  <MetricSummary label="Signal" value={formatPercent(clip.quality_breakdown.acoustic_signal)} />
                 </div>
               </div>
 
@@ -103,4 +113,12 @@ function MetricSummary({ label, value }: { label: string; value: string }) {
       <div className="mt-1 font-medium text-[var(--text)]">{value}</div>
     </div>
   );
+}
+
+function formatTagLabel(value: string) {
+  return value
+    .split(/[-_]/)
+    .filter(Boolean)
+    .map((segment) => segment[0]?.toUpperCase() + segment.slice(1))
+    .join(" ");
 }

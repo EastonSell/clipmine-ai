@@ -35,7 +35,8 @@ export function ExportPanel({ job, exportUrl, disabled }: ExportPanelProps) {
         <div className="mt-6 space-y-3">
           {[
             "Source metadata and playback path",
-            "Per-clip confidence, pace, energy, silence, and explanation text",
+            "Per-clip audio, linguistic, visual, and quality breakdown signals",
+            "Word-level alignment timestamps, tags, recommended use, and optional embedding vector",
             "Timeline bins for stronger and weaker regions",
           ].map((item) => (
             <div
@@ -70,7 +71,7 @@ export function ExportPanel({ job, exportUrl, disabled }: ExportPanelProps) {
         <SectionHeader
           eyebrow="Schema preview"
           title="Payload shape"
-          description="The app keeps the export intentionally simple: one source video, one ranked clip list, and one timeline summary."
+          description="The export stays readable while extending each clip with multimodal analysis for downstream review and training workflows."
         />
 
         <pre className="mt-6 overflow-auto rounded-[1.5rem] border border-[var(--line)] bg-[var(--surface-dark)] p-5 text-xs leading-6 text-white/75 shadow-[var(--shadow-soft)]">
