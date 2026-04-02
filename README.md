@@ -99,9 +99,7 @@ cd ..
 Backend:
 
 ```bash
-cd backend
-source .venv/bin/activate
-uvicorn clipmine_api.main:app --reload --port 8000
+npm run dev:api
 ```
 
 Frontend:
@@ -119,6 +117,7 @@ Frontend:
 ```bash
 npm run lint:web
 npm run build:web
+npm run preview:web
 ```
 
 Backend:
@@ -164,4 +163,3 @@ Then upload `/tmp/clipmine-test.mp4` through the UI.
 - Backend: Render Web Service with a persistent disk
 
 See [DEPLOYMENT.md](/Users/easton/Codex Creator Challenge/DEPLOYMENT.md) for the exact steps.
-

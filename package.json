@@ -5,9 +5,12 @@
     "apps/web"
   ],
   "scripts": {
-    "dev:web": "npm run dev --workspace apps/web",
-    "build:web": "npm run build --workspace apps/web",
-    "lint:web": "npm run lint --workspace apps/web"
+    "dev:web": "npm_config_cache=/tmp/clipmine-npm-cache npm run dev --workspace apps/web",
+    "build:web": "npm_config_cache=/tmp/clipmine-npm-cache npm run build --workspace apps/web",
+    "start:web": "npm_config_cache=/tmp/clipmine-npm-cache npm run start --workspace apps/web",
+    "preview:web": "npm run build:web && npm run start:web",
+    "lint:web": "npm_config_cache=/tmp/clipmine-npm-cache npm run lint --workspace apps/web",
+    "dev:api": "cd backend && . .venv/bin/activate && uvicorn clipmine_api.main:app --reload --host 127.0.0.1 --port 8000",
+    "test:api": "cd backend && . .venv/bin/activate && pytest"
   }
 }
-

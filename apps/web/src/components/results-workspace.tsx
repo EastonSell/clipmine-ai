@@ -105,7 +105,7 @@ export function ResultsWorkspace({ jobId }: { jobId: string }) {
     return (
       <WorkspaceFrame title="Workspace unavailable">
         <div className="section-frame rounded-[2.25rem] p-6 sm:p-8">
-          <div className="inline-flex items-center gap-3 rounded-full border border-red-200 bg-[var(--danger-soft)] px-4 py-2 text-sm font-medium text-red-700">
+          <div className="inline-flex items-center gap-3 rounded-full border border-red-500/30 bg-[var(--danger-soft)] px-4 py-2 text-sm font-medium text-red-300">
             <CircleAlert className="size-4" />
             The workspace could not be loaded
           </div>
@@ -144,12 +144,12 @@ export function ResultsWorkspace({ jobId }: { jobId: string }) {
       <section className="telemetry-strip rounded-[2rem] p-5 sm:p-6">
         <div className="grid gap-4 lg:grid-cols-[0.74fr_1.26fr] lg:items-end">
           <div>
-            <div className="metric-label text-[var(--muted)]">Workspace overview</div>
+            <div className="metric-label text-[var(--accent)]">Workspace overview</div>
             <h2 className="mt-3 text-3xl font-semibold tracking-[-0.05em]">Inspect the source once, promote the best clips, export only signal.</h2>
           </div>
           <div className="grid gap-3 sm:grid-cols-4">
             {telemetryItems.map(([label, value]) => (
-              <div key={label} className="rounded-[1.4rem] border border-[var(--line)] bg-white/55 px-4 py-4">
+              <div key={label} className="rounded-[1.4rem] border border-[var(--line)] bg-[rgba(255,255,255,0.03)] px-4 py-4">
                 <div className="metric-label text-[var(--muted)]">{label}</div>
                 <div className="mt-2 text-2xl font-semibold tracking-[-0.04em]">{value}</div>
               </div>
@@ -162,7 +162,7 @@ export function ResultsWorkspace({ jobId }: { jobId: string }) {
         <section className="workspace-shell section-frame overflow-hidden rounded-[2.4rem]">
           <div className="flex flex-wrap items-center justify-between gap-4 border-b border-[var(--line)] px-5 py-4 sm:px-6">
             <div className="space-y-2">
-              <div className="metric-label text-[var(--muted)]">Source analysis</div>
+              <div className="metric-label text-[var(--accent)]">Source analysis</div>
               <div className="flex flex-wrap items-center gap-3 text-sm text-[var(--muted)]">
                 <span>{formatBytes(data.sourceVideo.size_bytes)}</span>
                 <span>{formatSeconds(data.sourceVideo.duration_seconds ?? 0)}</span>
@@ -172,9 +172,9 @@ export function ResultsWorkspace({ jobId }: { jobId: string }) {
             <div
               className={`rounded-full px-4 py-2 text-sm font-medium ${
                 data.status === "ready"
-                  ? "bg-[var(--accent)] text-[var(--text)]"
+                  ? "bg-[var(--accent)] text-[#051118]"
                   : data.status === "failed"
-                    ? "bg-[var(--danger-soft)] text-red-700"
+                    ? "bg-[var(--danger-soft)] text-red-300"
                     : "border border-[var(--line)] bg-[var(--surface-strong)] text-[var(--muted-strong)]"
               }`}
             >
@@ -216,7 +216,7 @@ export function ResultsWorkspace({ jobId }: { jobId: string }) {
                         ].map((item) => (
                           <span
                             key={item}
-                            className="rounded-full border border-[var(--line)] bg-white/70 px-3 py-1 text-xs font-medium text-[var(--muted-strong)]"
+                            className="rounded-full border border-[var(--line)] bg-[rgba(255,255,255,0.04)] px-3 py-1 text-xs font-medium text-[var(--muted-strong)]"
                           >
                             {item}
                           </span>
@@ -296,7 +296,7 @@ export function ResultsWorkspace({ jobId }: { jobId: string }) {
             className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium ${
               processing
                 ? "cursor-not-allowed border border-[var(--line)] text-[var(--muted)]"
-                : "bg-[var(--text)] text-white"
+                : "bg-[var(--accent)] text-[#051118]"
             }`}
             aria-disabled={processing}
             onClick={(event) => {
@@ -344,17 +344,25 @@ export function ResultsWorkspace({ jobId }: { jobId: string }) {
 function WorkspaceFrame({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <main className="mx-auto flex min-h-screen max-w-[96rem] flex-col gap-8 px-4 py-4 sm:px-6 lg:px-8">
-      <header className="flex flex-wrap items-end justify-between gap-4 rounded-[2rem] border border-[var(--line)] bg-[var(--surface-strong)]/90 px-5 py-5 backdrop-blur-xl sm:px-6">
+      <header className="flex flex-wrap items-end justify-between gap-4 rounded-[2rem] border border-[var(--line)] bg-[var(--surface-strong)]/88 px-5 py-5 backdrop-blur-xl sm:px-6">
         <div>
-          <p className="metric-label text-[var(--muted)]">ClipMine AI Workspace</p>
+          <p className="metric-label text-[var(--accent)]">ClipMine AI Workspace</p>
           <h1 className="mt-2 text-4xl font-semibold tracking-[-0.06em] sm:text-5xl">{title}</h1>
           <p className="mt-3 max-w-2xl text-sm leading-6 text-[var(--muted)]">
             One source video, one ranking surface, one export path.
           </p>
         </div>
-        <Link href="/" className="rounded-full border border-[var(--line)] px-4 py-2 text-sm font-medium">
-          Upload another video
-        </Link>
+        <div className="flex flex-wrap gap-3">
+          <div className="rounded-full border border-[var(--line)] bg-[rgba(255,255,255,0.03)] px-4 py-2 text-sm text-[var(--muted)]">
+            Frontier curation surface
+          </div>
+          <Link
+            href="/"
+            className="rounded-full border border-[var(--line)] px-4 py-2 text-sm font-medium transition hover:border-[var(--accent)] hover:text-[var(--accent)]"
+          >
+            Upload another video
+          </Link>
+        </div>
       </header>
       {children}
     </main>
@@ -380,15 +388,15 @@ function StatusPanel({ data, onRefresh }: { data: JobResponse; onRefresh: () => 
     <div className="section-frame rounded-[2.25rem] p-6">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <div className="metric-label text-[var(--muted)]">Pipeline status</div>
+          <div className="metric-label text-[var(--accent)]">Pipeline status</div>
           <div className="mt-2 text-2xl font-semibold tracking-[-0.04em]">{phaseCopy[data.progressPhase]}</div>
         </div>
         <div
           className={`rounded-full px-3 py-2 text-xs font-medium ${
             data.status === "ready"
-              ? "bg-[var(--accent)] text-[var(--text)]"
+              ? "bg-[var(--accent)] text-[#051118]"
               : data.status === "failed"
-                ? "bg-[var(--danger-soft)] text-red-700"
+                ? "bg-[var(--danger-soft)] text-red-300"
                 : "border border-[var(--line)] bg-[var(--surface-strong)]"
           }`}
         >
@@ -405,7 +413,7 @@ function StatusPanel({ data, onRefresh }: { data: JobResponse; onRefresh: () => 
               <div
                 className={`flex size-7 items-center justify-center rounded-full border text-xs font-semibold ${
                   complete || current
-                    ? "border-[var(--text)] bg-[var(--accent)] text-[var(--text)]"
+                    ? "border-[var(--accent)] bg-[var(--accent)] text-[#051118]"
                     : "border-[var(--line)] text-[var(--muted)]"
                 }`}
               >
@@ -431,7 +439,7 @@ function StatusPanel({ data, onRefresh }: { data: JobResponse; onRefresh: () => 
         <button
           type="button"
           onClick={onRefresh}
-          className="inline-flex items-center gap-2 rounded-full border border-[var(--line)] px-4 py-2 text-sm font-medium"
+          className="inline-flex items-center gap-2 rounded-full border border-[var(--line)] px-4 py-2 text-sm font-medium transition hover:border-[var(--accent)] hover:text-[var(--accent)]"
         >
           <RefreshCcw className="size-4" />
           Refresh
@@ -452,10 +460,10 @@ function JobSummaryPanel({ data }: { data: JobResponse }) {
 
   return (
     <div className="section-frame rounded-[2.25rem] p-6">
-      <div className="metric-label text-[var(--muted)]">Job summary</div>
+      <div className="metric-label text-[var(--accent)]">Job summary</div>
       <div className="mt-5 grid grid-cols-2 gap-3">
         {items.map(([label, value]) => (
-          <div key={label} className="rounded-[1.5rem] border border-[var(--line)] bg-[var(--surface-strong)] px-4 py-4">
+          <div key={label} className="rounded-[1.5rem] border border-[var(--line)] bg-[rgba(255,255,255,0.03)] px-4 py-4">
             <div className="metric-label text-[var(--muted)]">{label}</div>
             <div className="mt-2 text-2xl font-semibold tracking-[-0.04em]">{value}</div>
           </div>
@@ -478,7 +486,7 @@ function JobSummaryPanel({ data }: { data: JobResponse }) {
 function SelectedClipInspector({ clip }: { clip: ClipRecord | null }) {
   return (
     <div className="section-frame rounded-[2.25rem] p-6">
-      <div className="metric-label text-[var(--muted)]">Clip inspector</div>
+      <div className="metric-label text-[var(--accent)]">Clip inspector</div>
       {clip ? (
         <>
           <div className="mt-4 flex items-center justify-between gap-3">
@@ -506,21 +514,21 @@ function SelectedClipInspector({ clip }: { clip: ClipRecord | null }) {
 function QuickStatsPanel({ data }: { data: JobResponse }) {
   return (
     <div className="section-frame rounded-[2.25rem] p-6">
-      <div className="metric-label text-[var(--muted)]">Workspace notes</div>
+      <div className="metric-label text-[var(--accent)]">Workspace notes</div>
       <div className="mt-4 space-y-3">
         {[
           "One shared source player for every clip",
           "Clickable timeline bins across the source video",
           "Structured export for downstream workflows",
         ].map((item) => (
-          <div key={item} className="rounded-[1.4rem] border border-[var(--line)] bg-[var(--surface-strong)] px-4 py-4 text-sm leading-6 text-[var(--muted-strong)]">
+          <div key={item} className="rounded-[1.4rem] border border-[var(--line)] bg-[rgba(255,255,255,0.03)] px-4 py-4 text-sm leading-6 text-[var(--muted-strong)]">
             {item}
           </div>
         ))}
       </div>
-      <div className="mt-5 rounded-[1.5rem] border border-[var(--line)] bg-black/95 px-4 py-4 text-white">
-        <div className="metric-label text-white/45">Job id</div>
-        <div className="mt-2 break-all text-sm text-white/75">{data.jobId}</div>
+      <div className="mt-5 rounded-[1.5rem] border border-[var(--line)] bg-[linear-gradient(180deg,rgba(123,255,217,0.08),rgba(255,255,255,0.01))] px-4 py-4">
+        <div className="metric-label text-[var(--muted)]">Job id</div>
+        <div className="mt-2 break-all text-sm text-[var(--muted-strong)]">{data.jobId}</div>
       </div>
     </div>
   );
@@ -551,7 +559,7 @@ function BestClipsPanel({
     <div className="section-frame overflow-hidden rounded-[2.25rem]">
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--line)] px-5 py-4 sm:px-6">
         <div>
-          <div className="metric-label text-[var(--muted)]">Best clips</div>
+          <div className="metric-label text-[var(--accent)]">Best clips</div>
           <h2 className="mt-2 text-2xl font-semibold tracking-[-0.04em]">Ranked for real training usefulness</h2>
           <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
             Click any row to seek the source video and keep one active inspection target.
@@ -568,13 +576,13 @@ function BestClipsPanel({
               type="button"
               onClick={() => onSelect(clip.start, clip.id)}
               className={`clip-row w-full px-5 py-5 text-left transition sm:px-6 ${
-                active ? "bg-[var(--accent-soft)]" : "hover:bg-white/35"
+                active ? "bg-[var(--accent-soft)]" : "hover:bg-[rgba(255,255,255,0.03)]"
               }`}
             >
               <div className="grid gap-4 xl:grid-cols-[auto_minmax(0,1fr)_auto] xl:items-start">
                 <div className="flex items-center gap-3 xl:flex-col xl:items-start">
                   <div className="text-3xl font-semibold tracking-[-0.05em] text-[var(--muted-strong)]">{String(index + 1).padStart(2, "0")}</div>
-                  <div className="rounded-full bg-[var(--text)] px-3 py-1 text-sm font-medium text-white">
+                  <div className="rounded-full bg-[var(--accent)] px-3 py-1 text-sm font-semibold text-[#051118]">
                     {formatSignedScore(clip.score)}
                   </div>
                 </div>
@@ -624,7 +632,7 @@ function TimelinePanel({
       <div className="section-frame rounded-[2.25rem] p-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <div className="metric-label text-[var(--muted)]">Timeline signal</div>
+            <div className="metric-label text-[var(--accent)]">Timeline signal</div>
             <h2 className="mt-2 text-2xl font-semibold tracking-[-0.04em]">Read the strongest regions at a glance</h2>
             <p className="mt-2 max-w-xl text-sm leading-6 text-[var(--muted)]">
               Each column represents one slice of the source. Taller, brighter columns point to regions with stronger
@@ -667,13 +675,13 @@ function TimelinePanel({
 
         <div className="mt-6 flex flex-wrap items-center gap-5 text-sm text-[var(--muted)]">
           <span>Weak</span>
-          <div className="h-2 w-44 rounded-full bg-gradient-to-r from-black/10 via-[#e5ff96] to-[var(--accent)]" />
+          <div className="h-2 w-44 rounded-full bg-gradient-to-r from-white/8 via-[var(--accent-strong)] to-[var(--accent)]" />
           <span>Excellent</span>
         </div>
       </div>
 
       <div className="section-frame rounded-[2.25rem] p-6">
-        <div className="metric-label text-[var(--muted)]">Strongest windows</div>
+        <div className="metric-label text-[var(--accent)]">Strongest windows</div>
         <div className="mt-4 space-y-3">
           {strongestRegions.length > 0 ? (
             strongestRegions.map((bin) => {
@@ -683,7 +691,7 @@ function TimelinePanel({
                   key={`${bin.start}-${bin.end}`}
                   type="button"
                   onClick={() => onSeek(clip?.start ?? bin.start, clip?.id ?? null)}
-                  className="w-full rounded-[1.5rem] border border-[var(--line)] bg-[var(--surface-strong)] px-4 py-4 text-left transition hover:border-[var(--text)]"
+                  className="w-full rounded-[1.5rem] border border-[var(--line)] bg-[rgba(255,255,255,0.03)] px-4 py-4 text-left transition hover:border-[var(--accent)]"
                 >
                   <div className="flex items-center justify-between gap-3">
                     <span className={qualityBadgeClass(bin.quality_label)}>{bin.quality_label}</span>
@@ -723,13 +731,13 @@ function ExportPanel({
   return (
     <div className="grid gap-4 xl:grid-cols-[0.82fr_1.18fr]">
       <div className="section-frame rounded-[2.25rem] p-6">
-        <div className="metric-label text-[var(--muted)]">Export</div>
+        <div className="metric-label text-[var(--accent)]">Export</div>
         <h2 className="mt-2 text-3xl font-semibold tracking-[-0.05em]">Structured JSON for downstream tooling</h2>
         <p className="mt-4 text-sm leading-6 text-[var(--muted)]">
           Export contains source metadata, ranked clips, timeline bins, transcript context, and summary counts. It is
           shaped for annotation and dataset workflows instead of generic reporting.
         </p>
-        <div className="mt-4 rounded-[1.5rem] border border-[var(--line)] bg-white/55 px-4 py-4 text-sm leading-6 text-[var(--muted)]">
+        <div className="mt-4 rounded-[1.5rem] border border-[var(--line)] bg-[rgba(255,255,255,0.03)] px-4 py-4 text-sm leading-6 text-[var(--muted)]">
           The export stays intentionally simple: one source video, one ranked clip list, one timeline summary.
         </div>
 
@@ -739,7 +747,7 @@ function ExportPanel({
             "Per-clip confidence, pace, energy, and explanation text",
             "Timeline bins for strong and weak regions",
           ].map((item) => (
-            <div key={item} className="rounded-[1.5rem] border border-[var(--line)] bg-[var(--surface-strong)] px-4 py-4 text-sm leading-6 text-[var(--muted-strong)]">
+            <div key={item} className="rounded-[1.5rem] border border-[var(--line)] bg-[rgba(255,255,255,0.03)] px-4 py-4 text-sm leading-6 text-[var(--muted-strong)]">
               {item}
             </div>
           ))}
@@ -748,7 +756,7 @@ function ExportPanel({
         <a
           href={exportUrl}
           className={`mt-6 inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium ${
-            disabled ? "cursor-not-allowed border border-[var(--line)] text-[var(--muted)]" : "bg-[var(--accent)] text-[var(--text)]"
+            disabled ? "cursor-not-allowed border border-[var(--line)] text-[var(--muted)]" : "bg-[var(--accent)] text-[#051118]"
           }`}
           aria-disabled={disabled}
           onClick={(event) => {
@@ -765,7 +773,7 @@ function ExportPanel({
       <div className="section-frame rounded-[2.25rem] p-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <div className="metric-label text-[var(--muted)]">Schema preview</div>
+            <div className="metric-label text-[var(--accent)]">Schema preview</div>
             <h3 className="mt-2 text-2xl font-semibold tracking-[-0.04em]">What leaves the system</h3>
           </div>
           <div className="inline-flex items-center gap-2 rounded-full border border-[var(--line)] px-3 py-2 text-sm text-[var(--muted)]">
@@ -807,9 +815,9 @@ function MetricBlock({
   value: string;
 }) {
   return (
-    <div className="flex items-center justify-between gap-3 rounded-[1.4rem] border border-[var(--line)] bg-[var(--surface-strong)] px-4 py-3">
+    <div className="flex items-center justify-between gap-3 rounded-[1.4rem] border border-[var(--line)] bg-[rgba(255,255,255,0.03)] px-4 py-3">
       <div className="inline-flex items-center gap-3">
-        <div className="inline-flex size-9 items-center justify-center rounded-full border border-[var(--line)] bg-white/70">
+        <div className="inline-flex size-9 items-center justify-center rounded-full border border-[var(--line)] bg-[rgba(255,255,255,0.04)]">
           <Icon className="size-4" />
         </div>
         <span className="text-sm text-[var(--muted)]">{label}</span>
@@ -830,10 +838,10 @@ function MetricSummary({ label, value }: { label: string; value: string }) {
 
 function qualityBadgeClass(label: ClipRecord["quality_label"] | TimelineBin["quality_label"]) {
   if (label === "Excellent") {
-    return "rounded-full bg-[var(--accent)] px-3 py-1 text-sm font-medium text-[var(--text)]";
+    return "rounded-full bg-[var(--accent)] px-3 py-1 text-sm font-semibold text-[#051118]";
   }
   if (label === "Good") {
-    return "rounded-full border border-[var(--line)] bg-[var(--surface-strong)] px-3 py-1 text-sm font-medium text-[var(--muted-strong)]";
+    return "rounded-full border border-[var(--line)] bg-[rgba(255,255,255,0.03)] px-3 py-1 text-sm font-medium text-[var(--muted-strong)]";
   }
-  return "rounded-full bg-[var(--danger-soft)] px-3 py-1 text-sm font-medium text-red-700";
+  return "rounded-full bg-[var(--danger-soft)] px-3 py-1 text-sm font-medium text-red-300";
 }

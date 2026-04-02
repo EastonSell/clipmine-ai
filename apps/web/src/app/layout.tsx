@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Space_Grotesk, IBM_Plex_Mono } from "next/font/google";
 
 import "./globals.css";
@@ -19,6 +19,10 @@ export const metadata: Metadata = {
   description: "Upload any video and instantly find, visualize, and export the best training-ready speech clips.",
 };
 
+export const viewport: Viewport = {
+  themeColor: "#09111a",
+};
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -35,4 +39,3 @@ export default function RootLayout({
     </html>
   );
 }
-

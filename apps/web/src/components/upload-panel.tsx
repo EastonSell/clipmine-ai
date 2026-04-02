@@ -72,9 +72,9 @@ export function UploadPanel() {
     >
       <div className="grid lg:grid-cols-[0.78fr_1.22fr]">
         <div className="border-b border-[var(--line)] px-6 py-7 sm:px-8 lg:border-b-0 lg:border-r">
-          <div className="metric-label text-[var(--muted)]">Upload console</div>
+          <div className="metric-label text-[var(--accent)]">Upload console</div>
           <h2 className="mt-4 max-w-md text-4xl font-semibold tracking-[-0.05em]">
-            Start with one source video and keep the workflow obvious.
+            Start with one source video and keep the next step obvious.
           </h2>
           <p className="mt-4 max-w-md text-base leading-7 text-[var(--muted)]">
             This intake surface does one job: create a stable backend job and move you into a workspace URL that stays
@@ -98,7 +98,7 @@ export function UploadPanel() {
           <form onSubmit={handleSubmit} className="space-y-5">
             <label
               htmlFor="video-upload"
-              className="upload-dropzone group block cursor-pointer rounded-[2.2rem] border border-dashed border-[var(--line-strong)] bg-[linear-gradient(180deg,rgba(255,255,255,0.72),rgba(255,252,246,0.92))] p-6 transition hover:border-[var(--text)]"
+              className="upload-dropzone group block cursor-pointer rounded-[2.2rem] border border-dashed border-[var(--line-strong)] bg-[linear-gradient(180deg,rgba(255,255,255,0.04),rgba(255,255,255,0.01))] p-6 transition hover:border-[var(--accent)]"
               data-dragging={isDragging}
               data-has-file={Boolean(selectedFile)}
               onDragEnter={(event) => {
@@ -133,7 +133,7 @@ export function UploadPanel() {
                       short speech windows for reuse.
                     </p>
                   </div>
-                  <div className="inline-flex size-14 items-center justify-center rounded-full bg-[var(--accent)] text-[var(--text)] transition group-hover:translate-x-1 group-hover:-translate-y-1">
+                  <div className="inline-flex size-14 items-center justify-center rounded-full bg-[var(--accent)] text-[#051118] transition group-hover:translate-x-1 group-hover:-translate-y-1">
                     <Upload className="size-6" />
                   </div>
                 </div>
@@ -149,19 +149,19 @@ export function UploadPanel() {
                         <span className="rounded-full border border-[var(--line)] px-3 py-1 text-xs font-medium text-[var(--muted-strong)]">
                           {selectedFile ? formatBytes(selectedFile.size) : "Waiting for file"}
                         </span>
-                        <span className="rounded-full border border-[var(--line)] px-3 py-1 text-xs font-medium text-[var(--muted-strong)]">
+                        <span className="rounded-full border border-[var(--line)] bg-[var(--surface-strong)] px-3 py-1 text-xs font-medium text-[var(--muted-strong)]">
                           {selectedFile ? (selectedFile.type || "Video file") : "Direct browser upload"}
                         </span>
                       </div>
                     </div>
 
-                    <div className="rounded-[1.6rem] border border-[var(--line)] bg-black/95 px-5 py-4 text-white">
-                      <div className="metric-label text-white/45">Accepted types</div>
-                      <div className="mt-3 flex items-center gap-3 text-sm text-white/72">
+                    <div className="rounded-[1.6rem] border border-[var(--line)] bg-[linear-gradient(180deg,rgba(123,255,217,0.06),rgba(255,255,255,0.02))] px-5 py-4">
+                      <div className="metric-label text-[var(--muted)]">Accepted types</div>
+                      <div className="mt-3 flex items-center gap-3 text-sm text-[var(--muted-strong)]">
                         <Waves className="size-4" />
                         .mp4 and .mov
                       </div>
-                      <div className="mt-5 text-xs leading-6 text-white/55">
+                      <div className="mt-5 text-xs leading-6 text-[var(--muted)]">
                         Drag and drop works here. The backend job is created immediately after upload succeeds.
                       </div>
                     </div>
@@ -200,7 +200,7 @@ export function UploadPanel() {
               <button
                 type="submit"
                 disabled={isUploading}
-                className="inline-flex items-center gap-2 rounded-full bg-[var(--text)] px-5 py-3 text-sm font-medium text-white transition hover:bg-black disabled:cursor-not-allowed disabled:opacity-70"
+                className="inline-flex items-center gap-2 rounded-full bg-[var(--accent)] px-5 py-3 text-sm font-semibold text-[#051118] transition hover:translate-y-[-1px] disabled:cursor-not-allowed disabled:opacity-70"
               >
                 {isUploading ? <LoaderCircle className="size-4 animate-spin" /> : <ArrowUpRight className="size-4" />}
                 {isUploading ? "Starting analysis" : "Upload and analyze"}
@@ -214,7 +214,7 @@ export function UploadPanel() {
                   initial={{ opacity: 0, y: 8 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -8 }}
-                  className="rounded-[1.4rem] border border-red-200 bg-[var(--danger-soft)] px-4 py-3 text-sm text-red-700"
+                  className="rounded-[1.4rem] border border-red-500/30 bg-[var(--danger-soft)] px-4 py-3 text-sm text-red-300"
                 >
                   {error}
                 </motion.div>
@@ -224,7 +224,7 @@ export function UploadPanel() {
         </div>
       </div>
 
-      <div className="flex flex-wrap items-center justify-between gap-4 border-t border-[var(--line)] bg-white/35 px-6 py-4 text-sm text-[var(--muted)] sm:px-8">
+      <div className="flex flex-wrap items-center justify-between gap-4 border-t border-[var(--line)] bg-[rgba(255,255,255,0.02)] px-6 py-4 text-sm text-[var(--muted)] sm:px-8">
         <div className="flex flex-wrap gap-x-6 gap-y-2">
           <span>Confidence-aware ranking</span>
           <span>Clickable timeline signal</span>
