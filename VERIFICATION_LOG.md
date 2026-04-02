@@ -636,3 +636,20 @@ npm run test:e2e
 
 - `npm run test:e2e`: 10 / 10 tests passed
 - no `NO_COLOR` / `FORCE_COLOR` startup warning was emitted during the run
+
+## Git Publishing Docs Pass
+
+- Documented the temp-checkout publish workaround in:
+  - `README.md`
+  - `AGENT.md`
+- Recorded the current safe publish sequence:
+  - fetch and hard-reset the temp checkout to `origin/main`
+  - run `gh auth setup-git` if HTTPS push stalls on the macOS keychain helper
+  - publish from the temp checkout instead of the workspace-local `.git`
+- Added a note that the README asset workflow can add follow-up commits on `main`, so the temp checkout must be refreshed before each publish.
+
+## Git Publishing Docs Check
+
+```bash
+rg -n "temp checkout|gh auth setup-git|fetch origin|README asset workflow" README.md AGENT.md
+```

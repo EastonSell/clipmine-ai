@@ -10,6 +10,19 @@ ClipMine AI is a multimodal speech curation tool for dataset builders. It sits b
 
 The active implementation backlog lives in [PLAN.md](PLAN.md). It tracks shipped work, tested status, open bugs, milestone phases, and the next task the agent should take on.
 
+## Repository publishing note
+
+If the workspace-local `.git` is not writable in the current Codex environment, publish from a clean temp checkout instead:
+
+```bash
+git fetch origin
+git checkout main
+git reset --hard origin/main
+gh auth setup-git
+```
+
+Copy the changed tracked files into that temp checkout, then commit and push from there. The README asset workflow may add follow-up commits on `main`, so always fetch and reset the temp checkout before each publish.
+
 ## Why this is useful
 
 Most teams do not need “more transcript.” They need fewer, cleaner clips that are already organized enough to use. ClipMine AI focuses on:
@@ -266,7 +279,7 @@ npm run test:api
 Browser smoke:
 
 ```bash
-PLAYWRIGHT_BROWSERS_PATH=/tmp/clipmine-playwright-browsers npm run test:e2e
+npm run test:e2e
 ```
 
 Verbose backend logging is enabled by default for local debugging through `LOG_LEVEL=DEBUG`.

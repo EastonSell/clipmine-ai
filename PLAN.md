@@ -161,8 +161,13 @@
 - [ ] Link this plan from the repo docs more prominently
   Prompt: "Make the active implementation plan discoverable from the README and agent guidance without cluttering the landing narrative."
 
-- [ ] Document temp-checkout git publishing workaround
+- [x] Document temp-checkout git publishing workaround
   Prompt: "Record the current workaround for publishing when the workspace-local `.git` is unusable so the next agent does not rediscover it from scratch."
+  Notes: Completed on 2026-04-02 in `README.md` and `AGENT.md`, including the `gh auth setup-git` recovery path and the fetch/reset requirement before each temp-checkout publish.
+  Verified: `rg -n "temp checkout|gh auth setup-git|fetch origin|README asset workflow" README.md AGENT.md`
+
+- [ ] Document README asset workflow churn on `main`
+  Prompt: "Explain that the README asset workflow can add follow-up commits on `main`, so temp-checkout publishing should always fetch and reset before staging new work."
 
 ## Session Ledger
 
@@ -175,3 +180,5 @@
 - 2026-04-02: Added `Add a smoke assertion for the finished batch summary action row` before fixing the remaining Playwright color-env warning.
 - 2026-04-02: Completed `Remove Playwright color warnings` after confirming `npm run test:e2e` no longer prints the startup warning.
 - 2026-04-02: Added `Add a console-warning guard around the browser smoke runner` as the next testing follow-up.
+- 2026-04-02: Added `Document README asset workflow churn on main` before writing down the git publishing workaround.
+- 2026-04-02: Completed `Document temp-checkout git publishing workaround` after updating `README.md` and `AGENT.md`.
