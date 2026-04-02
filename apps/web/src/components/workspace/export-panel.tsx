@@ -85,6 +85,8 @@ export function ExportPanel({ job, exportUrl, disabled }: ExportPanelProps) {
       size_bytes: job.sourceVideo.size_bytes,
     },
     summary: job.summary,
+    processingStats: job.processingStats,
+    warnings: job.warnings,
     clips: job.clips.slice(0, 2),
     timeline: job.timeline.slice(0, 4),
   },

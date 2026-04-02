@@ -1,4 +1,4 @@
-import { Play } from "lucide-react";
+import { ChevronLeft, ChevronRight, Pin, PinOff, Play } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -13,9 +13,24 @@ import { QualityBadge } from "./quality-badge";
 type ClipDetailPanelProps = {
   clip: ClipRecord | null;
   onSeek: (start: number, clipId?: string | null) => void;
+  isPinned: boolean;
+  onTogglePinned: (clipId: string) => void;
+  onPrevious: () => void;
+  onNext: () => void;
+  hasPrevious: boolean;
+  hasNext: boolean;
 };
 
-export function ClipDetailPanel({ clip, onSeek }: ClipDetailPanelProps) {
+export function ClipDetailPanel({
+  clip,
+  onSeek,
+  isPinned,
+  onTogglePinned,
+  onPrevious,
+  onNext,
+  hasPrevious,
+  hasNext,
+}: ClipDetailPanelProps) {
   if (!clip) {
     return (
       <EmptyState
@@ -62,10 +77,24 @@ export function ClipDetailPanel({ clip, onSeek }: ClipDetailPanelProps) {
           </div>
         </div>
 
-        <Button variant="secondary" onClick={() => onSeek(clip.start, clip.id)}>
-          <Play className="size-4" />
-          Play clip
-        </Button>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button variant="ghost" size="sm" onClick={onPrevious} disabled={!hasPrevious}>
+            <ChevronLeft className="size-4" />
+            Previous
+          </Button>
+          <Button variant="ghost" size="sm" onClick={onNext} disabled={!hasNext}>
+            Next
+            <ChevronRight className="size-4" />
+          </Button>
+          <Button variant="secondary" size="sm" onClick={() => onTogglePinned(clip.id)}>
+            {isPinned ? <PinOff className="size-4" /> : <Pin className="size-4" />}
+            {isPinned ? "Remove from shortlist" : "Add to shortlist"}
+          </Button>
+          <Button variant="secondary" onClick={() => onSeek(clip.start, clip.id)}>
+            <Play className="size-4" />
+            Play clip
+          </Button>
+        </div>
       </div>
 
       <div className="grid gap-px border-t border-[var(--line)] bg-[var(--line)] sm:grid-cols-4">

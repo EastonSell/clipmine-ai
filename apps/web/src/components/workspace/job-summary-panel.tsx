@@ -44,6 +44,8 @@ export function JobSummaryPanel({ job }: JobSummaryPanelProps) {
       </div>
 
       <div className="mt-6 space-y-3 border-t border-[var(--line)] pt-4 text-sm text-[var(--muted)]">
+        <SummaryRow label="Transcript words" value={String(job.processingStats.transcript_word_count || 0)} />
+        <SummaryRow label="Candidates" value={String(job.processingStats.candidate_clip_count || 0)} />
         <SummaryRow label="Language" value={job.language ? job.language.toUpperCase() : "Pending"} />
         <SummaryRow label="Duration" value={formatSeconds(job.sourceVideo.duration_seconds ?? 0)} />
         <SummaryRow label="Video size" value={formatBytes(job.sourceVideo.size_bytes)} />

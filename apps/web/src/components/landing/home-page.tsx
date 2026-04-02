@@ -12,6 +12,7 @@ import { TopBar } from "@/components/ui/top-bar";
 
 import { GoalsSection } from "./goals-section";
 import { PreviewPanel } from "./preview-panel";
+import { RecentJobsSection } from "./recent-jobs-section";
 import { RoadmapSection } from "./roadmap-section";
 import { UploadSection } from "./upload-section";
 import { WorkflowSection } from "./workflow-section";
@@ -58,6 +59,7 @@ export function HomePageView() {
             eyebrow="ClipMine AI"
             subtitle="Speech clip curation for training workflows."
             items={[
+              { label: "Recent", href: "#recent-jobs" },
               { label: "Goals", href: "#goals" },
               { label: "Features", href: "#features" },
               { label: "Roadmap", href: "#roadmap" },
@@ -136,6 +138,7 @@ export function HomePageView() {
 
       <PageContainer className="space-y-0">
         <UploadSection />
+        <RecentJobsSection />
         <GoalsSection />
         <WorkflowSection />
         <RoadmapSection />

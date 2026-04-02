@@ -25,6 +25,9 @@ export function JobStatusPanel({ job, onRefresh }: JobStatusPanelProps) {
     job.status === "queued" || job.status === "processing"
       ? "The workspace refreshes automatically while the backend extracts audio, transcribes speech, segments clips, and scores results."
       : job.error ?? "Processing completed and export is available.";
+  const timingEntries = Object.entries(job.processingTimings)
+    .filter(([, value]) => Number.isFinite(value) && value > 0)
+    .toSorted((left, right) => left[0].localeCompare(right[0]));
 
   return (
     <Card tone="subtle">
@@ -104,10 +107,49 @@ export function JobStatusPanel({ job, onRefresh }: JobStatusPanelProps) {
         })}
       </div>
 
+      {timingEntries.length > 0 ? (
+        <div className="mt-6 border-t border-[var(--line)] pt-4">
+          <div className="metric-label text-[var(--muted)]">Stage timings</div>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {timingEntries.map(([stage, value]) => (
+              <div
+                key={stage}
+                className="rounded-full border border-[var(--line)] bg-white/[0.03] px-3 py-2 text-xs text-[var(--muted-strong)]"
+              >
+                {formatStageLabel(stage)} {Math.round(value)} ms
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : null}
+
+      {job.warnings.length > 0 ? (
+        <div className="mt-6 border-t border-[var(--line)] pt-4">
+          <div className="metric-label text-[var(--muted)]">Warnings</div>
+          <div className="mt-3 space-y-2">
+            {job.warnings.map((warning) => (
+              <div
+                key={warning}
+                className="rounded-[1rem] border border-[var(--line)] bg-white/[0.03] px-3 py-3 text-sm leading-6 text-[var(--muted)]"
+              >
+                {warning}
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : null}
+
       <div className="mt-6 flex items-center gap-2 border-t border-[var(--line)] pt-4 text-sm text-[var(--muted)]">
         <Clock3 className="size-4" />
         Updated {formatDateTime(job.updatedAt)}
       </div>
     </Card>
   );
+}
+
+function formatStageLabel(stage: string) {
+  return stage
+    .split("_")
+    .map((segment) => segment[0]?.toUpperCase() + segment.slice(1))
+    .join(" ");
 }

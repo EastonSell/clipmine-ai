@@ -1,4 +1,4 @@
-import type { JobResponse, UploadJobResponse } from "./types";
+import type { JobResponse, UploadJobResponse, UploadProgress } from "./types";
 
 const DEFAULT_API_BASE_URL = "http://localhost:8000";
 const LOOPBACK_API_BASE_URLS: Record<string, string[]> = {
@@ -7,14 +7,20 @@ const LOOPBACK_API_BASE_URLS: Record<string, string[]> = {
 };
 
 type CreateJobOptions = {
-  onUploadProgress?: (progress: { loaded: number; total: number; percentage: number }) => void;
+  onUploadProgress?: (progress: UploadProgress) => void;
+  onUploadComplete?: () => void;
+};
+
+export type CreateJobTask = {
+  promise: Promise<UploadJobResponse>;
+  cancel: () => void;
 };
 
 export function getApiBaseUrl() {
   return getApiBaseUrls()[0];
 }
 
-export async function createJob(file: File, options: CreateJobOptions = {}) {
+export function createJob(file: File, options: CreateJobOptions = {}): CreateJobTask {
   console.info("[ClipMine] Upload starting", {
     fileName: file.name,
     sizeBytes: file.size,
@@ -23,33 +29,52 @@ export async function createJob(file: File, options: CreateJobOptions = {}) {
 
   let lastError: Error | null = null;
   const baseUrls = getApiBaseUrls();
+  let activeCancel: () => void = () => {};
+  let cancelled = false;
 
-  for (const [attemptIndex, baseUrl] of baseUrls.entries()) {
-    try {
-      options.onUploadProgress?.({
-        loaded: 0,
-        total: file.size,
-        percentage: 0,
-      });
-      return await createJobAtBaseUrl(baseUrl, file, options);
-    } catch (error) {
-      lastError = error instanceof Error ? error : new Error("Upload failed.");
-      const shouldRetry = attemptIndex < baseUrls.length - 1 && isRetryableUploadError(lastError);
-      console.warn("[ClipMine] Upload attempt failed", {
-        fileName: file.name,
-        baseUrl,
-        attempt: attemptIndex + 1,
-        willRetry: shouldRetry,
-        message: lastError.message,
-      });
+  const promise = (async () => {
+    for (const [attemptIndex, baseUrl] of baseUrls.entries()) {
+      try {
+        options.onUploadProgress?.({
+          loaded: 0,
+          total: file.size,
+          percentage: 0,
+        });
+        const attempt = createJobAtBaseUrl(baseUrl, file, options);
+        activeCancel = attempt.cancel;
+        const result = await attempt.promise;
+        return result;
+      } catch (error) {
+        lastError = error instanceof Error ? error : new Error("Upload failed.");
+        if (cancelled || lastError.message === "Upload was cancelled.") {
+          throw lastError;
+        }
 
-      if (!shouldRetry) {
-        throw lastError;
+        const shouldRetry = attemptIndex < baseUrls.length - 1 && isRetryableUploadError(lastError);
+        console.warn("[ClipMine] Upload attempt failed", {
+          fileName: file.name,
+          baseUrl,
+          attempt: attemptIndex + 1,
+          willRetry: shouldRetry,
+          message: lastError.message,
+        });
+
+        if (!shouldRetry) {
+          throw lastError;
+        }
       }
     }
-  }
 
-  throw lastError ?? new Error("Upload failed.");
+    throw lastError ?? new Error("Upload failed.");
+  })();
+
+  return {
+    promise,
+    cancel() {
+      cancelled = true;
+      activeCancel();
+    },
+  };
 }
 
 export async function getJob(jobId: string) {
@@ -78,8 +103,11 @@ export async function getJob(jobId: string) {
 
 async function getErrorMessage(response: Response) {
   try {
-    const payload = (await response.json()) as { detail?: string };
-    return payload.detail ?? "Something went wrong.";
+    const payload = (await response.json()) as { detail?: string | { message?: string } };
+    if (typeof payload.detail === "string") {
+      return payload.detail;
+    }
+    return payload.detail?.message ?? "Something went wrong.";
   } catch {
     return "Something went wrong.";
   }
@@ -87,8 +115,11 @@ async function getErrorMessage(response: Response) {
 
 function getErrorMessageFromText(responseText: string) {
   try {
-    const payload = JSON.parse(responseText) as { detail?: string };
-    return payload.detail ?? "Something went wrong.";
+    const payload = JSON.parse(responseText) as { detail?: string | { message?: string } };
+    if (typeof payload.detail === "string") {
+      return payload.detail;
+    }
+    return payload.detail?.message ?? "Something went wrong.";
   } catch {
     return "Something went wrong.";
   }
@@ -110,16 +141,18 @@ function getApiBaseUrls() {
   return [DEFAULT_API_BASE_URL];
 }
 
-function createJobAtBaseUrl(baseUrl: string, file: File, options: CreateJobOptions) {
+function createJobAtBaseUrl(baseUrl: string, file: File, options: CreateJobOptions): CreateJobTask {
   const formData = new FormData();
   formData.append("file", file);
+  let xhr: XMLHttpRequest | null = null;
 
-  return new Promise<UploadJobResponse>((resolve, reject) => {
-    const xhr = new XMLHttpRequest();
-    xhr.open("POST", `${baseUrl}/api/jobs`);
-    xhr.responseType = "text";
+  const promise = new Promise<UploadJobResponse>((resolve, reject) => {
+    xhr = new XMLHttpRequest();
+    const request = xhr;
+    request.open("POST", `${baseUrl}/api/jobs`);
+    request.responseType = "text";
 
-    xhr.upload.addEventListener("progress", (event) => {
+    request.upload.addEventListener("progress", (event) => {
       const total = event.lengthComputable ? event.total : file.size;
       if (!total) {
         return;
@@ -140,26 +173,27 @@ function createJobAtBaseUrl(baseUrl: string, file: File, options: CreateJobOptio
       });
     });
 
-    xhr.addEventListener("load", () => {
-      if (xhr.status >= 200 && xhr.status < 300) {
+    request.addEventListener("load", () => {
+      if (request.status >= 200 && request.status < 300) {
         try {
           options.onUploadProgress?.({
             loaded: file.size,
             total: file.size,
             percentage: 100,
           });
+          options.onUploadComplete?.();
           console.info("[ClipMine] Upload complete", {
             fileName: file.name,
             baseUrl,
-            status: xhr.status,
+            status: request.status,
           });
-          resolve(JSON.parse(xhr.responseText) as UploadJobResponse);
+          resolve(JSON.parse(request.responseText) as UploadJobResponse);
         } catch {
           console.error("[ClipMine] Upload response parse failed", {
             fileName: file.name,
             baseUrl,
-            status: xhr.status,
-            responseText: xhr.responseText,
+            status: request.status,
+            responseText: request.responseText,
           });
           reject(new Error("Upload completed, but the API response could not be read."));
         }
@@ -169,13 +203,13 @@ function createJobAtBaseUrl(baseUrl: string, file: File, options: CreateJobOptio
       console.error("[ClipMine] Upload request failed", {
         fileName: file.name,
         baseUrl,
-        status: xhr.status,
-        responseText: xhr.responseText,
+        status: request.status,
+        responseText: request.responseText,
       });
-      reject(new Error(getErrorMessageFromText(xhr.responseText)));
+      reject(new Error(getErrorMessageFromText(request.responseText)));
     });
 
-    xhr.addEventListener("error", () => {
+    request.addEventListener("error", () => {
       console.error("[ClipMine] Upload network error", {
         fileName: file.name,
         baseUrl,
@@ -187,7 +221,7 @@ function createJobAtBaseUrl(baseUrl: string, file: File, options: CreateJobOptio
       );
     });
 
-    xhr.addEventListener("abort", () => {
+    request.addEventListener("abort", () => {
       console.warn("[ClipMine] Upload aborted", {
         fileName: file.name,
         baseUrl,
@@ -195,8 +229,19 @@ function createJobAtBaseUrl(baseUrl: string, file: File, options: CreateJobOptio
       reject(new Error("Upload was cancelled."));
     });
 
-    xhr.send(formData);
+    request.send(formData);
   });
+
+  return {
+    promise,
+    cancel() {
+      console.warn("[ClipMine] Upload cancel requested", {
+        fileName: file.name,
+        baseUrl,
+      });
+      xhr?.abort();
+    },
+  };
 }
 
 function isRetryableUploadError(error: Error) {

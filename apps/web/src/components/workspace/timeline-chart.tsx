@@ -1,3 +1,5 @@
+import { useState } from "react";
+
 import { Card } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { SectionHeader } from "@/components/ui/section-header";
@@ -14,6 +16,8 @@ type TimelineChartProps = {
 };
 
 export function TimelineChart({ bins, clips, activeClipId, onSeek }: TimelineChartProps) {
+  const [hoveredBinIndex, setHoveredBinIndex] = useState<number | null>(null);
+
   if (bins.length === 0) {
     return (
       <EmptyState
@@ -29,6 +33,15 @@ export function TimelineChart({ bins, clips, activeClipId, onSeek }: TimelineCha
     .filter((bin) => bin.top_clip_id)
     .sort((left, right) => right.score - left.score)
     .slice(0, 4);
+  const activeClip = activeClipId ? clipsById.get(activeClipId) ?? null : null;
+  const activeTimelineBin =
+    hoveredBinIndex !== null
+      ? bins[hoveredBinIndex] ?? null
+      : activeClip
+        ? bins.find((bin) => activeClip.end > bin.start && activeClip.start < bin.end) ?? null
+        : strongestRegions[0] ?? bins[0] ?? null;
+  const activeTimelineClip =
+    activeTimelineBin?.top_clip_id ? clipsById.get(activeTimelineBin.top_clip_id) ?? null : null;
 
   return (
     <div className="grid gap-6 lg:grid-cols-[minmax(0,1.15fr)_19rem] xl:grid-cols-[minmax(0,1.3fr)_22rem]">
@@ -38,6 +51,31 @@ export function TimelineChart({ bins, clips, activeClipId, onSeek }: TimelineCha
           title="Training usefulness across the full video"
           description="Every bar represents one slice of the source. Use it to move directly toward stronger or weaker regions."
         />
+
+        {activeTimelineBin ? (
+          <div className="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-[1.2rem] border border-[var(--line)] bg-white/[0.03] px-4 py-4">
+            <div>
+              <div className="metric-label text-[var(--muted)]">Active region</div>
+              <div className="mt-2 flex flex-wrap items-center gap-3">
+                <QualityBadge label={activeTimelineBin.quality_label} />
+                <span className="text-sm font-medium text-[var(--text)]">
+                  {formatRegionLabel(activeTimelineBin.quality_label)}
+                </span>
+                <span className="text-sm text-[var(--muted)]">
+                  {formatSeconds(activeTimelineBin.start)} - {formatSeconds(activeTimelineBin.end)}
+                </span>
+              </div>
+            </div>
+            <div className="text-right">
+              <div className="font-mono text-sm text-[var(--muted-strong)]">
+                {formatSignedScore(activeTimelineBin.score)}
+              </div>
+              <div className="mt-1 text-xs text-[var(--muted)]">
+                {activeTimelineClip?.text || "Jump to this region in the source video."}
+              </div>
+            </div>
+          </div>
+        ) : null}
 
         <div className="mt-8 overflow-x-auto">
           <div className="min-w-[44rem] rounded-[1.35rem] border border-[var(--line)] bg-[var(--surface-overlay)] p-4">
@@ -52,13 +90,17 @@ export function TimelineChart({ bins, clips, activeClipId, onSeek }: TimelineCha
             <div className="mt-5 flex h-56 items-end gap-2">
               {bins.map((bin, index) => {
                 const clip = bin.top_clip_id ? clipsById.get(bin.top_clip_id) ?? null : null;
-                const active = clip?.id === activeClipId;
+                const active = activeClip ? activeClip.end > bin.start && activeClip.start < bin.end : clip?.id === activeClipId;
 
                 return (
                   <button
                     key={`${bin.start}-${bin.end}-${index}`}
                     type="button"
                     onClick={() => onSeek(clip?.start ?? bin.start, clip?.id ?? null)}
+                    onMouseEnter={() => setHoveredBinIndex(index)}
+                    onFocus={() => setHoveredBinIndex(index)}
+                    onMouseLeave={() => setHoveredBinIndex(null)}
+                    onBlur={() => setHoveredBinIndex(null)}
                     className={[
                       "flex flex-1 items-end rounded-[1rem] border bg-white/[0.03] p-1 transition duration-200",
                       active
@@ -158,4 +200,16 @@ function getTimelineBarClassName(label: TimelineBin["quality_label"]) {
   }
 
   return "block w-full rounded-[0.75rem] bg-[linear-gradient(180deg,rgba(71,85,105,0.16),rgba(71,85,105,0.72))]";
+}
+
+function formatRegionLabel(label: TimelineBin["quality_label"]) {
+  if (label === "Excellent") {
+    return "Strong region";
+  }
+
+  if (label === "Good") {
+    return "Mixed region";
+  }
+
+  return "Weak region";
 }

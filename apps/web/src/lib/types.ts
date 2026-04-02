@@ -4,6 +4,12 @@ export type UploadJobResponse = {
   fileName: string;
 };
 
+export type UploadProgress = {
+  loaded: number;
+  total: number;
+  percentage: number;
+};
+
 export type SourceVideo = {
   id: string;
   file_name: string;
@@ -122,6 +128,24 @@ export type JobSummary = {
   top_score: number;
 };
 
+export type ProcessingStats = {
+  source_duration_seconds: number;
+  transcript_word_count: number;
+  candidate_clip_count: number;
+  clip_count: number;
+  timeline_bin_count: number;
+};
+
+export type RecentJobRecord = {
+  jobId: string;
+  fileName: string;
+  updatedAt: string;
+  clipCount: number;
+  topScore: number;
+  durationSeconds: number;
+  language: string | null;
+};
+
 export type JobResponse = {
   jobId: string;
   status: "queued" | "processing" | "ready" | "failed";
@@ -139,6 +163,9 @@ export type JobResponse = {
   clips: ClipRecord[];
   timeline: TimelineBin[];
   language: string | null;
+  processingTimings: Record<string, number>;
+  warnings: string[];
+  processingStats: ProcessingStats;
   createdAt: string;
   updatedAt: string;
 };

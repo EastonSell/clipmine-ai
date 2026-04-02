@@ -2,7 +2,7 @@
 
 import { AnimatePresence, motion } from "framer-motion";
 import { Download, RefreshCcw } from "lucide-react";
-import { startTransition, useDeferredValue, useRef, useState } from "react";
+import { useMemo, useRef } from "react";
 import useSWR from "swr";
 
 import { buttonClassName } from "@/components/ui/button";
@@ -22,8 +22,10 @@ import { ExportPanel } from "./export-panel";
 import { phaseCopy, workspaceTabs, type WorkspaceTab } from "./constants";
 import { JobStatusPanel } from "./job-status-panel";
 import { JobSummaryPanel } from "./job-summary-panel";
+import { ReviewToolbar } from "./review-toolbar";
 import { SourceVideoPanel } from "./source-video-panel";
 import { TimelineChart } from "./timeline-chart";
+import { useWorkspaceViewModel } from "./use-workspace-view-model";
 import { WorkspaceHeader } from "./workspace-header";
 
 type ResultsWorkspaceProps = {
@@ -31,9 +33,6 @@ type ResultsWorkspaceProps = {
 };
 
 export function ResultsWorkspace({ jobId }: ResultsWorkspaceProps) {
-  const [activeTab, setActiveTab] = useState<WorkspaceTab>("clips");
-  const [activeClipId, setActiveClipId] = useState<string | null>(null);
-  const deferredActiveClipId = useDeferredValue(activeClipId);
   const videoRef = useRef<HTMLVideoElement | null>(null);
 
   const { data, error, isLoading, mutate } = useSWR<JobResponse>(
@@ -51,11 +50,14 @@ export function ResultsWorkspace({ jobId }: ResultsWorkspaceProps) {
     }
   );
 
-  const selectedClip =
-    data?.clips.find((clip) => clip.id === deferredActiveClipId) ??
-    data?.clips[0] ??
-    null;
-  const resolvedClipId = deferredActiveClipId ?? selectedClip?.id ?? null;
+  const viewModel = useWorkspaceViewModel(jobId, data);
+  const selectedClip = viewModel.selectedClip;
+  const resolvedClipId = viewModel.resolvedClipId;
+  const reviewSequence = useMemo(
+    () => (viewModel.filters.pinnedOnly ? viewModel.shortlistedClips : [...viewModel.shortlistedClips, ...viewModel.rankedClips]),
+    [viewModel.filters.pinnedOnly, viewModel.rankedClips, viewModel.shortlistedClips]
+  );
+  const selectedClipIndex = reviewSequence.findIndex((clip) => clip.id === resolvedClipId);
 
   function handleSeek(start: number, clipId?: string | null) {
     if (videoRef.current) {
@@ -64,16 +66,8 @@ export function ResultsWorkspace({ jobId }: ResultsWorkspaceProps) {
     }
 
     if (clipId) {
-      startTransition(() => {
-        setActiveClipId(clipId);
-      });
+      viewModel.setActiveClipId(clipId);
     }
-  }
-
-  function handleTabChange(tab: WorkspaceTab) {
-    startTransition(() => {
-      setActiveTab(tab);
-    });
   }
 
   function scrollToId(id: string) {
@@ -94,7 +88,7 @@ export function ResultsWorkspace({ jobId }: ResultsWorkspaceProps) {
     const nextTab: WorkspaceTab =
       target === "clips" ? "clips" : target === "timeline" ? "timeline" : "export";
 
-    handleTabChange(nextTab);
+    viewModel.setActiveTab(nextTab);
     requestAnimationFrame(() => {
       scrollToId("workspace-features");
     });
@@ -158,9 +152,9 @@ export function ResultsWorkspace({ jobId }: ResultsWorkspaceProps) {
           subtitle="Review the source, inspect ranked clips, and export structured output."
           items={[
             { label: "Source", onClick: () => handleNavigate("source") },
-            { label: "Best clips", onClick: () => handleNavigate("clips"), active: activeTab === "clips" },
-            { label: "Timeline", onClick: () => handleNavigate("timeline"), active: activeTab === "timeline" },
-            { label: "Export", onClick: () => handleNavigate("export"), active: activeTab === "export" },
+            { label: "Best clips", onClick: () => handleNavigate("clips"), active: viewModel.activeTab === "clips" },
+            { label: "Timeline", onClick: () => handleNavigate("timeline"), active: viewModel.activeTab === "timeline" },
+            { label: "Export", onClick: () => handleNavigate("export"), active: viewModel.activeTab === "export" },
             { label: "Notes", onClick: () => handleNavigate("notes") },
           ]}
           action={
@@ -220,13 +214,35 @@ export function ResultsWorkspace({ jobId }: ResultsWorkspaceProps) {
             <div id="source-video">
               <SourceVideoPanel videoRef={videoRef} videoUrl={videoUrl} />
             </div>
-            <ClipDetailPanel clip={selectedClip} onSeek={handleSeek} />
+            <ClipDetailPanel
+              clip={selectedClip}
+              onSeek={handleSeek}
+              isPinned={selectedClip ? viewModel.isPinned(selectedClip.id) : false}
+              onTogglePinned={viewModel.togglePinned}
+              onPrevious={() => {
+                const previousClip = selectedClipIndex > 0 ? reviewSequence[selectedClipIndex - 1] : null;
+                if (previousClip) {
+                  handleSeek(previousClip.start, previousClip.id);
+                }
+              }}
+              onNext={() => {
+                const nextClip =
+                  selectedClipIndex >= 0 && selectedClipIndex < reviewSequence.length - 1
+                    ? reviewSequence[selectedClipIndex + 1]
+                    : null;
+                if (nextClip) {
+                  handleSeek(nextClip.start, nextClip.id);
+                }
+              }}
+              hasPrevious={selectedClipIndex > 0}
+              hasNext={selectedClipIndex >= 0 && selectedClipIndex < reviewSequence.length - 1}
+            />
 
             <div
               id="workspace-features"
               className="flex flex-wrap items-center justify-between gap-4 rounded-[1.35rem] border border-[var(--line)] bg-white/[0.04] px-4 py-3 backdrop-blur-xl"
             >
-              <Tabs options={workspaceTabs} value={activeTab} onChange={handleTabChange} />
+              <Tabs options={workspaceTabs} value={viewModel.activeTab} onChange={viewModel.setActiveTab} />
               <a
                 href={exportUrl}
                 className={buttonClassName({
@@ -247,16 +263,36 @@ export function ResultsWorkspace({ jobId }: ResultsWorkspaceProps) {
 
             <AnimatePresence mode="wait">
               <motion.section
-                key={activeTab}
+                key={viewModel.activeTab}
                 initial={{ opacity: 0, y: 16 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -16 }}
                 transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
               >
-                {activeTab === "clips" ? (
-                  <ClipListPanel clips={data.clips} activeClipId={resolvedClipId} onSelect={handleSeek} />
+                {viewModel.activeTab === "clips" ? (
+                  <div className="space-y-6">
+                    <ReviewToolbar
+                      filters={viewModel.filters}
+                      availableTags={viewModel.availableTags}
+                      visibleCount={viewModel.shortlistedClips.length + viewModel.rankedClips.length}
+                      totalCount={data.clips.length}
+                      shortlistedCount={viewModel.pinnedClipIds.length}
+                      hasActiveFilters={viewModel.hasActiveFilters}
+                      onFiltersChange={viewModel.updateFilters}
+                      onClear={viewModel.clearFilters}
+                    />
+                    <ClipListPanel
+                      shortlistedClips={viewModel.shortlistedClips}
+                      clips={viewModel.rankedClips}
+                      activeClipId={resolvedClipId}
+                      totalClipCount={data.clips.length}
+                      hasActiveFilters={viewModel.hasActiveFilters}
+                      pinnedOnly={viewModel.filters.pinnedOnly}
+                      onSelect={handleSeek}
+                    />
+                  </div>
                 ) : null}
-                {activeTab === "timeline" ? (
+                {viewModel.activeTab === "timeline" ? (
                   <TimelineChart
                     bins={data.timeline}
                     clips={data.clips}
@@ -264,7 +300,7 @@ export function ResultsWorkspace({ jobId }: ResultsWorkspaceProps) {
                     onSeek={handleSeek}
                   />
                 ) : null}
-                {activeTab === "export" ? (
+                {viewModel.activeTab === "export" ? (
                   <ExportPanel job={data} exportUrl={exportUrl} disabled={processing} />
                 ) : null}
               </motion.section>

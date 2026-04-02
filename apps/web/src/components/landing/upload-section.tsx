@@ -1,9 +1,9 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { AlertCircle, ArrowUpRight, LoaderCircle } from "lucide-react";
+import { AlertCircle, ArrowUpRight, LoaderCircle, RotateCcw, StopCircle } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { startTransition, useState } from "react";
+import { startTransition, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -11,6 +11,7 @@ import { ProgressBar } from "@/components/ui/progress-bar";
 import { SectionHeader } from "@/components/ui/section-header";
 import { createJob } from "@/lib/api";
 import { formatBytes } from "@/lib/format";
+import type { UploadProgress } from "@/lib/types";
 
 import { UploadDropzone } from "./upload-dropzone";
 
@@ -40,10 +41,11 @@ export function UploadSection() {
   const [isDragging, setIsDragging] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [uploadProgress, setUploadProgress] = useState(0);
+  const [uploadStats, setUploadStats] = useState<UploadProgress | null>(null);
+  const [uploadPhase, setUploadPhase] = useState<"idle" | "uploading" | "opening">("idle");
+  const activeUploadCancelRef = useRef<(() => void) | null>(null);
 
-  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-
+  async function runUpload() {
     if (!selectedFile) {
       setError("Choose an .mp4 or .mov file to continue.");
       return;
@@ -60,15 +62,27 @@ export function UploadSection() {
     }
 
     setIsUploading(true);
+    setUploadPhase("uploading");
     setUploadProgress(0);
+    setUploadStats({
+      loaded: 0,
+      total: selectedFile.size,
+      percentage: 0,
+    });
     setError(null);
 
     try {
-      const job = await createJob(selectedFile, {
+      const uploadTask = createJob(selectedFile, {
         onUploadProgress(progress) {
           setUploadProgress(progress.percentage);
+          setUploadStats(progress);
+        },
+        onUploadComplete() {
+          setUploadPhase("opening");
         },
       });
+      activeUploadCancelRef.current = uploadTask.cancel;
+      const job = await uploadTask.promise;
       startTransition(() => {
         router.push(`/jobs/${job.jobId}`);
       });
@@ -76,7 +90,33 @@ export function UploadSection() {
       setError(uploadError instanceof Error ? uploadError.message : "Upload failed.");
       setIsUploading(false);
       setUploadProgress(0);
+      setUploadStats(null);
+      setUploadPhase("idle");
+      activeUploadCancelRef.current = null;
     }
+  }
+
+  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    await runUpload();
+  }
+
+  function handleCancelUpload() {
+    activeUploadCancelRef.current?.();
+    activeUploadCancelRef.current = null;
+    setIsUploading(false);
+    setUploadPhase("idle");
+    setUploadProgress(0);
+    setUploadStats(null);
+    setError("Upload was cancelled before processing started.");
+  }
+
+  function handleRetryUpload() {
+    if (!selectedFile) {
+      return;
+    }
+
+    void runUpload();
   }
 
   return (
@@ -141,7 +181,13 @@ export function UploadSection() {
 
                 <div className="flex flex-wrap items-center justify-between gap-4 border-t border-[var(--line)] pt-5">
                   <div className="space-y-1 text-sm text-[var(--muted)]">
-                    <p>{isUploading ? "Uploading directly to the processing API." : "Uploads go directly to the processing API."}</p>
+                    <p>
+                      {isUploading
+                        ? uploadPhase === "opening"
+                          ? "Upload finished. Opening the processing workspace."
+                          : "Uploading directly to the processing API."
+                        : "Uploads go directly to the processing API."}
+                    </p>
                     <p>
                       {isUploading
                         ? uploadProgress >= 100
@@ -150,14 +196,22 @@ export function UploadSection() {
                         : "The workspace URL remains stable while large uploads, transcription, and scoring run."}
                     </p>
                   </div>
-                  <Button type="submit" variant="primary" size="lg" disabled={isUploading}>
+                  <div className="flex flex-wrap gap-2">
+                    {isUploading ? (
+                      <Button type="button" variant="ghost" size="lg" onClick={handleCancelUpload}>
+                        <StopCircle className="size-4" />
+                        Cancel
+                      </Button>
+                    ) : null}
+                    <Button type="submit" variant="primary" size="lg" disabled={isUploading}>
                     {isUploading ? (
                       <LoaderCircle className="size-4 animate-spin" />
                     ) : (
                       <ArrowUpRight className="size-4" />
                     )}
                     {isUploading ? "Processing" : "Upload video"}
-                  </Button>
+                    </Button>
+                  </div>
                 </div>
 
                 {isUploading && selectedFile ? (
@@ -166,9 +220,12 @@ export function UploadSection() {
                       <div>
                         <p className="metric-label text-[var(--muted)]">Upload progress</p>
                         <p className="mt-2 text-sm text-[var(--muted-strong)]">
-                          {uploadProgress >= 100
+                          {uploadPhase === "opening"
                             ? "Upload complete. Preparing the workspace."
                             : `Sending ${selectedFile.name} to the processing API.`}
+                        </p>
+                        <p className="mt-1 text-xs text-[var(--muted)]">
+                          {formatBytes(uploadStats?.loaded ?? 0)} of {formatBytes(uploadStats?.total ?? selectedFile.size)}
                         </p>
                       </div>
                       <div className="text-right">
@@ -189,6 +246,14 @@ export function UploadSection() {
                       Upload failed
                     </div>
                     <p className="mt-2 leading-6">{error}</p>
+                    {selectedFile ? (
+                      <div className="mt-4">
+                        <Button type="button" variant="secondary" size="sm" onClick={handleRetryUpload}>
+                          <RotateCcw className="size-4" />
+                          Retry upload
+                        </Button>
+                      </div>
+                    ) : null}
                     <p className="mt-2 text-xs leading-5 text-red-200/80">
                       If you are running locally, make sure both the frontend and backend are running and that the API
                       allows the current browser origin.
