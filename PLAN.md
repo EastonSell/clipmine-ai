@@ -255,8 +255,13 @@ Avoid:
   Notes: Completed on 2026-04-03 by adding a normalized `preset` query param to the batch workspace URL, honoring that value on the batch route load, and keeping the URL synchronized with preset changes while preserving the existing selected-job state.
   Verified: `npm ci`, `npm run test:web -- --run src/lib/batch-focus.test.ts`, `env -u FORCE_COLOR -u NO_COLOR PLAYWRIGHT_BROWSERS_PATH=/tmp/clipmine-playwright-browsers npx playwright install chromium`, `env -u FORCE_COLOR -u NO_COLOR PLAYWRIGHT_BROWSERS_PATH=/tmp/clipmine-playwright-browsers npx playwright test --grep "batch workspace groups jobs and exports thresholded clips"`
 
-- [ ] Persist batch quality threshold in the URL
+- [x] Persist batch quality threshold in the URL
   Prompt: "Keep the batch workspace URL aligned with the active quality threshold so shared or bookmarked batch review links can reopen the same score floor without depending on saved browser state."
+  Notes: Completed on 2026-04-03 by adding a validated `threshold` query param to the batch workspace URL flow, preferring that value over saved batch-session state on load, and keeping the URL synchronized when the export score slider changes.
+  Verified: `npm ci`, `npm run test:web -- --run src/lib/batch-focus.test.ts`, `npm run test:e2e -- --grep "batch workspace groups jobs and exports thresholded clips"`
+
+- [ ] Add quality-threshold quick presets in the batch workspace
+  Prompt: "Add quick preset buttons like Strict, Balanced, and Broad near the batch export slider so reviewers can jump between common score floors without dragging the range input."
 
 - [x] Add queue completion toast and summary state
   Prompt: "When a batch queue finishes, show a stronger completion summary before navigating so the user understands how many sources succeeded or failed."
@@ -423,3 +428,5 @@ Avoid:
 - 2026-04-03: Added `Persist batch export preset choice per batch session` as the next aggregate-export follow-up.
 - 2026-04-03: Completed `Persist batch export preset choice per batch session` after targeted batch-session unit coverage and a refreshed Playwright batch export flow that proves reload and reopen behavior.
 - 2026-04-03: Added `Persist batch export preset in the URL` as the next aggregate-export deep-link follow-up.
+- 2026-04-03: Completed `Persist batch quality threshold in the URL` after adding the validated `threshold` query param, preserving it across reloads, and passing focused unit plus Playwright verification.
+- 2026-04-03: Added `Add quality-threshold quick presets in the batch workspace` as the next aggregate-export UX follow-up.

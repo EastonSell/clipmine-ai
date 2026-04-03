@@ -8,6 +8,7 @@ import {
   getReadyBatchJobShortcutDirection,
   hasBatchIssues,
   isBatchIssueItem,
+  parseBatchQualityThreshold,
   parseBatchSelectedJobId,
   parseBatchSelectedPreset,
   parseBatchTriageState,
@@ -73,10 +74,11 @@ describe("batch-focus", () => {
           issuesOnly: false,
           selectedJobId: "job-alpha",
           selectedPreset: "audio-only",
+          selectedQualityThreshold: 90,
         },
         "#batch-queue"
       )
-    ).toBe("/batches/saved-batch-failures?focus=issues&scope=all&job=job-alpha&preset=audio-only#batch-queue");
+    ).toBe("/batches/saved-batch-failures?focus=issues&scope=all&job=job-alpha&preset=audio-only&threshold=90#batch-queue");
   });
 
   it("normalizes the selected batch job id from search params", () => {
@@ -92,6 +94,16 @@ describe("batch-focus", () => {
     expect(parseBatchSelectedPreset("metadata-only")).toBe("metadata-only");
     expect(parseBatchSelectedPreset("unknown")).toBeNull();
     expect(parseBatchSelectedPreset(undefined)).toBeNull();
+  });
+
+  it("normalizes the selected batch quality threshold from search params", () => {
+    expect(parseBatchQualityThreshold("84")).toBe(84);
+    expect(parseBatchQualityThreshold(" 90 ")).toBe(90);
+    expect(parseBatchQualityThreshold("49")).toBeNull();
+    expect(parseBatchQualityThreshold("101")).toBeNull();
+    expect(parseBatchQualityThreshold("90.5")).toBeNull();
+    expect(parseBatchQualityThreshold("bad")).toBeNull();
+    expect(parseBatchQualityThreshold(undefined)).toBeNull();
   });
 
   it("pins failed and cancelled sources to the front when issue focus is enabled", () => {

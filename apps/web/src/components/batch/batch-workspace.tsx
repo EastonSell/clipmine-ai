@@ -30,6 +30,7 @@ import { SectionHeader } from "@/components/ui/section-header";
 import { TopBar } from "@/components/ui/top-bar";
 import { loadBatchSourceFile, removeBatchSourceFile } from "@/lib/batch-source-files";
 import {
+  DEFAULT_BATCH_QUALITY_THRESHOLD,
   getBatchWorkspaceHref,
   getOrderedBatchItems,
   getPreferredBatchJobId,
@@ -56,6 +57,7 @@ type BatchWorkspaceProps = {
   initialIssuesOnly?: boolean;
   initialActiveJobId?: string | null;
   initialSelectedPreset?: PackageExportPreset | null;
+  initialQualityThreshold?: number | null;
 };
 
 type AggregateClip = {
@@ -70,11 +72,12 @@ export function BatchWorkspace({
   initialIssuesOnly = prioritizeIssues,
   initialActiveJobId = null,
   initialSelectedPreset = null,
+  initialQualityThreshold = null,
 }: BatchWorkspaceProps) {
   const [session, setSession] = useState<BatchSessionRecord | null>(null);
   const [activeJobId, setActiveJobId] = useState<string | null>(null);
   const [issuesOnly, setIssuesOnly] = useState(prioritizeIssues && initialIssuesOnly);
-  const [qualityThreshold, setQualityThreshold] = useState(84);
+  const [qualityThreshold, setQualityThreshold] = useState(DEFAULT_BATCH_QUALITY_THRESHOLD);
   const [selectedPreset, setSelectedPreset] = useState<PackageExportPreset>(initialSelectedPreset ?? "full-av");
   const [downloadError, setDownloadError] = useState<ApiError | null>(null);
   const [isDownloading, setIsDownloading] = useState(false);
@@ -92,10 +95,10 @@ export function BatchWorkspace({
     setSession(nextSession);
     sessionRef.current = nextSession;
     setIssuesOnly(nextIssuesOnly);
-    setQualityThreshold(nextSession?.qualityThreshold ?? 84);
+    setQualityThreshold(initialQualityThreshold ?? nextSession?.qualityThreshold ?? DEFAULT_BATCH_QUALITY_THRESHOLD);
     setSelectedPreset(initialSelectedPreset ?? nextSession?.batchExportPreset ?? "full-av");
     setActiveJobId(nextActiveJobId);
-  }, [batchId, initialActiveJobId, initialIssuesOnly, initialSelectedPreset, prioritizeIssues]);
+  }, [batchId, initialActiveJobId, initialIssuesOnly, initialQualityThreshold, initialSelectedPreset, prioritizeIssues]);
 
   useEffect(() => {
     sessionRef.current = session;
@@ -186,6 +189,7 @@ export function BatchWorkspace({
         issuesOnly,
         selectedJobId: activeJobId,
         selectedPreset,
+        selectedQualityThreshold: qualityThreshold,
       },
       window.location.hash
     );
@@ -193,7 +197,7 @@ export function BatchWorkspace({
     if (currentHref !== nextHref) {
       window.history.replaceState(window.history.state, "", nextHref);
     }
-  }, [activeJobId, batchId, issuesOnly, prioritizeIssues, selectedPreset]);
+  }, [activeJobId, batchId, issuesOnly, prioritizeIssues, qualityThreshold, selectedPreset]);
 
   useEffect(() => {
     if (!session) {

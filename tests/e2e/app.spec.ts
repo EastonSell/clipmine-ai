@@ -936,7 +936,7 @@ test("batch workspace groups jobs and exports thresholded clips", async ({ page 
 
   await page.locator('input[type="range"]').fill("90");
   await page.getByRole("button", { name: /Audio-only package/i }).click();
-  await expect(page).toHaveURL(/\/batches\/demo-batch\?job=job-alpha&preset=audio-only$/);
+  await expect(page).toHaveURL(/\/batches\/demo-batch\?job=job-alpha&preset=audio-only&threshold=90$/);
   await expect(page.getByText(/clipmine-batch-export-3-sources-queued-audio\//i)).toBeVisible();
   await expect(page.getByText(/clip_001__clip-1\.wav/i)).toBeVisible();
   await expect(page.getByText(/clip_001__job-beta-clip-1\.wav/i)).toBeVisible();
@@ -950,20 +950,23 @@ test("batch workspace groups jobs and exports thresholded clips", async ({ page 
     const sessions = JSON.parse(window.localStorage.getItem(key) ?? "[]") as Array<Record<string, unknown>>;
     if (sessions[0]) {
       sessions[0].batchExportPreset = "full-av";
+      sessions[0].qualityThreshold = 72;
       window.localStorage.setItem(key, JSON.stringify(sessions));
     }
   }, batchSessionsKey);
 
   await page.reload();
   await expect(page.getByRole("heading", { name: "3 sources queued" })).toBeVisible();
-  await expect(page).toHaveURL(/\/batches\/demo-batch\?job=job-alpha&preset=audio-only$/);
+  await expect(page).toHaveURL(/\/batches\/demo-batch\?job=job-alpha&preset=audio-only&threshold=90$/);
+  await expect(page.getByText("90/100")).toBeVisible();
   await expect(page.getByText(/clipmine-batch-export-3-sources-queued-audio\//i)).toBeVisible();
   await expect(page.getByText(/clip_001__clip-1\.wav/i)).toBeVisible();
 
   await page.goto("/");
-  await page.goto("/batches/demo-batch?preset=audio-only");
+  await page.goto("/batches/demo-batch?preset=audio-only&threshold=90");
   await expect(page.getByRole("heading", { name: "3 sources queued" })).toBeVisible();
-  await expect(page).toHaveURL(/\/batches\/demo-batch\?job=job-alpha&preset=audio-only$/);
+  await expect(page).toHaveURL(/\/batches\/demo-batch\?job=job-alpha&preset=audio-only&threshold=90$/);
+  await expect(page.getByText("90/100")).toBeVisible();
   await expect(page.getByText(/clipmine-batch-export-3-sources-queued-audio\//i)).toBeVisible();
   await expect(page.getByText(/clip_001__job-beta-clip-1\.wav/i)).toBeVisible();
 

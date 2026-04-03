@@ -1,5 +1,28 @@
 # Verification Log
 
+## Batch Quality Threshold URL Pass
+
+Date: 2026-04-03
+
+- Added a validated `threshold` query param to the batch workspace URL helper so shared batch review links can preserve the active score floor alongside the existing triage, selected-job, and export-preset state.
+- Updated the batch App Router page to parse the incoming threshold from `searchParams` and seed the client workspace with that value before any saved batch-session fallback is applied.
+- Extended the focused batch export Playwright scenario so it proves `threshold=90` survives reloads and direct route visits even when saved session storage is temporarily forced back to a different threshold.
+- This checkout started without frontend dependencies installed, so `npm ci` was required before the targeted checks could run.
+
+### Checks run
+
+```bash
+npm ci
+npm run test:web -- --run src/lib/batch-focus.test.ts
+npm run test:e2e -- --grep "batch workspace groups jobs and exports thresholded clips"
+```
+
+### Result
+
+- `11 / 11` targeted batch-focus unit tests passed
+- `1 / 1` targeted Playwright batch export tests passed
+- bookmarked batch review links now reopen the same score floor even when saved session state disagrees
+
 ## Batch Export Preset URL Pass
 
 Date: 2026-04-03

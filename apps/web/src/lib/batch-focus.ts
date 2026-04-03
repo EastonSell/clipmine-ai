@@ -7,6 +7,10 @@ export type BatchTriageState = {
 
 export type ReadyBatchJobShortcutDirection = "previous" | "next";
 
+export const DEFAULT_BATCH_QUALITY_THRESHOLD = 84;
+const MIN_BATCH_QUALITY_THRESHOLD = 50;
+const MAX_BATCH_QUALITY_THRESHOLD = 100;
+
 export function parseBatchSelectedJobId(jobId: string | null | undefined) {
   const normalizedJobId = jobId?.trim();
   return normalizedJobId ? normalizedJobId : null;
@@ -18,6 +22,24 @@ export function parseBatchSelectedPreset(preset: string | null | undefined): Pac
   }
 
   return null;
+}
+
+export function parseBatchQualityThreshold(threshold: string | null | undefined): number | null {
+  const normalizedThreshold = threshold?.trim();
+  if (!normalizedThreshold) {
+    return null;
+  }
+
+  const parsedThreshold = Number(normalizedThreshold);
+  if (
+    !Number.isInteger(parsedThreshold) ||
+    parsedThreshold < MIN_BATCH_QUALITY_THRESHOLD ||
+    parsedThreshold > MAX_BATCH_QUALITY_THRESHOLD
+  ) {
+    return null;
+  }
+
+  return parsedThreshold;
 }
 
 export function parseBatchTriageState(focus: string | null | undefined, scope: string | null | undefined): BatchTriageState {
@@ -35,7 +57,12 @@ export function getBatchWorkspaceHref(
     issuesOnly = prioritizeIssues,
     selectedJobId = null,
     selectedPreset = "full-av",
-  }: BatchTriageState & { selectedJobId?: string | null; selectedPreset?: PackageExportPreset },
+    selectedQualityThreshold = DEFAULT_BATCH_QUALITY_THRESHOLD,
+  }: BatchTriageState & {
+    selectedJobId?: string | null;
+    selectedPreset?: PackageExportPreset;
+    selectedQualityThreshold?: number;
+  },
   hash = ""
 ) {
   const searchParams = new URLSearchParams();
@@ -54,6 +81,10 @@ export function getBatchWorkspaceHref(
 
   if (selectedPreset !== "full-av") {
     searchParams.set("preset", selectedPreset);
+  }
+
+  if (selectedQualityThreshold !== DEFAULT_BATCH_QUALITY_THRESHOLD) {
+    searchParams.set("threshold", String(selectedQualityThreshold));
   }
 
   const search = searchParams.toString();
