@@ -1,5 +1,28 @@
 # Verification Log
 
+## Batch Threshold Quick Presets Pass
+
+Date: 2026-04-03
+
+- Added shared Strict, Balanced, and Broad batch-threshold presets around the existing default score floor so the batch workspace can expose consistent one-click review jumps.
+- Updated the batch aggregate export card to render quick preset buttons beside the slider, keep their pressed state synchronized with the current threshold, and clear stale export errors when reviewers switch floors from either control.
+- Extended the focused batch export Playwright scenario so it proves the quick preset buttons rewrite the batch workspace URL and move the visible threshold before the existing slider and preset-export coverage continues.
+- This checkout started without frontend dependencies installed, so `npm ci` was required before the targeted checks could run.
+
+### Checks run
+
+```bash
+npm ci
+npm run test:web -- --run src/lib/batch-focus.test.ts
+npm run test:e2e -- --grep "batch workspace groups jobs and exports thresholded clips"
+```
+
+### Result
+
+- `12 / 12` targeted batch-focus unit tests passed
+- `1 / 1` targeted Playwright batch export tests passed
+- batch reviewers can now jump between common score floors without dragging the range input
+
 ## Batch Quality Threshold URL Pass
 
 Date: 2026-04-03

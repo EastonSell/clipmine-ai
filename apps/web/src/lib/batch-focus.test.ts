@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  BATCH_QUALITY_THRESHOLD_PRESETS,
+  DEFAULT_BATCH_QUALITY_THRESHOLD,
   getBatchWorkspaceHref,
   getOrderedBatchItems,
   getPreferredBatchJobId,
@@ -32,6 +34,14 @@ function createItem(
 }
 
 describe("batch-focus", () => {
+  it("defines shared batch threshold quick presets around the default floor", () => {
+    expect(BATCH_QUALITY_THRESHOLD_PRESETS.map(({ label, value }) => ({ label, value }))).toEqual([
+      { label: "Strict", value: 92 },
+      { label: "Balanced", value: DEFAULT_BATCH_QUALITY_THRESHOLD },
+      { label: "Broad", value: 72 },
+    ]);
+  });
+
   it("parses the saved batch triage state from search params", () => {
     expect(parseBatchTriageState("issues", undefined)).toEqual({
       prioritizeIssues: true,

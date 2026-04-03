@@ -260,8 +260,13 @@ Avoid:
   Notes: Completed on 2026-04-03 by adding a validated `threshold` query param to the batch workspace URL flow, preferring that value over saved batch-session state on load, and keeping the URL synchronized when the export score slider changes.
   Verified: `npm ci`, `npm run test:web -- --run src/lib/batch-focus.test.ts`, `npm run test:e2e -- --grep "batch workspace groups jobs and exports thresholded clips"`
 
-- [ ] Add quality-threshold quick presets in the batch workspace
+- [x] Add quality-threshold quick presets in the batch workspace
   Prompt: "Add quick preset buttons like Strict, Balanced, and Broad near the batch export slider so reviewers can jump between common score floors without dragging the range input."
+  Notes: Completed on 2026-04-03 by adding shared Strict, Balanced, and Broad threshold presets, wiring one-click buttons beside the aggregate export slider, and keeping those preset jumps aligned with the existing URL and saved-session threshold state.
+  Verified: `npm ci`, `npm run test:web -- --run src/lib/batch-focus.test.ts`, `npm run test:e2e -- --grep "batch workspace groups jobs and exports thresholded clips"`
+
+- [ ] Show eligible clip counts inside batch threshold presets
+  Prompt: "Annotate the Strict, Balanced, and Broad quick preset buttons with the current eligible clip counts so reviewers can see the export tradeoff before switching thresholds."
 
 - [x] Add queue completion toast and summary state
   Prompt: "When a batch queue finishes, show a stronger completion summary before navigating so the user understands how many sources succeeded or failed."
@@ -430,3 +435,5 @@ Avoid:
 - 2026-04-03: Added `Persist batch export preset in the URL` as the next aggregate-export deep-link follow-up.
 - 2026-04-03: Completed `Persist batch quality threshold in the URL` after adding the validated `threshold` query param, preserving it across reloads, and passing focused unit plus Playwright verification.
 - 2026-04-03: Added `Add quality-threshold quick presets in the batch workspace` as the next aggregate-export UX follow-up.
+- 2026-04-03: Completed `Add quality-threshold quick presets in the batch workspace` after installing frontend dependencies and passing focused web-unit plus Playwright verification.
+- 2026-04-03: Added `Show eligible clip counts inside batch threshold presets` as the next aggregate-export UX follow-up.

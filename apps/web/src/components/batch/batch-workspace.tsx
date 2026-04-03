@@ -30,6 +30,7 @@ import { SectionHeader } from "@/components/ui/section-header";
 import { TopBar } from "@/components/ui/top-bar";
 import { loadBatchSourceFile, removeBatchSourceFile } from "@/lib/batch-source-files";
 import {
+  BATCH_QUALITY_THRESHOLD_PRESETS,
   DEFAULT_BATCH_QUALITY_THRESHOLD,
   getBatchWorkspaceHref,
   getOrderedBatchItems,
@@ -168,6 +169,11 @@ export function BatchWorkspace({
 
   function setBatchTriageScope(nextIssuesOnly: boolean) {
     setIssuesOnly(nextIssuesOnly);
+  }
+
+  function updateQualityThreshold(nextThreshold: number) {
+    setQualityThreshold(nextThreshold);
+    setDownloadError(null);
   }
 
   function selectBatchJob(jobId: string) {
@@ -327,6 +333,8 @@ export function BatchWorkspace({
     () => aggregateClips.reduce((total, entry) => total + entry.clip.duration, 0),
     [aggregateClips]
   );
+  const activeThresholdPreset =
+    BATCH_QUALITY_THRESHOLD_PRESETS.find((preset) => preset.value === qualityThreshold) ?? null;
   const activePreset = getPackageExportPresetOption(selectedPreset);
   const readyCount = session?.items.filter((item) => item.status === "ready").length ?? 0;
   const failedCount = session?.items.filter((item) => item.status === "failed").length ?? 0;
@@ -599,9 +607,40 @@ export function BatchWorkspace({
                   min={50}
                   max={100}
                   value={qualityThreshold}
-                  onChange={(event) => setQualityThreshold(Number(event.target.value))}
+                  onChange={(event) => updateQualityThreshold(Number(event.target.value))}
                   className="mt-3 w-full accent-[var(--accent)]"
                 />
+                <div className="mt-4 grid gap-2 sm:grid-cols-3">
+                  {BATCH_QUALITY_THRESHOLD_PRESETS.map((preset) => {
+                    const isActive = qualityThreshold === preset.value;
+
+                    return (
+                      <button
+                        key={preset.label}
+                        type="button"
+                        aria-pressed={isActive}
+                        onClick={() => updateQualityThreshold(preset.value)}
+                        className={[
+                          "rounded-[1rem] border px-3 py-3 text-left transition",
+                          isActive
+                            ? "border-[var(--accent)] bg-[var(--accent-soft)] shadow-[var(--shadow-soft)]"
+                            : "border-[var(--line)] bg-white/[0.03] hover:border-[var(--line-strong)] hover:bg-white/[0.05]",
+                        ].join(" ")}
+                      >
+                        <div className="flex items-center justify-between gap-3">
+                          <span className="text-sm font-semibold text-[var(--text)]">{preset.label}</span>
+                          <span className="font-mono text-xs text-[var(--muted-strong)]">{preset.value}+</span>
+                        </div>
+                        <p className="mt-2 text-xs leading-5 text-[var(--muted)]">{preset.description}</p>
+                      </button>
+                    );
+                  })}
+                </div>
+                <p className="mt-3 text-xs leading-5 text-[var(--muted)]">
+                  {activeThresholdPreset
+                    ? `${activeThresholdPreset.label} keeps clips at ${qualityThreshold}+ so the batch export stays aligned with a common review floor.`
+                    : `Custom threshold keeps clips at ${qualityThreshold}+ for a more specific review pass.`}
+                </p>
               </div>
 
               <div className="grid gap-3 sm:grid-cols-2">

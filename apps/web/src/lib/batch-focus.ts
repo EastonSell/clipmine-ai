@@ -5,11 +5,34 @@ export type BatchTriageState = {
   issuesOnly: boolean;
 };
 
+export type BatchQualityThresholdPreset = {
+  label: string;
+  value: number;
+  description: string;
+};
+
 export type ReadyBatchJobShortcutDirection = "previous" | "next";
 
 export const DEFAULT_BATCH_QUALITY_THRESHOLD = 84;
 const MIN_BATCH_QUALITY_THRESHOLD = 50;
 const MAX_BATCH_QUALITY_THRESHOLD = 100;
+export const BATCH_QUALITY_THRESHOLD_PRESETS: BatchQualityThresholdPreset[] = [
+  {
+    label: "Strict",
+    value: 92,
+    description: "Keep only the strongest, most training-ready clips.",
+  },
+  {
+    label: "Balanced",
+    value: DEFAULT_BATCH_QUALITY_THRESHOLD,
+    description: "Start from the default review floor for shortlist-quality clips.",
+  },
+  {
+    label: "Broad",
+    value: 72,
+    description: "Include more review candidates before a final trim pass.",
+  },
+];
 
 export function parseBatchSelectedJobId(jobId: string | null | undefined) {
   const normalizedJobId = jobId?.trim();
