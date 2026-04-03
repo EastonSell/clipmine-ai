@@ -36,6 +36,7 @@ import {
   getBatchWorkspaceHref,
   getOrderedBatchItems,
   getPreferredBatchJobId,
+  getReadyBatchItemPositions,
   getReadyBatchJobNavigation,
   getReadyBatchJobShortcutDirection,
   hasBatchIssues,
@@ -160,6 +161,10 @@ export function BatchWorkspace({
   const queueItemOrdinals = useMemo(
     () => new Map((session?.items ?? []).map((item, index) => [item.id, index + 1])),
     [session?.items]
+  );
+  const readyQueuePositions = useMemo(
+    () => getReadyBatchItemPositions(queueItems, activeJobId),
+    [activeJobId, queueItems]
   );
   const queueHasIssues = useMemo(() => hasBatchIssues(session?.items ?? []), [session?.items]);
   const issueCount = useMemo(
@@ -917,6 +922,7 @@ export function BatchWorkspace({
                 const statusLabel = job ? (isRetrying ? "processing" : job.status) : item.status;
                 const progressValue = statusLabel === "ready" ? 100 : item.uploadProgress;
                 const ordinal = queueItemOrdinals.get(item.id) ?? 0;
+                const readyQueuePosition = readyQueuePositions.get(item.id) ?? null;
 
                 return (
                   <div
@@ -949,6 +955,23 @@ export function BatchWorkspace({
                         </div>
                       </button>
                       <div className="flex flex-wrap items-center justify-end gap-2">
+                        {readyQueuePosition ? (
+                          <Badge tone={readyQueuePosition.isCurrent ? "accent" : "muted"}>
+                            Ready source {readyQueuePosition.index} of {readyQueuePosition.total}
+                          </Badge>
+                        ) : null}
+                        {readyQueuePosition?.total === 1 ? (
+                          <Badge tone="accent">Only ready source</Badge>
+                        ) : null}
+                        {readyQueuePosition?.total !== 1 && readyQueuePosition?.isFirst ? (
+                          <Badge tone="muted">First ready</Badge>
+                        ) : null}
+                        {readyQueuePosition?.total !== 1 && readyQueuePosition?.isLast ? (
+                          <Badge tone="muted">Last ready</Badge>
+                        ) : null}
+                        {readyQueuePosition?.isCurrent ? (
+                          <Badge tone="accent">Current ready</Badge>
+                        ) : null}
                         <Badge tone={statusLabel === "ready" ? "accent" : statusLabel === "failed" ? "danger" : "neutral"}>
                           {statusLabel}
                         </Badge>

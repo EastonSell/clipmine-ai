@@ -374,8 +374,13 @@ Avoid:
   Notes: Completed on 2026-04-03 by extending the ready-source navigation model with first and last targets, adding direct jump controls alongside the existing previous and next actions, and updating the selected-panel copy so the jump behavior is explicit while the `job` URL param stays in sync.
   Verified: `npm ci`, `npm run test:web -- --run src/lib/batch-focus.test.ts`, `npm run test:e2e -- --grep "batch workspace navigates ready sources from the selected panel"`
 
-- [ ] Add ready-source position badges to batch queue cards
+- [x] Add ready-source position badges to batch queue cards
   Prompt: "Show each ready source's review-order position directly in the batch queue so reviewers can spot the first, current, and last ready workspaces before opening one."
+  Notes: Completed on 2026-04-03 by deriving ready-source positions from the visible batch queue order, surfacing queue-card badges for ready position plus first/current/last state, and extending the existing ready-source navigation coverage to assert those badges update with selection changes.
+  Verified: `npm ci`, `npm run test:web -- --run src/lib/batch-focus.test.ts`, `npm run test:e2e -- --grep "batch workspace navigates ready sources from the selected panel"`
+
+- [ ] Add a ready-only filter to the batch queue
+  Prompt: "Let reviewers collapse the batch queue to only ready workspaces so large saved sessions can focus on clip review without scanning failed or still-processing sources."
 
 ## Backend Tasks
 

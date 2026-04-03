@@ -12,6 +12,13 @@ export type BatchQualityThresholdPreset = {
 };
 
 export type ReadyBatchJobShortcutDirection = "previous" | "next";
+export type ReadyBatchItemPosition = {
+  index: number;
+  total: number;
+  isCurrent: boolean;
+  isFirst: boolean;
+  isLast: boolean;
+};
 
 export const DEFAULT_BATCH_QUALITY_THRESHOLD = 84;
 const MIN_BATCH_QUALITY_THRESHOLD = 50;
@@ -178,6 +185,31 @@ export function getReadyBatchJobNavigation(
     previousJobId: currentIndex > 0 ? jobIds[currentIndex - 1] : null,
     nextJobId: currentIndex >= 0 && currentIndex < jobIds.length - 1 ? jobIds[currentIndex + 1] : null,
   };
+}
+
+export function getReadyBatchItemPositions(
+  items: BatchUploadItemRecord[],
+  activeJobId: string | null
+) {
+  const readyItems = items.flatMap((item) =>
+    item.status === "ready" && item.jobId
+      ? [{ itemId: item.id, jobId: item.jobId }]
+      : []
+  );
+  const total = readyItems.length;
+
+  return new Map<string, ReadyBatchItemPosition>(
+    readyItems.map(({ itemId, jobId }, index) => [
+      itemId,
+      {
+        index: index + 1,
+        total,
+        isCurrent: jobId === activeJobId,
+        isFirst: index === 0,
+        isLast: index === total - 1,
+      },
+    ])
+  );
 }
 
 export function getReadyBatchJobShortcutDirection({

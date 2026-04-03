@@ -1270,3 +1270,23 @@ npm run test:e2e -- --grep "batch workspace groups jobs and exports thresholded 
 - `npm ci`: completed successfully to install missing frontend dependencies in this worktree before rerunning the targeted checks
 - `npm run lint:web -- --file src/components/batch/batch-workspace.tsx`: passed
 - `npm run test:e2e -- --grep "batch workspace groups jobs and exports thresholded clips"`: 1 / 1 test passed
+
+## Ready-Source Queue Badges Pass
+
+- Added ready-source position badges to the batch queue cards so ready items now show their review order directly in the visible queue.
+- Surfaced overlapping state badges for first, current, and last ready sources so reviewers can spot navigation anchors without opening each workspace.
+- Extended the existing ready-source navigation Playwright scenario to assert the new queue badges render and move with the selected source.
+
+## Ready-Source Queue Badges Checks Run
+
+```bash
+npm ci
+npm run test:web -- --run src/lib/batch-focus.test.ts
+npm run test:e2e -- --grep "batch workspace navigates ready sources from the selected panel"
+```
+
+## Ready-Source Queue Badges Results
+
+- `npm ci`: completed successfully
+- `npm run test:web -- --run src/lib/batch-focus.test.ts`: 14 / 14 tests passed
+- `npm run test:e2e -- --grep "batch workspace navigates ready sources from the selected panel"`: 1 / 1 test passed

@@ -7,6 +7,7 @@ import {
   getBatchWorkspaceHref,
   getOrderedBatchItems,
   getPreferredBatchJobId,
+  getReadyBatchItemPositions,
   getReadyBatchJobNavigation,
   getReadyBatchJobShortcutDirection,
   hasBatchIssues,
@@ -235,6 +236,49 @@ describe("batch-focus", () => {
       previousJobId: null,
       nextJobId: null,
     });
+  });
+
+  it("maps visible ready-source positions for queue badges", () => {
+    const items = [
+      createItem({ id: "ready-1", fileName: "alpha.mp4", status: "ready", jobId: "job-alpha" }),
+      createItem({ id: "failed-1", fileName: "broken-intro.mov", status: "failed", error: "Upload failed." }),
+      createItem({ id: "ready-2", fileName: "beta.mp4", status: "ready", jobId: "job-beta" }),
+      createItem({ id: "processing-1", fileName: "gamma.mp4", status: "processing", jobId: "job-gamma" }),
+      createItem({ id: "ready-3", fileName: "delta.mp4", status: "ready", jobId: "job-delta" }),
+    ];
+
+    expect(Array.from(getReadyBatchItemPositions(items, "job-beta").entries())).toEqual([
+      [
+        "ready-1",
+        {
+          index: 1,
+          total: 3,
+          isCurrent: false,
+          isFirst: true,
+          isLast: false,
+        },
+      ],
+      [
+        "ready-2",
+        {
+          index: 2,
+          total: 3,
+          isCurrent: true,
+          isFirst: false,
+          isLast: false,
+        },
+      ],
+      [
+        "ready-3",
+        {
+          index: 3,
+          total: 3,
+          isCurrent: false,
+          isFirst: false,
+          isLast: true,
+        },
+      ],
+    ]);
   });
 
   it("maps ready-source keyboard shortcuts and ignores text-entry targets", () => {

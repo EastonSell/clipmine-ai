@@ -1242,6 +1242,10 @@ test("batch workspace navigates ready sources from the selected panel", async ({
 
   await page.goto("/batches/demo-batch-navigation");
 
+  const alphaQueueCard = page.locator('[data-testid="batch-queue-item"]').filter({ hasText: "alpha.mp4" });
+  const betaQueueCard = page.locator('[data-testid="batch-queue-item"]').filter({ hasText: "beta.mp4" });
+  const gammaQueueCard = page.locator('[data-testid="batch-queue-item"]').filter({ hasText: "gamma.mp4" });
+
   const firstSourceButton = page.getByRole("button", { name: "First ready source" });
   const previousSourceButton = page.getByRole("button", { name: "Previous ready source" });
   const nextSourceButton = page.getByRole("button", { name: "Next ready source" });
@@ -1250,6 +1254,12 @@ test("batch workspace navigates ready sources from the selected panel", async ({
   await expect(page.getByRole("heading", { name: "alpha.mp4" })).toBeVisible();
   await expect(page.getByText("Source 1 of 3 ready workspaces in the current queue order.")).toBeVisible();
   await expect(page.getByText("Use [ and ] to step between neighbors, or jump straight to the first and last ready sources below.")).toBeVisible();
+  await expect(alphaQueueCard.getByText("Ready source 1 of 3")).toBeVisible();
+  await expect(alphaQueueCard.getByText("First ready")).toBeVisible();
+  await expect(alphaQueueCard.getByText("Current ready")).toBeVisible();
+  await expect(betaQueueCard.getByText("Ready source 2 of 3")).toBeVisible();
+  await expect(gammaQueueCard.getByText("Ready source 3 of 3")).toBeVisible();
+  await expect(gammaQueueCard.getByText("Last ready")).toBeVisible();
   await expect(firstSourceButton).toBeDisabled();
   await expect(previousSourceButton).toBeDisabled();
   await expect(nextSourceButton).toBeEnabled();
@@ -1259,6 +1269,7 @@ test("batch workspace navigates ready sources from the selected panel", async ({
   await expect(page).toHaveURL(/\/batches\/demo-batch-navigation\?job=job-beta$/);
   await expect(page.getByRole("heading", { name: "beta.mp4" })).toBeVisible();
   await expect(page.getByText("Source 2 of 3 ready workspaces in the current queue order.")).toBeVisible();
+  await expect(betaQueueCard.getByText("Current ready")).toBeVisible();
   await expect(firstSourceButton).toBeEnabled();
   await expect(previousSourceButton).toBeEnabled();
   await expect(nextSourceButton).toBeEnabled();
