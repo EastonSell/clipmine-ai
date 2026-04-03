@@ -28,7 +28,7 @@ import { PageContainer } from "@/components/ui/page-container";
 import { ProgressBar } from "@/components/ui/progress-bar";
 import { SectionHeader } from "@/components/ui/section-header";
 import { TopBar } from "@/components/ui/top-bar";
-import { loadBatchSourceFile, removeBatchSourceFile } from "@/lib/batch-source-files";
+import { listBatchSourceFileItemIds, loadBatchSourceFile, removeBatchSourceFile } from "@/lib/batch-source-files";
 import {
   BATCH_QUALITY_THRESHOLD_PRESETS,
   DEFAULT_BATCH_QUALITY_THRESHOLD,
@@ -84,6 +84,7 @@ export function BatchWorkspace({
   const [downloadError, setDownloadError] = useState<ApiError | null>(null);
   const [isDownloading, setIsDownloading] = useState(false);
   const [retryingItemIds, setRetryingItemIds] = useState<string[]>([]);
+  const [cachedSourceFileItemIds, setCachedSourceFileItemIds] = useState<string[]>([]);
   const sessionRef = useRef<BatchSessionRecord | null>(null);
 
   useEffect(() => {
@@ -105,6 +106,23 @@ export function BatchWorkspace({
   useEffect(() => {
     sessionRef.current = session;
   }, [session]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function refreshCachedSourceFileItemIds() {
+      const nextItemIds = await listBatchSourceFileItemIds(batchId);
+      if (!cancelled) {
+        setCachedSourceFileItemIds(nextItemIds);
+      }
+    }
+
+    void refreshCachedSourceFileItemIds();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [batchId, session?.items]);
 
   const jobIds = useMemo(
     () => Array.from(new Set((session?.items ?? []).map((item) => item.jobId).filter((value): value is string => Boolean(value)))),
@@ -129,6 +147,7 @@ export function BatchWorkspace({
   const jobs = useMemo(() => data ?? [], [data]);
   const jobsById = useMemo(() => new Map(jobs.map((job) => [job.jobId, job])), [jobs]);
   const retryingItemIdSet = useMemo(() => new Set(retryingItemIds), [retryingItemIds]);
+  const cachedSourceFileItemIdSet = useMemo(() => new Set(cachedSourceFileItemIds), [cachedSourceFileItemIds]);
   const queueItems = useMemo(
     () => getOrderedBatchItems(session?.items ?? [], prioritizeIssues, issuesOnly),
     [issuesOnly, prioritizeIssues, session?.items]
@@ -388,11 +407,12 @@ export function BatchWorkspace({
         return;
       }
 
-      const file = loadBatchSourceFile(batchId, item.id);
+      const file = await loadBatchSourceFile(batchId, item.id);
       if (!file) {
+        setCachedSourceFileItemIds((current) => current.filter((value) => value !== item.id));
         updateSessionItem(item.id, (current) => ({
           ...current,
-          error: "The original source is no longer available in this tab. Re-queue it from home.",
+          error: "The original source is no longer cached in this browser. Re-queue it from home.",
           updatedAt: new Date().toISOString(),
         }));
         return;
@@ -429,7 +449,8 @@ export function BatchWorkspace({
         },
       });
       const job = await uploadTask.promise;
-      removeBatchSourceFile(batchId, item.id);
+      await removeBatchSourceFile(batchId, item.id);
+      setCachedSourceFileItemIds((current) => current.filter((value) => value !== item.id));
       updateSessionItem(item.id, (current) => ({
         ...current,
         jobId: job.jobId,
@@ -765,7 +786,7 @@ export function BatchWorkspace({
                 const job = item.jobId ? jobsById.get(item.jobId) ?? null : null;
                 const active = item.jobId && item.jobId === selectedJob?.jobId;
                 const isRetrying = retryingItemIdSet.has(item.id);
-                const hasCachedSourceFile = Boolean(loadBatchSourceFile(batchId, item.id));
+                const hasCachedSourceFile = cachedSourceFileItemIdSet.has(item.id);
                 const canRetry = item.status === "failed" && (Boolean(item.jobId) || hasCachedSourceFile);
                 const statusLabel = job ? (isRetrying ? "processing" : job.status) : item.status;
                 const progressValue = statusLabel === "ready" ? 100 : item.uploadProgress;
@@ -822,7 +843,7 @@ export function BatchWorkspace({
                     <ProgressBar value={progressValue} className="mt-4" />
                     {item.status === "failed" && !item.jobId && !hasCachedSourceFile ? (
                       <p className="mt-3 text-xs leading-5 text-[var(--muted)]">
-                        The original source is no longer cached in this tab, so this retry has to start from home.
+                        The original source is no longer cached in this browser, so this retry has to start from home.
                       </p>
                     ) : null}
                   </div>

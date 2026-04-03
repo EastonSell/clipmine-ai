@@ -321,8 +321,13 @@ Avoid:
 - [ ] Add transfer-basis labels to batch ETA hints
   Prompt: "Show whether each queue ETA is coming from live throughput or previously completed uploads so reviewers know how much confidence to put in the estimate."
 
-- [ ] Preserve failed-upload retry readiness across reloads
+- [x] Preserve failed-upload retry readiness across reloads
   Prompt: "Persist enough local source reference data that a failed upload in the batch workspace can still be retried after a refresh or reopened saved batch, instead of only within the original tab lifetime."
+  Notes: Completed on 2026-04-03 by persisting queued batch source files into an IndexedDB-backed browser cache with an in-memory fallback, hydrating saved-batch retry availability from that cache on workspace load, and reusing the persisted source on retry after a full page reload.
+  Verified: `npm ci`, `npm run build:web`, `npm run test:e2e -- --grep "saved batch workspace retries a failed source after reload"`
+
+- [ ] Warn when browser source persistence is unavailable for failed batch retries
+  Prompt: "Surface when the browser cannot keep retry source data across reloads so reviewers know a failed source may need to be re-queued from home."
 
 - [x] Add previous and next source navigation in the batch workspace
   Prompt: "Let reviewers move between ready sources from the selected-source panel so comparing adjacent uploads does not require jumping back to the queue list each time."
@@ -442,3 +447,5 @@ Avoid:
 - 2026-04-03: Added `Add quality-threshold quick presets in the batch workspace` as the next aggregate-export UX follow-up.
 - 2026-04-03: Completed `Add quality-threshold quick presets in the batch workspace` after installing frontend dependencies and passing focused web-unit plus Playwright verification.
 - 2026-04-03: Added `Show eligible clip counts inside batch threshold presets` as the next aggregate-export UX follow-up.
+- 2026-04-03: Completed `Preserve failed-upload retry readiness across reloads` after adding IndexedDB-backed browser source persistence, rebuilding the web app, and passing the saved-batch retry Playwright coverage.
+- 2026-04-03: Added `Warn when browser source persistence is unavailable for failed batch retries` as the next retry-reliability follow-up.

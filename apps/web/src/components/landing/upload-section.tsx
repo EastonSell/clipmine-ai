@@ -364,12 +364,12 @@ export function UploadSection() {
       completedSourceDurationsMsByItemId: {},
     };
 
-    initialItems.forEach((item, index) => {
-      const file = files[index];
-      if (file) {
-        saveBatchSourceFile(batchId, item.id, file);
-      }
-    });
+    await Promise.allSettled(
+      initialItems.map((item, index) => {
+        const file = files[index];
+        return file ? saveBatchSourceFile(batchId, item.id, file) : Promise.resolve();
+      })
+    );
 
     batchCancelledRef.current = false;
     setDismissedBatchId(null);
@@ -449,7 +449,7 @@ export function UploadSection() {
           uploadProgress: 100,
           updatedAt: new Date().toISOString(),
         }));
-        removeBatchSourceFile(batchId, workingItems[index].id);
+        void removeBatchSourceFile(batchId, workingItems[index].id);
       } catch (uploadError) {
         const resolvedError =
           uploadError instanceof ApiError
@@ -571,7 +571,7 @@ export function UploadSection() {
     setSelectedFiles([]);
     setBatchQueue([]);
     setError(null);
-    clearBatchSourceFiles(batchId);
+    void clearBatchSourceFiles(batchId);
 
     if (source === "saved") {
       removeBatchSession(batchId);

@@ -1269,7 +1269,7 @@ test("batch workspace navigates ready sources from the selected panel", async ({
   await expect(lastSourceButton).toBeEnabled();
 });
 
-test("batch workspace retries a failed source without returning home", async ({ page }) => {
+test("saved batch workspace retries a failed source after reload", async ({ page }) => {
   const beta = createMockJob({
     jobId: "job-beta",
     sourceVideo: {
@@ -1406,6 +1406,10 @@ test("batch workspace retries a failed source without returning home", async ({ 
 
   await expect(page.getByRole("heading", { name: "Batch review session is ready" })).toBeVisible();
   await expect(page.getByText("1 of 2 sources reached the workspace stage.")).toBeVisible();
+  await page.reload();
+  await expect(page.getByText("Latest finished batch")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Reopen the last batch review session" })).toBeVisible();
+  await expect(page.getByText("1 of 2 sources reached the workspace stage.")).toBeVisible();
 
   await page.getByRole("button", { name: "Open batch workspace" }).click();
   await page.waitForURL("**/batches/*");
@@ -1413,7 +1417,6 @@ test("batch workspace retries a failed source without returning home", async ({ 
 
   await page.getByRole("button", { name: "Retry alpha.mp4" }).click();
 
-  await expect(page.getByRole("button", { name: /alpha\.mp4 ready/i })).toBeVisible();
   await expect
     .poll(async () =>
       page.evaluate((storageKey) => {
@@ -1423,6 +1426,8 @@ test("batch workspace retries a failed source without returning home", async ({ 
       }, batchSessionsKey)
     )
     .toBe("job-alpha-retry");
+  await expect(page.getByText("2 of 2 sources have reached a terminal state.")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Retry alpha.mp4" })).toHaveCount(0);
 });
 
 test("landing page completes a batch queue and then opens the workspace on demand", async ({ page }) => {

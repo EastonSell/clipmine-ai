@@ -1,5 +1,28 @@
 # Verification Log
 
+## Saved Batch Retry Persistence Pass
+
+Date: 2026-04-03
+
+- Persisted queued batch source files into an IndexedDB-backed browser cache so failed uploads can survive a full reload before they are retried from the batch workspace.
+- Updated the batch workspace retry flow to hydrate cached-source availability asynchronously from browser storage, reuse the stored source when retrying a failed item without a prior `jobId`, and clear the cached file again once the retry reaches backend processing.
+- Extended the focused Playwright retry scenario so it reloads the landing page, reopens the saved batch workspace, and proves the failed source still upgrades into a new job.
+- This checkout started without frontend dependencies installed, so `npm ci` was required before the targeted checks could run.
+
+### Checks run
+
+```bash
+npm ci
+npm run build:web
+npm run test:e2e -- --grep "saved batch workspace retries a failed source after reload"
+```
+
+### Result
+
+- production web build passed
+- `1 / 1` targeted Playwright saved-batch retry tests passed
+- failed batch items can now be retried after a full reload as long as browser source persistence succeeds
+
 ## Batch Threshold Preset Count Labels Pass
 
 Date: 2026-04-03
