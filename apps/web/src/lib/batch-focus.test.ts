@@ -9,6 +9,7 @@ import {
   hasBatchIssues,
   isBatchIssueItem,
   parseBatchSelectedJobId,
+  parseBatchSelectedPreset,
   parseBatchTriageState,
 } from "./batch-focus";
 import type { BatchUploadItemRecord } from "./types";
@@ -71,10 +72,11 @@ describe("batch-focus", () => {
           prioritizeIssues: true,
           issuesOnly: false,
           selectedJobId: "job-alpha",
+          selectedPreset: "audio-only",
         },
         "#batch-queue"
       )
-    ).toBe("/batches/saved-batch-failures?focus=issues&scope=all&job=job-alpha#batch-queue");
+    ).toBe("/batches/saved-batch-failures?focus=issues&scope=all&job=job-alpha&preset=audio-only#batch-queue");
   });
 
   it("normalizes the selected batch job id from search params", () => {
@@ -82,6 +84,14 @@ describe("batch-focus", () => {
     expect(parseBatchSelectedJobId("   job-beta   ")).toBe("job-beta");
     expect(parseBatchSelectedJobId("")).toBeNull();
     expect(parseBatchSelectedJobId(undefined)).toBeNull();
+  });
+
+  it("normalizes the selected batch export preset from search params", () => {
+    expect(parseBatchSelectedPreset("full-av")).toBe("full-av");
+    expect(parseBatchSelectedPreset("audio-only")).toBe("audio-only");
+    expect(parseBatchSelectedPreset("metadata-only")).toBe("metadata-only");
+    expect(parseBatchSelectedPreset("unknown")).toBeNull();
+    expect(parseBatchSelectedPreset(undefined)).toBeNull();
   });
 
   it("pins failed and cancelled sources to the front when issue focus is enabled", () => {

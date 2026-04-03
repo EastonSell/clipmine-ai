@@ -1,4 +1,4 @@
-import type { BatchUploadItemRecord } from "./types";
+import type { BatchUploadItemRecord, PackageExportPreset } from "./types";
 
 export type BatchTriageState = {
   prioritizeIssues: boolean;
@@ -10,6 +10,14 @@ export type ReadyBatchJobShortcutDirection = "previous" | "next";
 export function parseBatchSelectedJobId(jobId: string | null | undefined) {
   const normalizedJobId = jobId?.trim();
   return normalizedJobId ? normalizedJobId : null;
+}
+
+export function parseBatchSelectedPreset(preset: string | null | undefined): PackageExportPreset | null {
+  if (preset === "full-av" || preset === "audio-only" || preset === "metadata-only") {
+    return preset;
+  }
+
+  return null;
 }
 
 export function parseBatchTriageState(focus: string | null | undefined, scope: string | null | undefined): BatchTriageState {
@@ -26,7 +34,8 @@ export function getBatchWorkspaceHref(
     prioritizeIssues,
     issuesOnly = prioritizeIssues,
     selectedJobId = null,
-  }: BatchTriageState & { selectedJobId?: string | null },
+    selectedPreset = "full-av",
+  }: BatchTriageState & { selectedJobId?: string | null; selectedPreset?: PackageExportPreset },
   hash = ""
 ) {
   const searchParams = new URLSearchParams();
@@ -41,6 +50,10 @@ export function getBatchWorkspaceHref(
 
   if (selectedJobId) {
     searchParams.set("job", selectedJobId);
+  }
+
+  if (selectedPreset !== "full-av") {
+    searchParams.set("preset", selectedPreset);
   }
 
   const search = searchParams.toString();

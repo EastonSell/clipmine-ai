@@ -55,6 +55,7 @@ type BatchWorkspaceProps = {
   prioritizeIssues?: boolean;
   initialIssuesOnly?: boolean;
   initialActiveJobId?: string | null;
+  initialSelectedPreset?: PackageExportPreset | null;
 };
 
 type AggregateClip = {
@@ -68,12 +69,13 @@ export function BatchWorkspace({
   prioritizeIssues = false,
   initialIssuesOnly = prioritizeIssues,
   initialActiveJobId = null,
+  initialSelectedPreset = null,
 }: BatchWorkspaceProps) {
   const [session, setSession] = useState<BatchSessionRecord | null>(null);
   const [activeJobId, setActiveJobId] = useState<string | null>(null);
   const [issuesOnly, setIssuesOnly] = useState(prioritizeIssues && initialIssuesOnly);
   const [qualityThreshold, setQualityThreshold] = useState(84);
-  const [selectedPreset, setSelectedPreset] = useState<PackageExportPreset>("full-av");
+  const [selectedPreset, setSelectedPreset] = useState<PackageExportPreset>(initialSelectedPreset ?? "full-av");
   const [downloadError, setDownloadError] = useState<ApiError | null>(null);
   const [isDownloading, setIsDownloading] = useState(false);
   const [retryingItemIds, setRetryingItemIds] = useState<string[]>([]);
@@ -91,9 +93,9 @@ export function BatchWorkspace({
     sessionRef.current = nextSession;
     setIssuesOnly(nextIssuesOnly);
     setQualityThreshold(nextSession?.qualityThreshold ?? 84);
-    setSelectedPreset(nextSession?.batchExportPreset ?? "full-av");
+    setSelectedPreset(initialSelectedPreset ?? nextSession?.batchExportPreset ?? "full-av");
     setActiveJobId(nextActiveJobId);
-  }, [batchId, initialActiveJobId, initialIssuesOnly, prioritizeIssues]);
+  }, [batchId, initialActiveJobId, initialIssuesOnly, initialSelectedPreset, prioritizeIssues]);
 
   useEffect(() => {
     sessionRef.current = session;
@@ -183,6 +185,7 @@ export function BatchWorkspace({
         prioritizeIssues,
         issuesOnly,
         selectedJobId: activeJobId,
+        selectedPreset,
       },
       window.location.hash
     );
@@ -190,7 +193,7 @@ export function BatchWorkspace({
     if (currentHref !== nextHref) {
       window.history.replaceState(window.history.state, "", nextHref);
     }
-  }, [activeJobId, batchId, issuesOnly, prioritizeIssues]);
+  }, [activeJobId, batchId, issuesOnly, prioritizeIssues, selectedPreset]);
 
   useEffect(() => {
     if (!session) {

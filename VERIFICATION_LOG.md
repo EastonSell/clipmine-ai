@@ -1,5 +1,29 @@
 # Verification Log
 
+## Batch Export Preset URL Pass
+
+Date: 2026-04-03
+
+- Added a normalized `preset` query param to the batch workspace URL helper so export-mode links can preserve the active preset alongside the existing triage and selected-job state.
+- Updated the batch App Router page to parse the incoming preset from `searchParams` and seed the client workspace with that value before any saved batch-session fallback is applied.
+- Extended the focused batch export Playwright scenario so it proves `preset=audio-only` survives reloads and re-opened route visits even when saved session storage is temporarily forced back to `full-av`.
+- This checkout started without frontend dependencies installed, so `npm ci` was required before the targeted checks could run. The local Playwright browser bundle also needed a one-time `npx playwright install chromium` into the shared cache path.
+
+### Checks run
+
+```bash
+npm ci
+npm run test:web -- --run src/lib/batch-focus.test.ts
+env -u FORCE_COLOR -u NO_COLOR PLAYWRIGHT_BROWSERS_PATH=/tmp/clipmine-playwright-browsers npx playwright install chromium
+env -u FORCE_COLOR -u NO_COLOR PLAYWRIGHT_BROWSERS_PATH=/tmp/clipmine-playwright-browsers npx playwright test --grep "batch workspace groups jobs and exports thresholded clips"
+```
+
+### Result
+
+- `10 / 10` targeted batch-focus unit tests passed
+- `1 / 1` targeted Playwright batch export tests passed
+- bookmarked batch preset links now reopen the same export mode even when saved session state disagrees
+
 ## Batch Export Preset Persistence Pass
 
 Date: 2026-04-03

@@ -250,8 +250,13 @@ Avoid:
   Notes: Completed on 2026-04-03 by storing the selected batch export preset in the saved batch-session record, hydrating the batch workspace from that stored value on load, and keeping the aggregate export preview and download path aligned after refreshes and reopened sessions.
   Verified: `npm ci`, `npm run test:web -- --run src/lib/batch-sessions.test.ts`, `env -u FORCE_COLOR -u NO_COLOR PLAYWRIGHT_BROWSERS_PATH=/tmp/clipmine-playwright-browsers npx playwright test --grep "batch workspace groups jobs and exports thresholded clips"`
 
-- [ ] Persist batch export preset in the URL
+- [x] Persist batch export preset in the URL
   Prompt: "Keep the batch workspace URL aligned with the active export preset so shared or bookmarked batch links can reopen the same export mode without depending on local browser storage alone."
+  Notes: Completed on 2026-04-03 by adding a normalized `preset` query param to the batch workspace URL, honoring that value on the batch route load, and keeping the URL synchronized with preset changes while preserving the existing selected-job state.
+  Verified: `npm ci`, `npm run test:web -- --run src/lib/batch-focus.test.ts`, `env -u FORCE_COLOR -u NO_COLOR PLAYWRIGHT_BROWSERS_PATH=/tmp/clipmine-playwright-browsers npx playwright install chromium`, `env -u FORCE_COLOR -u NO_COLOR PLAYWRIGHT_BROWSERS_PATH=/tmp/clipmine-playwright-browsers npx playwright test --grep "batch workspace groups jobs and exports thresholded clips"`
+
+- [ ] Persist batch quality threshold in the URL
+  Prompt: "Keep the batch workspace URL aligned with the active quality threshold so shared or bookmarked batch review links can reopen the same score floor without depending on saved browser state."
 
 - [x] Add queue completion toast and summary state
   Prompt: "When a batch queue finishes, show a stronger completion summary before navigating so the user understands how many sources succeeded or failed."
