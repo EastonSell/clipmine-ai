@@ -2,6 +2,27 @@
 
 Date: 2026-04-02
 
+## Saved Batch Issue-Only Triage Pass
+
+Date: 2026-04-03
+
+- Updated the saved-batch `focus=issues` flow so reopened sessions now start in an issue-only queue instead of merely pinning failed and cancelled items above ready jobs.
+- Added explicit `Only issues` and `All sources` controls in the batch workspace banner so users can stay in retry triage mode or return to the full queue without leaving the page.
+- Kept the selected-source panel coherent during issue-only triage by swapping to a focused retry state when the visible issue items do not yet have a workspace to inspect.
+- Added unit coverage for issue-only filtering plus targeted Playwright coverage for both the default issue-only reopen and switching back to the full queue.
+
+### Checks run
+
+```bash
+npm run test:web -- --run src/lib/batch-focus.test.ts
+npm run test:e2e -- --grep='saved batch workspaces reopen with failed sources surfaced first|saved batch triage can switch back from issue-only queue to all sources'
+```
+
+### Result
+
+- `4 / 4` targeted web unit tests passed
+- `2 / 2` targeted Playwright saved-batch triage tests passed
+
 ## Saved Batch Issue-First Reopen Pass
 
 Date: 2026-04-03

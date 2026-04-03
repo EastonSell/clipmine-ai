@@ -359,11 +359,111 @@ test("saved batch workspaces reopen with failed sources surfaced first", async (
 
   await page.waitForURL("**/batches/saved-batch-failures?focus=issues*");
   await expect(page.getByTestId("batch-queue-attention-banner")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Only issues" })).toHaveAttribute("aria-pressed", "true");
 
   const queueItems = page.getByTestId("batch-queue-item");
   await expect(queueItems.nth(0)).toContainText("broken-intro.mov");
   await expect(queueItems.nth(1)).toContainText("retake.mp4");
+  await expect(queueItems).toHaveCount(2);
+  await expect(page.getByText("Issue triage is active")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Show all sources" })).toBeVisible();
+});
+
+test("saved batch triage can switch back from issue-only queue to all sources", async ({ page }) => {
+  const alpha = createMockJob({
+    jobId: "saved-batch-alpha",
+    sourceVideo: {
+      id: "saved-video-alpha",
+      file_name: "alpha.mp4",
+      content_type: "video/mp4",
+      size_bytes: 12_000_000,
+      duration_seconds: 164,
+      url: "/api/jobs/saved-batch-alpha/video",
+    },
+  });
+
+  await page.addInitScript(
+    ({ batchSessionsKey, session }) => {
+      window.localStorage.setItem(batchSessionsKey, JSON.stringify([session]));
+    },
+    {
+      batchSessionsKey,
+      session: {
+        batchId: "saved-batch-failures",
+        label: "3 sources queued",
+        createdAt: "2026-04-02T11:50:00.000Z",
+        updatedAt: "2026-04-02T12:12:00.000Z",
+        qualityThreshold: 84,
+        lastCompletionSummary: {
+          batchId: "saved-batch-failures",
+          label: "3 sources queued",
+          finishedAt: "2026-04-02T12:12:00.000Z",
+          totalSources: 3,
+          readyCount: 1,
+          failedCount: 1,
+          cancelledCount: 1,
+        },
+        items: [
+          {
+            id: "upload-1",
+            fileName: "alpha.mp4",
+            sizeBytes: 12_000_000,
+            jobId: "saved-batch-alpha",
+            status: "ready",
+            uploadPhase: "complete",
+            uploadProgress: 100,
+            error: null,
+            updatedAt: "2026-04-02T12:10:00.000Z",
+          },
+          {
+            id: "upload-2",
+            fileName: "broken-intro.mov",
+            sizeBytes: 10_500_000,
+            jobId: null,
+            status: "failed",
+            uploadPhase: "queued",
+            uploadProgress: 34,
+            error: "Upload failed.",
+            updatedAt: "2026-04-02T12:11:00.000Z",
+          },
+          {
+            id: "upload-3",
+            fileName: "retake.mp4",
+            sizeBytes: 9_500_000,
+            jobId: null,
+            status: "cancelled",
+            uploadPhase: "queued",
+            uploadProgress: 0,
+            error: "Queue was cancelled before this source finished uploading.",
+            updatedAt: "2026-04-02T12:12:00.000Z",
+          },
+        ],
+      },
+    }
+  );
+
+  await page.route("**/api/jobs/saved-batch-alpha", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(alpha),
+    });
+  });
+
+  await page.goto("/");
+  await page.getByRole("button", { name: "Open batch workspace" }).click();
+  await page.waitForURL("**/batches/saved-batch-failures?focus=issues*");
+
+  const attentionBanner = page.getByTestId("batch-queue-attention-banner");
+  await attentionBanner.getByRole("button", { name: "All sources" }).click();
+
+  const queueItems = page.getByTestId("batch-queue-item");
+  await expect(attentionBanner.getByRole("button", { name: "All sources" })).toHaveAttribute("aria-pressed", "true");
+  await expect(queueItems).toHaveCount(3);
+  await expect(queueItems.nth(0)).toContainText("broken-intro.mov");
+  await expect(queueItems.nth(1)).toContainText("retake.mp4");
   await expect(queueItems.nth(2)).toContainText("alpha.mp4");
+  await expect(page.getByRole("link", { name: "Open full workspace" })).toBeVisible();
 });
 
 test("uploading a valid source opens the workspace and supports shortlist persistence", async ({ page }) => {

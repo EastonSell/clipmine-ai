@@ -261,8 +261,13 @@ Avoid:
   Notes: Completed on 2026-04-03 by reopening saved batch shortcuts with a `focus=issues` state, jumping directly to the queue section, pinning failed and cancelled sources above ready jobs, and preserving original queue ordinals while the issue-first view is active.
   Verified: `npm run test:web`, `npm run test:e2e -- --grep "saved batch workspaces reopen with failed sources surfaced first|landing page previews failed source names in a saved batch shortcut|landing page reopens the most recent finished batch session"`
 
-- [ ] Add issue-only toggle for saved batch triage
+- [x] Add issue-only toggle for saved batch triage
   Prompt: "Let users collapse the reopened batch queue to only failed or cancelled sources so retry triage stays focused before they return to ready jobs."
+  Notes: Completed on 2026-04-03 by defaulting saved `focus=issues` reopens into an issue-only queue, adding explicit `Only issues` and `All sources` controls, and keeping the selected-source panel useful when no visible issue has a workspace yet.
+  Verified: `npm run test:web -- --run src/lib/batch-focus.test.ts`, `npm run test:e2e -- --grep='saved batch workspaces reopen with failed sources surfaced first|saved batch triage can switch back from issue-only queue to all sources'`
+
+- [ ] Persist saved-batch triage scope in the URL
+  Prompt: "Keep the saved batch workspace URL in sync with the issue-only vs all-sources toggle so refreshes and shared links preserve the exact triage scope."
 
 - [ ] Add per-source ETA hints to the active queue card
   Prompt: "Estimate queue progress for the current source and remaining queue so large multi-file uploads feel less opaque while the active transfer is running."
@@ -343,3 +348,5 @@ Avoid:
 - 2026-04-03: Added `Open saved batch workspaces with failed sources surfaced first` as the next landing-session follow-up.
 - 2026-04-03: Completed `Open saved batch workspaces with failed sources surfaced first` after web unit and targeted Playwright verification.
 - 2026-04-03: Added `Add issue-only toggle for saved batch triage` as the next queue-triage follow-up.
+- 2026-04-03: Completed `Add issue-only toggle for saved batch triage` after focused web-unit and Playwright verification.
+- 2026-04-03: Added `Persist saved-batch triage scope in the URL` as the next queue-triage follow-up.

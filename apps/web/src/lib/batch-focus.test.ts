@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { getOrderedBatchItems, getPreferredBatchJobId, hasBatchIssues } from "./batch-focus";
+import { getOrderedBatchItems, getPreferredBatchJobId, hasBatchIssues, isBatchIssueItem } from "./batch-focus";
 import type { BatchUploadItemRecord } from "./types";
 
 function createItem(
@@ -38,6 +38,24 @@ describe("batch-focus", () => {
       "alpha.mp4",
       "broken-intro.mov",
       "gamma.mp4",
+      "retake.mp4",
+    ]);
+  });
+
+  it("can collapse the queue to only failed and cancelled sources", () => {
+    const items = [
+      createItem({ id: "ready-1", fileName: "alpha.mp4", status: "ready", jobId: "job-alpha" }),
+      createItem({ id: "failed-1", fileName: "broken-intro.mov", status: "failed", error: "Upload failed." }),
+      createItem({ id: "processing-1", fileName: "gamma.mp4", status: "processing", jobId: "job-gamma" }),
+      createItem({ id: "cancelled-1", fileName: "retake.mp4", status: "cancelled", error: "Queue cancelled." }),
+    ];
+
+    expect(getOrderedBatchItems(items, true, true).map((item) => item.fileName)).toEqual([
+      "broken-intro.mov",
+      "retake.mp4",
+    ]);
+    expect(items.filter(isBatchIssueItem).map((item) => item.fileName)).toEqual([
+      "broken-intro.mov",
       "retake.mp4",
     ]);
   });

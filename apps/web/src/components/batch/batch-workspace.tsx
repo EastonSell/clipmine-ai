@@ -17,7 +17,7 @@ import { ProgressBar } from "@/components/ui/progress-bar";
 import { SectionHeader } from "@/components/ui/section-header";
 import { TopBar } from "@/components/ui/top-bar";
 import { loadBatchSourceFile, removeBatchSourceFile } from "@/lib/batch-source-files";
-import { getOrderedBatchItems, getPreferredBatchJobId, hasBatchIssues } from "@/lib/batch-focus";
+import { getOrderedBatchItems, getPreferredBatchJobId, hasBatchIssues, isBatchIssueItem } from "@/lib/batch-focus";
 import { createJob, downloadBatchClipPackage, getJob, retryJob, ApiError, isRetryableApiError } from "@/lib/api";
 import { loadBatchSession, saveBatchSession } from "@/lib/batch-sessions";
 import { formatSeconds, formatSignedScore } from "@/lib/format";
@@ -37,6 +37,7 @@ type AggregateClip = {
 export function BatchWorkspace({ batchId, prioritizeIssues = false }: BatchWorkspaceProps) {
   const [session, setSession] = useState<BatchSessionRecord | null>(null);
   const [activeJobId, setActiveJobId] = useState<string | null>(null);
+  const [issuesOnly, setIssuesOnly] = useState(prioritizeIssues);
   const [qualityThreshold, setQualityThreshold] = useState(84);
   const [downloadError, setDownloadError] = useState<ApiError | null>(null);
   const [isDownloading, setIsDownloading] = useState(false);
@@ -45,10 +46,13 @@ export function BatchWorkspace({ batchId, prioritizeIssues = false }: BatchWorks
 
   useEffect(() => {
     const nextSession = loadBatchSession(batchId);
+    const nextIssuesOnly = prioritizeIssues && hasBatchIssues(nextSession?.items ?? []);
+    const nextQueueItems = getOrderedBatchItems(nextSession?.items ?? [], prioritizeIssues, nextIssuesOnly);
     setSession(nextSession);
     sessionRef.current = nextSession;
+    setIssuesOnly(nextIssuesOnly);
     setQualityThreshold(nextSession?.qualityThreshold ?? 84);
-    setActiveJobId(getPreferredBatchJobId(nextSession?.items ?? [], prioritizeIssues));
+    setActiveJobId(getPreferredBatchJobId(nextQueueItems, false));
   }, [batchId, prioritizeIssues]);
 
   useEffect(() => {
@@ -79,14 +83,18 @@ export function BatchWorkspace({ batchId, prioritizeIssues = false }: BatchWorks
   const jobsById = useMemo(() => new Map(jobs.map((job) => [job.jobId, job])), [jobs]);
   const retryingItemIdSet = useMemo(() => new Set(retryingItemIds), [retryingItemIds]);
   const queueItems = useMemo(
-    () => getOrderedBatchItems(session?.items ?? [], prioritizeIssues),
-    [prioritizeIssues, session?.items]
+    () => getOrderedBatchItems(session?.items ?? [], prioritizeIssues, issuesOnly),
+    [issuesOnly, prioritizeIssues, session?.items]
   );
   const queueItemOrdinals = useMemo(
     () => new Map((session?.items ?? []).map((item, index) => [item.id, index + 1])),
     [session?.items]
   );
   const queueHasIssues = useMemo(() => hasBatchIssues(session?.items ?? []), [session?.items]);
+  const issueCount = useMemo(
+    () => (session?.items ?? []).filter(isBatchIssueItem).length,
+    [session?.items]
+  );
 
   function commitSession(nextSession: BatchSessionRecord) {
     sessionRef.current = nextSession;
@@ -153,14 +161,22 @@ export function BatchWorkspace({ batchId, prioritizeIssues = false }: BatchWorks
   }, [jobsById, qualityThreshold, retryingItemIdSet, session]);
 
   useEffect(() => {
-    if (!activeJobId && jobs.length > 0) {
-      setActiveJobId(getPreferredBatchJobId(session?.items ?? [], prioritizeIssues) ?? jobs[0].jobId);
+    if (queueItems.length === 0) {
+      if (activeJobId !== null) {
+        setActiveJobId(null);
+      }
+      return;
     }
-  }, [activeJobId, jobs, prioritizeIssues, session?.items]);
+
+    if (activeJobId && queueItems.some((item) => item.jobId === activeJobId)) {
+      return;
+    }
+
+    setActiveJobId(getPreferredBatchJobId(queueItems, false));
+  }, [activeJobId, queueItems]);
 
   const selectedJob =
-    jobs.find((job) => job.jobId === activeJobId) ??
-    jobs[0] ??
+    (activeJobId ? jobs.find((job) => job.jobId === activeJobId) : null) ??
     null;
 
   const aggregateClips = useMemo<AggregateClip[]>(() => {
@@ -482,10 +498,38 @@ export function BatchWorkspace({ batchId, prioritizeIssues = false }: BatchWorks
                 data-testid="batch-queue-attention-banner"
                 className="mt-6 rounded-[1.1rem] border border-red-500/25 bg-[var(--danger-soft)] px-4 py-4 text-sm text-red-100"
               >
-                <div className="font-medium">Attention-first view</div>
-                <p className="mt-2 leading-6">
-                  Failed and cancelled sources are pinned to the top of this reopened batch so the items that need retry
-                  or cleanup are visible before the ready jobs.
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div className="min-w-0 flex-1">
+                    <div className="font-medium">Attention-first view</div>
+                    <p className="mt-2 leading-6">
+                      {issuesOnly
+                        ? "Failed and cancelled sources are isolated below so retry triage stays focused before you return to the ready jobs."
+                        : "Failed and cancelled sources stay pinned to the top of this reopened batch so the items that need retry or cleanup remain visible first."}
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      size="sm"
+                      variant={issuesOnly ? "primary" : "secondary"}
+                      onClick={() => setIssuesOnly(true)}
+                      aria-pressed={issuesOnly}
+                    >
+                      Only issues
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant={issuesOnly ? "secondary" : "primary"}
+                      onClick={() => setIssuesOnly(false)}
+                      aria-pressed={!issuesOnly}
+                    >
+                      All sources
+                    </Button>
+                  </div>
+                </div>
+                <p className="mt-3 text-xs text-red-100/80">
+                  {issuesOnly
+                    ? `Showing ${issueCount} issue ${issueCount === 1 ? "source" : "sources"} out of ${session.items.length}.`
+                    : "Ready and processing jobs are visible again, with issue items still pinned first."}
                 </p>
               </div>
             ) : null}
@@ -627,6 +671,28 @@ export function BatchWorkspace({ batchId, prioritizeIssues = false }: BatchWorks
                     ))}
                   </div>
                 )}
+              </>
+            ) : issuesOnly && queueHasIssues ? (
+              <>
+                <SectionHeader
+                  eyebrow="Selected source"
+                  title="Issue triage is active"
+                  description="The visible failed or cancelled sources do not have a ready workspace yet. Retry them from the queue, or switch back to all sources when you want to review completed jobs again."
+                />
+
+                <div className="mt-6 rounded-[1.1rem] border border-[var(--line)] bg-white/[0.03] px-4 py-4">
+                  <div className="metric-label text-[var(--muted)]">Visible issue sources</div>
+                  <div className="mt-2 text-2xl font-semibold tracking-[-0.04em] text-[var(--text)]">{queueItems.length}</div>
+                  <p className="mt-3 text-sm leading-6 text-[var(--muted)]">
+                    Keep the list collapsed while you retry the failed uploads, then switch back to all sources to reopen the
+                    ready jobs and continue review.
+                  </p>
+                  <div className="mt-4">
+                    <Button size="sm" variant="secondary" onClick={() => setIssuesOnly(false)}>
+                      Show all sources
+                    </Button>
+                  </div>
+                </div>
               </>
             ) : (
               <EmptyState
