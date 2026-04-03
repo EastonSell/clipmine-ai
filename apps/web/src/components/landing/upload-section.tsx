@@ -12,6 +12,7 @@ import {
 import { useRouter } from "next/navigation";
 import { startTransition, useEffect, useMemo, useRef, useState } from "react";
 
+import { estimateBatchUploadEta, formatUploadEta } from "@/lib/batch-upload-eta";
 import { loadLatestCompletedBatchSession, removeBatchSession, saveBatchSession } from "@/lib/batch-sessions";
 import { clearBatchSourceFiles, removeBatchSourceFile, saveBatchSourceFile } from "@/lib/batch-source-files";
 import { ApiError, createJob, getUploadMode, isRetryableApiError } from "@/lib/api";
@@ -211,6 +212,13 @@ export function UploadSection() {
   const [dismissedBatchId, setDismissedBatchId] = useState<string | null>(null);
   const activeUploadCancelRef = useRef<(() => void) | null>(null);
   const batchCancelledRef = useRef(false);
+  const batchUploadTimingRef = useRef<{
+    sourceStartedAtByItemId: Record<string, number>;
+    completedSourceDurationsMsByItemId: Record<string, number>;
+  }>({
+    sourceStartedAtByItemId: {},
+    completedSourceDurationsMsByItemId: {},
+  });
   const uploadMode = getUploadMode();
   const isBatchMode = selectedFiles.length > 1 || batchQueue.length > 0;
   const primaryFile = selectedFiles[0] ?? null;
@@ -221,6 +229,19 @@ export function UploadSection() {
   const cancelledQueueCount = batchQueue.filter((item) => item.status === "cancelled").length;
   const waitingQueueCount = batchQueue.filter((item) => item.status === "queued").length;
   const activeQueueOrdinal = currentBatchIndex !== null ? currentBatchIndex + 1 : null;
+  const batchUploadEta = useMemo(
+    () =>
+      estimateBatchUploadEta({
+        items: batchQueue,
+        activeItemId: activeQueueItem?.id ?? null,
+        uploadPhase,
+        uploadStats,
+        nowMs: Date.now(),
+        sourceStartedAtByItemId: batchUploadTimingRef.current.sourceStartedAtByItemId,
+        completedSourceDurationsMsByItemId: batchUploadTimingRef.current.completedSourceDurationsMsByItemId,
+      }),
+    [activeQueueItem?.id, batchQueue, uploadPhase, uploadStats]
+  );
   const savedBatchSummary =
     latestCompletedBatch && latestCompletedBatch.batchId !== dismissedBatchId
       ? latestCompletedBatch.lastCompletionSummary ?? null
@@ -337,6 +358,10 @@ export function UploadSection() {
     const label = createBatchLabel(files.length);
     const createdAt = new Date().toISOString();
     const initialItems = createBatchItems(files);
+    batchUploadTimingRef.current = {
+      sourceStartedAtByItemId: {},
+      completedSourceDurationsMsByItemId: {},
+    };
 
     initialItems.forEach((item, index) => {
       const file = files[index];
@@ -369,6 +394,7 @@ export function UploadSection() {
         total: file.size,
         percentage: 0,
       });
+      batchUploadTimingRef.current.sourceStartedAtByItemId[workingItems[index].id] = Date.now();
 
       const updateItem = (updater: (current: BatchUploadItemRecord) => BatchUploadItemRecord) => {
         const nextItem = updater(workingItems[index]);
@@ -409,6 +435,11 @@ export function UploadSection() {
         });
         activeUploadCancelRef.current = uploadTask.cancel;
         const job = await uploadTask.promise;
+        const currentItemId = workingItems[index].id;
+        const startedAt = batchUploadTimingRef.current.sourceStartedAtByItemId[currentItemId];
+        if (startedAt) {
+          batchUploadTimingRef.current.completedSourceDurationsMsByItemId[currentItemId] = Date.now() - startedAt;
+        }
         updateItem((current) => ({
           ...current,
           jobId: job.jobId,
@@ -750,6 +781,17 @@ export function UploadSection() {
                                     ? formatBatchItemSummary(activeQueueItem)
                                     : "The queue will begin with the first source as soon as validation completes."}
                                 </p>
+                                {activeQueueItem?.status === "uploading" ? (
+                                  <>
+                                    <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                                      <QueueTimingHint label="This source ETA" value={formatUploadEta(batchUploadEta.currentSourceSeconds)} />
+                                      <QueueTimingHint label="Queue intake ETA" value={formatUploadEta(batchUploadEta.queueSeconds)} />
+                                    </div>
+                                    <p className="mt-3 text-xs leading-5 text-[var(--muted)]">
+                                      These estimates cover upload intake only. Backend processing keeps running after each source is handed off.
+                                    </p>
+                                  </>
+                                ) : null}
                               </div>
                               {activeQueueItem ? (
                                 <Badge tone={getBatchItemTone(activeQueueItem.status)}>
@@ -864,6 +906,15 @@ function QueueMetric({ label, value }: { label: string; value: string }) {
     <div className="rounded-[1rem] border border-[var(--line)] bg-white/[0.03] px-4 py-4">
       <div className="metric-label text-[var(--muted)]">{label}</div>
       <div className="mt-2 text-lg font-semibold tracking-[-0.03em] text-[var(--text)]">{value}</div>
+    </div>
+  );
+}
+
+function QueueTimingHint({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-[1rem] border border-[var(--line)] bg-white/[0.03] px-4 py-3">
+      <div className="metric-label text-[var(--muted)]">{label}</div>
+      <div className="mt-2 text-base font-semibold tracking-[-0.03em] text-[var(--text)]">{value}</div>
     </div>
   );
 }

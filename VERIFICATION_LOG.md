@@ -1,5 +1,27 @@
 # Verification Log
 
+## Batch Queue ETA Hints Pass
+
+Date: 2026-04-03
+
+- Added a focused batch-upload ETA helper that estimates the current source handoff time from live progress and reuses completed-source timings to forecast the rest of the queue once earlier uploads finish.
+- Surfaced `This source ETA` and `Queue intake ETA` hints inside the landing-page current-source card, with copy that makes it explicit these estimates only cover upload intake and not the later backend processing steps.
+- This checkout started without frontend dependencies installed, so `npm ci` was required before the targeted verification commands could run.
+- A full `npm run lint:web` still reports an existing unrelated `react-hooks/exhaustive-deps` warning in `apps/web/src/components/batch/batch-workspace.tsx`, so this pass used a targeted `eslint` run on the changed files instead of claiming repo-wide lint was green.
+
+### Checks run
+
+```bash
+npm ci
+npm run test:web -- --run src/lib/batch-upload-eta.test.ts
+cd apps/web && npx eslint src/components/landing/upload-section.tsx src/lib/batch-upload-eta.ts src/lib/batch-upload-eta.test.ts --max-warnings=0
+```
+
+### Result
+
+- `4 / 4` targeted web ETA tests passed
+- targeted frontend lint passed for the changed files
+
 ## Batch Export Preset Selector Pass
 
 Date: 2026-04-03

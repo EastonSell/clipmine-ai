@@ -288,8 +288,13 @@ Avoid:
   Notes: Completed on 2026-04-03 by adding a `job` query param to the batch workspace URL, honoring that param on the batch page load, and rewriting the URL whenever the selected source changes or falls back to the first valid job.
   Verified: `npm ci`, `npm run test:web -- --run src/lib/batch-focus.test.ts`, `npm run test:e2e -- --grep='saved batch workspaces reopen with failed sources surfaced first|saved batch triage can switch back from issue-only queue to all sources|batch workspace persists the selected source in the URL'`
 
-- [ ] Add per-source ETA hints to the active queue card
+- [x] Add per-source ETA hints to the active queue card
   Prompt: "Estimate queue progress for the current source and remaining queue so large multi-file uploads feel less opaque while the active transfer is running."
+  Notes: Completed on 2026-04-03 by adding upload-intake ETA estimation for the active source and remaining queue, warming the estimate from live progress when bytes are in flight and falling back to completed-source timings when the next source is only validating.
+  Verified: `npm ci`, `npm run test:web -- --run src/lib/batch-upload-eta.test.ts`, `cd apps/web && npx eslint src/components/landing/upload-section.tsx src/lib/batch-upload-eta.ts src/lib/batch-upload-eta.test.ts --max-warnings=0`
+
+- [ ] Add transfer-basis labels to batch ETA hints
+  Prompt: "Show whether each queue ETA is coming from live throughput or previously completed uploads so reviewers know how much confidence to put in the estimate."
 
 - [ ] Preserve failed-upload retry readiness across reloads
   Prompt: "Persist enough local source reference data that a failed upload in the batch workspace can still be retried after a refresh or reopened saved batch, instead of only within the original tab lifetime."
@@ -399,6 +404,8 @@ Avoid:
 - 2026-04-03: Added `Add first and last ready-source jump controls in the batch workspace` as the next batch-review follow-up.
 - 2026-04-03: Completed `Add first and last ready-source jump controls in the batch workspace` after installing frontend dependencies and passing focused web-unit and Playwright verification.
 - 2026-04-03: Added `Add ready-source position badges to batch queue cards` as the next batch-review follow-up.
+- 2026-04-03: Completed `Add per-source ETA hints to the active queue card` after installing frontend dependencies, passing focused web-unit coverage, and linting only the touched files because the repo-wide lint still reports an older warning in `batch-workspace.tsx`.
+- 2026-04-03: Added `Add transfer-basis labels to batch ETA hints` as the next queue-estimation follow-up.
 - 2026-04-03: Completed `Add export preset selector` after refreshing the editable backend install, rebuilding the web app, and passing targeted package-export pytest and Playwright coverage.
 - 2026-04-03: Completed `Add audio-only export companion` within the same preset pass by shipping wav and metadata-only selected package exports.
 - 2026-04-03: Added `Add batch export preset selector` as the follow-up so batch downloads match the new single-workspace preset choices.
