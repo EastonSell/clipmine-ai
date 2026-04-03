@@ -1454,7 +1454,7 @@ test("batch workspace can collapse the queue to ready sources only", async ({ pa
   await expect(page.getByText("2 ready sources are available for focused review.")).toBeVisible();
 
   await page.getByRole("button", { name: "Ready only" }).click();
-  await expect(page).toHaveURL(/\/batches\/demo-batch-ready-filter\?job=job-alpha$/);
+  await expect(page).toHaveURL(/\/batches\/demo-batch-ready-filter\?queue=ready&job=job-alpha$/);
   await expect(page.getByText("Showing 2 ready sources out of 4 in the full queue.")).toBeVisible();
   await expect(queueItems).toHaveCount(2);
   await expect(queueItems.nth(0)).toContainText("alpha.mp4");
@@ -1463,7 +1463,15 @@ test("batch workspace can collapse the queue to ready sources only", async ({ pa
   await expect(page.locator('[data-testid="batch-queue-item"]').filter({ hasText: "gamma.mp4" })).toHaveCount(0);
   await expect(page.getByRole("heading", { name: "alpha.mp4" })).toBeVisible();
 
+  await page.reload();
+  await expect(page).toHaveURL(/\/batches\/demo-batch-ready-filter\?queue=ready&job=job-alpha$/);
+  await expect(page.getByText("Showing 2 ready sources out of 4 in the full queue.")).toBeVisible();
+  await expect(queueItems).toHaveCount(2);
+  await expect(queueItems.nth(0)).toContainText("alpha.mp4");
+  await expect(queueItems.nth(1)).toContainText("beta.mp4");
+
   await page.getByRole("button", { name: "Full queue" }).click();
+  await expect(page).toHaveURL(/\/batches\/demo-batch-ready-filter\?job=job-alpha$/);
   await expect(queueItems).toHaveCount(4);
   await expect(page.getByText("2 ready sources are available for focused review.")).toBeVisible();
 });

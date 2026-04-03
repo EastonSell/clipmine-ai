@@ -78,6 +78,10 @@ export function parseBatchQualityThreshold(threshold: string | null | undefined)
   return parsedThreshold;
 }
 
+export function parseBatchReadyOnlyScope(queue: string | null | undefined) {
+  return queue === "ready";
+}
+
 export function parseBatchTriageState(focus: string | null | undefined, scope: string | null | undefined): BatchTriageState {
   const prioritizeIssues = focus === "issues";
   return {
@@ -91,10 +95,12 @@ export function getBatchWorkspaceHref(
   {
     prioritizeIssues,
     issuesOnly = prioritizeIssues,
+    readyOnly = false,
     selectedJobId = null,
     selectedPreset = "full-av",
     selectedQualityThreshold = DEFAULT_BATCH_QUALITY_THRESHOLD,
   }: BatchTriageState & {
+    readyOnly?: boolean;
     selectedJobId?: string | null;
     selectedPreset?: PackageExportPreset;
     selectedQualityThreshold?: number;
@@ -102,6 +108,7 @@ export function getBatchWorkspaceHref(
   hash = ""
 ) {
   const searchParams = new URLSearchParams();
+  const normalizedReadyOnly = readyOnly && !issuesOnly;
 
   if (prioritizeIssues) {
     searchParams.set("focus", "issues");
@@ -109,6 +116,10 @@ export function getBatchWorkspaceHref(
     if (!issuesOnly) {
       searchParams.set("scope", "all");
     }
+  }
+
+  if (normalizedReadyOnly) {
+    searchParams.set("queue", "ready");
   }
 
   if (selectedJobId) {

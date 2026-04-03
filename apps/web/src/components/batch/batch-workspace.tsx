@@ -60,6 +60,7 @@ type BatchWorkspaceProps = {
   batchId: string;
   prioritizeIssues?: boolean;
   initialIssuesOnly?: boolean;
+  initialReadyOnly?: boolean;
   initialActiveJobId?: string | null;
   initialSelectedPreset?: PackageExportPreset | null;
   initialQualityThreshold?: number | null;
@@ -100,15 +101,16 @@ export function BatchWorkspace({
   batchId,
   prioritizeIssues = false,
   initialIssuesOnly = prioritizeIssues,
+  initialReadyOnly = false,
   initialActiveJobId = null,
   initialSelectedPreset = null,
   initialQualityThreshold = null,
 }: BatchWorkspaceProps) {
   const [session, setSession] = useState<BatchSessionRecord | null>(null);
-  const [activeJobId, setActiveJobId] = useState<string | null>(null);
+  const [activeJobId, setActiveJobId] = useState<string | null>(initialActiveJobId);
   const [issuesOnly, setIssuesOnly] = useState(prioritizeIssues && initialIssuesOnly);
-  const [readyOnly, setReadyOnly] = useState(false);
-  const [qualityThreshold, setQualityThreshold] = useState(DEFAULT_BATCH_QUALITY_THRESHOLD);
+  const [readyOnly, setReadyOnly] = useState(initialReadyOnly && !initialIssuesOnly);
+  const [qualityThreshold, setQualityThreshold] = useState(initialQualityThreshold ?? DEFAULT_BATCH_QUALITY_THRESHOLD);
   const [selectedPreset, setSelectedPreset] = useState<PackageExportPreset>(initialSelectedPreset ?? "full-av");
   const [showContributorsOnly, setShowContributorsOnly] = useState(false);
   const [downloadError, setDownloadError] = useState<ApiError | null>(null);
@@ -121,7 +123,8 @@ export function BatchWorkspace({
   useEffect(() => {
     const nextSession = loadBatchSession(batchId);
     const nextIssuesOnly = prioritizeIssues && initialIssuesOnly && hasBatchIssues(nextSession?.items ?? []);
-    const nextQueueItems = getOrderedBatchItems(nextSession?.items ?? [], prioritizeIssues, nextIssuesOnly);
+    const nextReadyOnly = !nextIssuesOnly && initialReadyOnly && (nextSession?.items ?? []).some(isReadyBatchItem);
+    const nextQueueItems = getOrderedBatchItems(nextSession?.items ?? [], prioritizeIssues, nextIssuesOnly, nextReadyOnly);
     const nextActiveJobId =
       initialActiveJobId && nextQueueItems.some((item) => item.jobId === initialActiveJobId)
         ? initialActiveJobId
@@ -129,11 +132,11 @@ export function BatchWorkspace({
     setSession(nextSession);
     sessionRef.current = nextSession;
     setIssuesOnly(nextIssuesOnly);
-    setReadyOnly(false);
+    setReadyOnly(nextReadyOnly);
     setQualityThreshold(initialQualityThreshold ?? nextSession?.qualityThreshold ?? DEFAULT_BATCH_QUALITY_THRESHOLD);
     setSelectedPreset(initialSelectedPreset ?? nextSession?.batchExportPreset ?? "full-av");
     setActiveJobId(nextActiveJobId);
-  }, [batchId, initialActiveJobId, initialIssuesOnly, initialQualityThreshold, initialSelectedPreset, prioritizeIssues]);
+  }, [batchId, initialActiveJobId, initialIssuesOnly, initialQualityThreshold, initialReadyOnly, initialSelectedPreset, prioritizeIssues]);
 
   useEffect(() => {
     sessionRef.current = session;
@@ -269,6 +272,7 @@ export function BatchWorkspace({
       {
         prioritizeIssues,
         issuesOnly,
+        readyOnly,
         selectedJobId: activeJobId,
         selectedPreset,
         selectedQualityThreshold: qualityThreshold,
@@ -279,7 +283,7 @@ export function BatchWorkspace({
     if (currentHref !== nextHref) {
       window.history.replaceState(window.history.state, "", nextHref);
     }
-  }, [activeJobId, batchId, issuesOnly, prioritizeIssues, qualityThreshold, selectedPreset]);
+  }, [activeJobId, batchId, issuesOnly, prioritizeIssues, qualityThreshold, readyOnly, selectedPreset]);
 
   useEffect(() => {
     if (!session) {
@@ -342,10 +346,14 @@ export function BatchWorkspace({
   }, [activeJobId, queueItems]);
 
   useEffect(() => {
+    if (!session) {
+      return;
+    }
+
     if (readyOnly && (issuesOnly || readyCount === 0)) {
       setReadyOnly(false);
     }
-  }, [issuesOnly, readyCount, readyOnly]);
+  }, [issuesOnly, readyCount, readyOnly, session]);
 
   const selectedJob =
     (activeJobId ? jobs.find((job) => job.jobId === activeJobId) : null) ??

@@ -14,6 +14,7 @@ import {
   hasBatchIssues,
   isBatchIssueItem,
   isReadyBatchItem,
+  parseBatchReadyOnlyScope,
   parseBatchQualityThreshold,
   parseBatchSelectedJobId,
   parseBatchSelectedPreset,
@@ -123,6 +124,12 @@ describe("batch-focus", () => {
     });
   });
 
+  it("parses the saved ready-only queue scope from search params", () => {
+    expect(parseBatchReadyOnlyScope("ready")).toBe(true);
+    expect(parseBatchReadyOnlyScope("all")).toBe(false);
+    expect(parseBatchReadyOnlyScope(undefined)).toBe(false);
+  });
+
   it("builds batch workspace links that preserve the current triage scope", () => {
     expect(
       getBatchWorkspaceHref("saved-batch-failures", {
@@ -146,15 +153,29 @@ describe("batch-focus", () => {
       getBatchWorkspaceHref(
         "saved-batch-failures",
         {
+          prioritizeIssues: false,
+          issuesOnly: false,
+          readyOnly: true,
+          selectedJobId: "job-alpha",
+        },
+        "#batch-queue"
+      )
+    ).toBe("/batches/saved-batch-failures?queue=ready&job=job-alpha#batch-queue");
+
+    expect(
+      getBatchWorkspaceHref(
+        "saved-batch-failures",
+        {
           prioritizeIssues: true,
           issuesOnly: false,
+          readyOnly: true,
           selectedJobId: "job-alpha",
           selectedPreset: "audio-only",
           selectedQualityThreshold: 90,
         },
         "#batch-queue"
       )
-    ).toBe("/batches/saved-batch-failures?focus=issues&scope=all&job=job-alpha&preset=audio-only&threshold=90#batch-queue");
+    ).toBe("/batches/saved-batch-failures?focus=issues&scope=all&queue=ready&job=job-alpha&preset=audio-only&threshold=90#batch-queue");
   });
 
   it("normalizes the selected batch job id from search params", () => {

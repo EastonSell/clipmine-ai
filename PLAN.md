@@ -404,8 +404,13 @@ Avoid:
   Notes: Completed on 2026-04-03 by extending the batch queue visibility helper with a ready-only mode, adding a dedicated queue-focus toggle to the workspace, and preserving the selected ready job while hidden failed and processing sources drop out of the visible queue.
   Verified: `npm ci`, `npm run test:web -- --run src/lib/batch-focus.test.ts`, `npm run test:e2e -- --grep "batch workspace can collapse the queue to ready sources only"`
 
-- [ ] Persist ready-only batch queue scope in the URL
+- [x] Persist ready-only batch queue scope in the URL
   Prompt: "Keep the ready-only queue focus in the batch workspace URL so reopened saved sessions can return directly to review mode instead of expanding back to the full queue."
+  Notes: Completed on 2026-04-03 by adding a dedicated `queue=ready` search param to the batch workspace URL helpers, hydrating the ready-only toggle from the App Router page on load, and preserving that queue focus through reloads without dropping the selected ready job.
+  Verified: `npm ci`, `npm run test:web -- --run src/lib/batch-focus.test.ts`, `npm run test:e2e -- --grep "batch workspace can collapse the queue to ready sources only"`
+
+- [ ] Add ready-review reopen action to saved batch shortcuts
+  Prompt: "When a saved batch session already has ready workspaces, let the landing shortcut reopen it directly in ready-only mode so reviewers can skip the full queue and resume clip review immediately."
 
 ## Backend Tasks
 
@@ -527,3 +532,5 @@ Avoid:
 - 2026-04-03: Added `Add inspect actions to broader-threshold recovery previews` as the next aggregate-export recovery follow-up.
 - 2026-04-03: Completed `Add a ready-only filter to the batch queue` after reinstalling frontend dependencies in the worktree and passing focused web-unit and Playwright verification.
 - 2026-04-03: Added `Persist ready-only batch queue scope in the URL` as the next batch-review deep-link follow-up.
+- 2026-04-03: Completed `Persist ready-only batch queue scope in the URL` after reinstalling frontend dependencies in the worktree and passing focused web-unit plus reload-aware Playwright verification.
+- 2026-04-03: Added `Add ready-review reopen action to saved batch shortcuts` as the next batch-review resume follow-up.

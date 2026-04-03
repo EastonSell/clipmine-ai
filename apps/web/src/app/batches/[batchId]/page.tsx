@@ -1,5 +1,6 @@
 import { BatchWorkspace } from "@/components/batch/batch-workspace";
 import {
+  parseBatchReadyOnlyScope,
   parseBatchQualityThreshold,
   parseBatchSelectedJobId,
   parseBatchSelectedPreset,
@@ -8,13 +9,14 @@ import {
 
 type BatchPageProps = {
   params: Promise<{ batchId: string }>;
-  searchParams: Promise<{ focus?: string; scope?: string; job?: string; preset?: string; threshold?: string }>;
+  searchParams: Promise<{ focus?: string; scope?: string; queue?: string; job?: string; preset?: string; threshold?: string }>;
 };
 
 export default async function BatchPage({ params, searchParams }: BatchPageProps) {
   const { batchId } = await params;
-  const { focus, scope, job, preset, threshold } = await searchParams;
+  const { focus, scope, queue, job, preset, threshold } = await searchParams;
   const triageState = parseBatchTriageState(focus, scope);
+  const initialReadyOnly = parseBatchReadyOnlyScope(queue);
   const initialActiveJobId = parseBatchSelectedJobId(job);
   const initialSelectedPreset = parseBatchSelectedPreset(preset);
   const initialQualityThreshold = parseBatchQualityThreshold(threshold);
@@ -24,6 +26,7 @@ export default async function BatchPage({ params, searchParams }: BatchPageProps
       batchId={batchId}
       prioritizeIssues={triageState.prioritizeIssues}
       initialIssuesOnly={triageState.issuesOnly}
+      initialReadyOnly={initialReadyOnly}
       initialActiveJobId={initialActiveJobId}
       initialSelectedPreset={initialSelectedPreset}
       initialQualityThreshold={initialQualityThreshold}

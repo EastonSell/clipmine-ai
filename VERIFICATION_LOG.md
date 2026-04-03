@@ -1,5 +1,28 @@
 # Verification Log
 
+## Ready-Only Batch Queue URL Pass
+
+Date: 2026-04-03
+
+- Added a dedicated `queue=ready` batch-workspace search param so the ready-only queue focus can survive reloads and direct route visits alongside the existing selected-job, preset, and threshold URL state.
+- Updated the batch App Router page and workspace hydration path to seed the ready-only toggle from `searchParams`, keep the selected ready job stable, and avoid clearing the toggle before the saved batch session loads.
+- Extended the focused ready-only Playwright scenario so it reloads the batch workspace after toggling the filter and proves the queue stays collapsed to ready sources until the reviewer switches back.
+- This checkout started without frontend dependencies installed, so `npm ci` was required before the targeted checks could run.
+
+### Checks run
+
+```bash
+npm ci
+npm run test:web -- --run src/lib/batch-focus.test.ts
+npm run test:e2e -- --grep "batch workspace can collapse the queue to ready sources only"
+```
+
+### Result
+
+- `17 / 17` focused `batch-focus` unit tests passed
+- `1 / 1` targeted Playwright ready-only queue tests passed
+- ready-only batch review links now reopen in the same focused queue mode instead of expanding back to the full source list
+
 ## Batch Threshold Recovery Source Preview Pass
 
 Date: 2026-04-03
