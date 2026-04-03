@@ -1,0 +1,3 @@
+run_id: clipmine-20260403T013030Z-8552b8e7-1a40-41e3-91e7-50577494b68d
+timestamp: 2026-04-03T01:30:30Z
+ttl_minutes: 25
