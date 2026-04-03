@@ -456,6 +456,10 @@ test("saved batch triage can switch back from issue-only queue to all sources", 
 
   const attentionBanner = page.getByTestId("batch-queue-attention-banner");
   await attentionBanner.getByRole("button", { name: "All sources" }).click();
+  await expect(page).toHaveURL(/\/batches\/saved-batch-failures\?focus=issues&scope=all(?:#batch-queue)?$/);
+
+  await page.reload();
+  await expect(page).toHaveURL(/\/batches\/saved-batch-failures\?focus=issues&scope=all(?:#batch-queue)?$/);
 
   const queueItems = page.getByTestId("batch-queue-item");
   await expect(attentionBanner.getByRole("button", { name: "All sources" })).toHaveAttribute("aria-pressed", "true");
@@ -464,6 +468,11 @@ test("saved batch triage can switch back from issue-only queue to all sources", 
   await expect(queueItems.nth(1)).toContainText("retake.mp4");
   await expect(queueItems.nth(2)).toContainText("alpha.mp4");
   await expect(page.getByRole("link", { name: "Open full workspace" })).toBeVisible();
+
+  await attentionBanner.getByRole("button", { name: "Only issues" }).click();
+  await expect(page).toHaveURL(/\/batches\/saved-batch-failures\?focus=issues(?:#batch-queue)?$/);
+  await expect(attentionBanner.getByRole("button", { name: "Only issues" })).toHaveAttribute("aria-pressed", "true");
+  await expect(queueItems).toHaveCount(2);
 });
 
 test("uploading a valid source opens the workspace and supports shortlist persistence", async ({ page }) => {

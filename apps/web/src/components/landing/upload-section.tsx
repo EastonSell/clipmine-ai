@@ -15,7 +15,7 @@ import { startTransition, useEffect, useMemo, useRef, useState } from "react";
 import { loadLatestCompletedBatchSession, removeBatchSession, saveBatchSession } from "@/lib/batch-sessions";
 import { clearBatchSourceFiles, removeBatchSourceFile, saveBatchSourceFile } from "@/lib/batch-source-files";
 import { ApiError, createJob, getUploadMode, isRetryableApiError } from "@/lib/api";
-import { hasBatchIssues } from "@/lib/batch-focus";
+import { getBatchWorkspaceHref, hasBatchIssues } from "@/lib/batch-focus";
 import { formatBytes, formatDateTime } from "@/lib/format";
 import type {
   BatchCompletionSummary,
@@ -521,7 +521,16 @@ export function UploadSection() {
 
   function handleOpenBatchWorkspace(batchId: string, prioritizeIssues = false) {
     startTransition(() => {
-      router.push(prioritizeIssues ? `/batches/${batchId}?focus=issues#batch-queue` : `/batches/${batchId}`);
+      router.push(
+        getBatchWorkspaceHref(
+          batchId,
+          {
+            prioritizeIssues,
+            issuesOnly: prioritizeIssues,
+          },
+          prioritizeIssues ? "#batch-queue" : ""
+        )
+      );
     });
   }
 

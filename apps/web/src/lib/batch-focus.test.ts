@@ -1,6 +1,13 @@
 import { describe, expect, it } from "vitest";
 
-import { getOrderedBatchItems, getPreferredBatchJobId, hasBatchIssues, isBatchIssueItem } from "./batch-focus";
+import {
+  getBatchWorkspaceHref,
+  getOrderedBatchItems,
+  getPreferredBatchJobId,
+  hasBatchIssues,
+  isBatchIssueItem,
+  parseBatchTriageState,
+} from "./batch-focus";
 import type { BatchUploadItemRecord } from "./types";
 
 function createItem(
@@ -20,6 +27,52 @@ function createItem(
 }
 
 describe("batch-focus", () => {
+  it("parses the saved batch triage state from search params", () => {
+    expect(parseBatchTriageState("issues", undefined)).toEqual({
+      prioritizeIssues: true,
+      issuesOnly: true,
+    });
+    expect(parseBatchTriageState("issues", "all")).toEqual({
+      prioritizeIssues: true,
+      issuesOnly: false,
+    });
+    expect(parseBatchTriageState(undefined, "all")).toEqual({
+      prioritizeIssues: false,
+      issuesOnly: false,
+    });
+  });
+
+  it("builds batch workspace links that preserve the current triage scope", () => {
+    expect(
+      getBatchWorkspaceHref("saved-batch-failures", {
+        prioritizeIssues: false,
+        issuesOnly: false,
+      })
+    ).toBe("/batches/saved-batch-failures");
+
+    expect(
+      getBatchWorkspaceHref(
+        "saved-batch-failures",
+        {
+          prioritizeIssues: true,
+          issuesOnly: true,
+        },
+        "#batch-queue"
+      )
+    ).toBe("/batches/saved-batch-failures?focus=issues#batch-queue");
+
+    expect(
+      getBatchWorkspaceHref(
+        "saved-batch-failures",
+        {
+          prioritizeIssues: true,
+          issuesOnly: false,
+        },
+        "#batch-queue"
+      )
+    ).toBe("/batches/saved-batch-failures?focus=issues&scope=all#batch-queue");
+  });
+
   it("pins failed and cancelled sources to the front when issue focus is enabled", () => {
     const items = [
       createItem({ id: "ready-1", fileName: "alpha.mp4", status: "ready", jobId: "job-alpha" }),

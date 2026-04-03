@@ -17,7 +17,7 @@ import { ProgressBar } from "@/components/ui/progress-bar";
 import { SectionHeader } from "@/components/ui/section-header";
 import { TopBar } from "@/components/ui/top-bar";
 import { loadBatchSourceFile, removeBatchSourceFile } from "@/lib/batch-source-files";
-import { getOrderedBatchItems, getPreferredBatchJobId, hasBatchIssues, isBatchIssueItem } from "@/lib/batch-focus";
+import { getBatchWorkspaceHref, getOrderedBatchItems, getPreferredBatchJobId, hasBatchIssues, isBatchIssueItem } from "@/lib/batch-focus";
 import { createJob, downloadBatchClipPackage, getJob, retryJob, ApiError, isRetryableApiError } from "@/lib/api";
 import { loadBatchSession, saveBatchSession } from "@/lib/batch-sessions";
 import { formatSeconds, formatSignedScore } from "@/lib/format";
@@ -26,6 +26,7 @@ import type { BatchSessionRecord, BatchUploadItemRecord, ClipRecord, JobResponse
 type BatchWorkspaceProps = {
   batchId: string;
   prioritizeIssues?: boolean;
+  initialIssuesOnly?: boolean;
 };
 
 type AggregateClip = {
@@ -34,10 +35,14 @@ type AggregateClip = {
   clip: ClipRecord;
 };
 
-export function BatchWorkspace({ batchId, prioritizeIssues = false }: BatchWorkspaceProps) {
+export function BatchWorkspace({
+  batchId,
+  prioritizeIssues = false,
+  initialIssuesOnly = prioritizeIssues,
+}: BatchWorkspaceProps) {
   const [session, setSession] = useState<BatchSessionRecord | null>(null);
   const [activeJobId, setActiveJobId] = useState<string | null>(null);
-  const [issuesOnly, setIssuesOnly] = useState(prioritizeIssues);
+  const [issuesOnly, setIssuesOnly] = useState(prioritizeIssues && initialIssuesOnly);
   const [qualityThreshold, setQualityThreshold] = useState(84);
   const [downloadError, setDownloadError] = useState<ApiError | null>(null);
   const [isDownloading, setIsDownloading] = useState(false);
@@ -46,14 +51,14 @@ export function BatchWorkspace({ batchId, prioritizeIssues = false }: BatchWorks
 
   useEffect(() => {
     const nextSession = loadBatchSession(batchId);
-    const nextIssuesOnly = prioritizeIssues && hasBatchIssues(nextSession?.items ?? []);
+    const nextIssuesOnly = prioritizeIssues && initialIssuesOnly && hasBatchIssues(nextSession?.items ?? []);
     const nextQueueItems = getOrderedBatchItems(nextSession?.items ?? [], prioritizeIssues, nextIssuesOnly);
     setSession(nextSession);
     sessionRef.current = nextSession;
     setIssuesOnly(nextIssuesOnly);
     setQualityThreshold(nextSession?.qualityThreshold ?? 84);
     setActiveJobId(getPreferredBatchJobId(nextQueueItems, false));
-  }, [batchId, prioritizeIssues]);
+  }, [batchId, initialIssuesOnly, prioritizeIssues]);
 
   useEffect(() => {
     sessionRef.current = session;
@@ -115,6 +120,27 @@ export function BatchWorkspace({ batchId, prioritizeIssues = false }: BatchWorks
     };
     commitSession(nextSession);
     return nextSession;
+  }
+
+  function setBatchTriageScope(nextIssuesOnly: boolean) {
+    setIssuesOnly(nextIssuesOnly);
+
+    if (!prioritizeIssues || typeof window === "undefined") {
+      return;
+    }
+
+    window.history.replaceState(
+      window.history.state,
+      "",
+      getBatchWorkspaceHref(
+        batchId,
+        {
+          prioritizeIssues: true,
+          issuesOnly: nextIssuesOnly,
+        },
+        window.location.hash
+      )
+    );
   }
 
   useEffect(() => {
@@ -511,7 +537,7 @@ export function BatchWorkspace({ batchId, prioritizeIssues = false }: BatchWorks
                     <Button
                       size="sm"
                       variant={issuesOnly ? "primary" : "secondary"}
-                      onClick={() => setIssuesOnly(true)}
+                      onClick={() => setBatchTriageScope(true)}
                       aria-pressed={issuesOnly}
                     >
                       Only issues
@@ -519,7 +545,7 @@ export function BatchWorkspace({ batchId, prioritizeIssues = false }: BatchWorks
                     <Button
                       size="sm"
                       variant={issuesOnly ? "secondary" : "primary"}
-                      onClick={() => setIssuesOnly(false)}
+                      onClick={() => setBatchTriageScope(false)}
                       aria-pressed={!issuesOnly}
                     >
                       All sources
@@ -688,7 +714,7 @@ export function BatchWorkspace({ batchId, prioritizeIssues = false }: BatchWorks
                     ready jobs and continue review.
                   </p>
                   <div className="mt-4">
-                    <Button size="sm" variant="secondary" onClick={() => setIssuesOnly(false)}>
+                    <Button size="sm" variant="secondary" onClick={() => setBatchTriageScope(false)}>
                       Show all sources
                     </Button>
                   </div>

@@ -2,6 +2,29 @@
 
 Date: 2026-04-02
 
+## Saved Batch Triage URL Scope Pass
+
+Date: 2026-04-03
+
+- Centralized the saved-batch workspace URL rules so the landing shortcut, batch page, and workspace toggle all agree on the same triage query shape.
+- Preserved the expanded triage view as `scope=all`, while keeping `focus=issues` as the backward-compatible default for issue-only reopens.
+- Updated the `Only issues` and `All sources` controls to rewrite the URL in place so refreshes and shared links restore the exact triage scope without resetting the current workspace state.
+- Added focused unit coverage for triage query parsing and href generation, plus Playwright coverage for reloading the all-sources triage view and switching back to issue-only mode.
+- This checkout started without frontend dependencies installed, so `npm ci` was required before the targeted verification commands could run.
+
+### Checks run
+
+```bash
+npm ci
+npm run test:web -- --run src/lib/batch-focus.test.ts
+npm run test:e2e -- --grep='saved batch workspaces reopen with failed sources surfaced first|saved batch triage can switch back from issue-only queue to all sources'
+```
+
+### Result
+
+- `6 / 6` targeted web unit tests passed
+- `2 / 2` targeted Playwright saved-batch triage tests passed
+
 ## Saved Batch Issue-Only Triage Pass
 
 Date: 2026-04-03

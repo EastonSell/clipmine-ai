@@ -1,5 +1,37 @@
 import type { BatchUploadItemRecord } from "./types";
 
+export type BatchTriageState = {
+  prioritizeIssues: boolean;
+  issuesOnly: boolean;
+};
+
+export function parseBatchTriageState(focus: string | null | undefined, scope: string | null | undefined): BatchTriageState {
+  const prioritizeIssues = focus === "issues";
+  return {
+    prioritizeIssues,
+    issuesOnly: prioritizeIssues && scope !== "all",
+  };
+}
+
+export function getBatchWorkspaceHref(
+  batchId: string,
+  { prioritizeIssues, issuesOnly = prioritizeIssues }: BatchTriageState,
+  hash = ""
+) {
+  const searchParams = new URLSearchParams();
+
+  if (prioritizeIssues) {
+    searchParams.set("focus", "issues");
+
+    if (!issuesOnly) {
+      searchParams.set("scope", "all");
+    }
+  }
+
+  const search = searchParams.toString();
+  return `/batches/${batchId}${search ? `?${search}` : ""}${hash}`;
+}
+
 export function isBatchIssueItem(item: BatchUploadItemRecord) {
   return item.status === "failed" || item.status === "cancelled";
 }

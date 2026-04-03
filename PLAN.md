@@ -266,8 +266,13 @@ Avoid:
   Notes: Completed on 2026-04-03 by defaulting saved `focus=issues` reopens into an issue-only queue, adding explicit `Only issues` and `All sources` controls, and keeping the selected-source panel useful when no visible issue has a workspace yet.
   Verified: `npm run test:web -- --run src/lib/batch-focus.test.ts`, `npm run test:e2e -- --grep='saved batch workspaces reopen with failed sources surfaced first|saved batch triage can switch back from issue-only queue to all sources'`
 
-- [ ] Persist saved-batch triage scope in the URL
+- [x] Persist saved-batch triage scope in the URL
   Prompt: "Keep the saved batch workspace URL in sync with the issue-only vs all-sources toggle so refreshes and shared links preserve the exact triage scope."
+  Notes: Completed on 2026-04-03 by centralizing saved-batch triage URL parsing/building, preserving the full-queue triage state with `scope=all`, and updating the workspace toggle in place so refreshes keep the same scope without resetting the current batch session.
+  Verified: `npm ci`, `npm run test:web -- --run src/lib/batch-focus.test.ts`, `npm run test:e2e -- --grep='saved batch workspaces reopen with failed sources surfaced first|saved batch triage can switch back from issue-only queue to all sources'`
+
+- [ ] Persist selected batch source in the URL
+  Prompt: "Keep the batch workspace URL aligned with the currently selected source so refreshes and shared links reopen the same source detail panel instead of defaulting back to the first available job."
 
 - [ ] Add per-source ETA hints to the active queue card
   Prompt: "Estimate queue progress for the current source and remaining queue so large multi-file uploads feel less opaque while the active transfer is running."
@@ -350,3 +355,5 @@ Avoid:
 - 2026-04-03: Added `Add issue-only toggle for saved batch triage` as the next queue-triage follow-up.
 - 2026-04-03: Completed `Add issue-only toggle for saved batch triage` after focused web-unit and Playwright verification.
 - 2026-04-03: Added `Persist saved-batch triage scope in the URL` as the next queue-triage follow-up.
+- 2026-04-03: Completed `Persist saved-batch triage scope in the URL` after installing frontend dependencies and passing focused web-unit and Playwright verification.
+- 2026-04-03: Added `Persist selected batch source in the URL` as the next batch-workspace deep-link follow-up.
