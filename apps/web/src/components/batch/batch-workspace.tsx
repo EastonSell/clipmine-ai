@@ -14,7 +14,7 @@ import {
   SlidersHorizontal,
   Waves,
 } from "lucide-react";
-import { startTransition, useEffect, useMemo, useRef, useState } from "react";
+import { startTransition, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import useSWR from "swr";
 
 import { AppShell } from "@/components/ui/app-shell";
@@ -196,11 +196,11 @@ export function BatchWorkspace({
     setDownloadError(null);
   }
 
-  function selectBatchJob(jobId: string) {
+  const selectBatchJob = useCallback((jobId: string) => {
     startTransition(() => {
       setActiveJobId(jobId);
     });
-  }
+  }, []);
 
   useEffect(() => {
     if (typeof window === "undefined") {
@@ -352,6 +352,28 @@ export function BatchWorkspace({
   const aggregateDuration = useMemo(
     () => aggregateClips.reduce((total, entry) => total + entry.clip.duration, 0),
     [aggregateClips]
+  );
+  const eligibleClipCountsByJobId = useMemo(
+    () =>
+      new Map(
+        jobs.map((job) => [job.jobId, job.clips.filter((clip) => clip.score >= qualityThreshold).length])
+      ),
+    [jobs, qualityThreshold]
+  );
+  const readySourceEligibleClipSummaries = useMemo(
+    () =>
+      (session?.items ?? [])
+        .filter((item): item is BatchUploadItemRecord & { jobId: string } => item.status === "ready" && Boolean(item.jobId))
+        .map((item) => ({
+          jobId: item.jobId,
+          fileName: jobsById.get(item.jobId)?.sourceVideo.file_name ?? item.fileName,
+          eligibleClipCount: eligibleClipCountsByJobId.get(item.jobId) ?? 0,
+        })),
+    [eligibleClipCountsByJobId, jobsById, session?.items]
+  );
+  const contributingReadySourceCount = useMemo(
+    () => readySourceEligibleClipSummaries.filter((entry) => entry.eligibleClipCount > 0).length,
+    [readySourceEligibleClipSummaries]
   );
   const presetEligibleClipCounts = useMemo(
     () =>
@@ -679,6 +701,42 @@ export function BatchWorkspace({
               <div className="grid gap-3 sm:grid-cols-2">
                 <OverviewMetric label="Eligible clips" value={String(aggregateClips.length)} />
                 <OverviewMetric label="Total duration" value={formatSeconds(aggregateDuration)} />
+              </div>
+
+              <div className="rounded-[1rem] border border-[var(--line)] bg-white/[0.03] px-4 py-4">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <div className="metric-label text-[var(--muted)]">Eligible clips by ready source</div>
+                    <p className="mt-2 text-xs leading-5 text-[var(--muted)]">
+                      {readySourceEligibleClipSummaries.length > 0
+                        ? `${contributingReadySourceCount} of ${readySourceEligibleClipSummaries.length} ready ${
+                            readySourceEligibleClipSummaries.length === 1 ? "source contributes" : "sources contribute"
+                          } clips at ${qualityThreshold}+ before export.`
+                        : "Ready sources will appear here as soon as their jobs finish processing."}
+                    </p>
+                  </div>
+                </div>
+                {readySourceEligibleClipSummaries.length > 0 ? (
+                  <div className="mt-4 grid gap-2">
+                    {readySourceEligibleClipSummaries.map((entry) => (
+                      <div
+                        key={entry.jobId}
+                        data-testid={`aggregate-source-summary-${entry.jobId}`}
+                        className="flex flex-wrap items-center justify-between gap-3 rounded-[0.95rem] border border-[var(--line)] bg-[var(--surface-dark)]/35 px-3 py-3"
+                      >
+                        <div className="min-w-0 flex-1">
+                          <div className="truncate text-sm font-semibold text-[var(--text)]">{entry.fileName}</div>
+                          <div className="mt-1 text-xs text-[var(--muted)]">
+                            {entry.eligibleClipCount > 0 ? "Included in the current export selection." : "Below the current threshold."}
+                          </div>
+                        </div>
+                        <span className="rounded-full border border-[var(--line)] bg-white/[0.05] px-2.5 py-1 text-xs font-medium text-[var(--muted-strong)]">
+                          {entry.eligibleClipCount} eligible {entry.eligibleClipCount === 1 ? "clip" : "clips"}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                ) : null}
               </div>
 
               <div className="grid gap-3 xl:grid-cols-3">

@@ -1141,3 +1141,23 @@ npm run test:e2e -- --grep "selected clips can be batched into a package export"
 - `python3.11 -m pytest backend/tests/test_package_export.py`: 6 / 6 tests passed
 - `npm run build:web`: passed
 - `npm run test:e2e -- --grep "selected clips can be batched into a package export"`: 1 / 1 test passed
+
+## Batch Aggregate Source Summary Pass
+
+- Added a ready-source contribution summary to the batch aggregate export card so each ready upload shows its current eligible clip total before download.
+- Included zero-count ready sources in that summary so strict thresholds make excluded uploads explicit instead of silently dropping them from the review context.
+- Extended the existing batch export Playwright scenario to assert the per-source totals update as the threshold moves between Strict, Balanced, and Broad.
+
+## Batch Aggregate Source Summary Checks Run
+
+```bash
+npm ci
+npm run lint:web
+env -u FORCE_COLOR -u NO_COLOR PLAYWRIGHT_BROWSERS_PATH=/tmp/clipmine-playwright-browsers npx playwright test --grep "batch workspace groups jobs and exports thresholded clips"
+```
+
+## Batch Aggregate Source Summary Results
+
+- `npm ci`: completed successfully
+- `npm run lint:web`: passed
+- `env -u FORCE_COLOR -u NO_COLOR PLAYWRIGHT_BROWSERS_PATH=/tmp/clipmine-playwright-browsers npx playwright test --grep "batch workspace groups jobs and exports thresholded clips"`: 1 / 1 test passed

@@ -270,8 +270,13 @@ Avoid:
   Notes: Completed on 2026-04-03 by deriving live eligible-clip totals for each shared threshold preset, surfacing those counts directly inside the Strict, Balanced, and Broad buttons, and extending the existing batch export coverage to prove the annotated counts stay aligned with the seeded clip data.
   Verified: `npm ci`, `npm run test:web -- --run src/lib/batch-focus.test.ts`, `env -u FORCE_COLOR -u NO_COLOR PLAYWRIGHT_BROWSERS_PATH=/tmp/clipmine-playwright-browsers npx playwright test --grep "batch workspace groups jobs and exports thresholded clips"`
 
-- [ ] Show per-job eligible clip totals in the batch aggregate export summary
+- [x] Show per-job eligible clip totals in the batch aggregate export summary
   Prompt: "Break the aggregate export selection down by ready source so reviewers can see which uploads contribute clips at the current threshold before downloading."
+  Notes: Completed on 2026-04-03 by adding a ready-source contribution summary beneath the aggregate export metrics, surfacing zero-count sources when the current threshold excludes them, and keeping the per-source totals synced with threshold changes before download.
+  Verified: `npm ci`, `npm run lint:web`, `env -u FORCE_COLOR -u NO_COLOR PLAYWRIGHT_BROWSERS_PATH=/tmp/clipmine-playwright-browsers npx playwright test --grep "batch workspace groups jobs and exports thresholded clips"`
+
+- [ ] Add source-jump actions to the aggregate export summary
+  Prompt: "Let reviewers open a source directly from the ready-source aggregate export summary so they can inspect why it does or does not contribute clips before downloading."
 
 - [x] Add queue completion toast and summary state
   Prompt: "When a batch queue finishes, show a stronger completion summary before navigating so the user understands how many sources succeeded or failed."
@@ -449,3 +454,5 @@ Avoid:
 - 2026-04-03: Added `Show eligible clip counts inside batch threshold presets` as the next aggregate-export UX follow-up.
 - 2026-04-03: Completed `Preserve failed-upload retry readiness across reloads` after adding IndexedDB-backed browser source persistence, rebuilding the web app, and passing the saved-batch retry Playwright coverage.
 - 2026-04-03: Added `Warn when browser source persistence is unavailable for failed batch retries` as the next retry-reliability follow-up.
+- 2026-04-03: Completed `Show per-job eligible clip totals in the batch aggregate export summary` after installing frontend dependencies and passing focused lint plus Playwright verification.
+- 2026-04-03: Added `Add source-jump actions to the aggregate export summary` as the next aggregate-review follow-up.
