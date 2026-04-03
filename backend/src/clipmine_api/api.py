@@ -435,6 +435,98 @@ async def get_job_video(
     return FileResponse(video_path, media_type=job.source_video.content_type, filename=job.source_video.file_name)
 
 
+@router.get("/jobs/{job_id}/video/verify")
+async def verify_job_video_playback(
+    job_id: str,
+    store: JobStore = Depends(get_job_store),
+    artifact_store: ArtifactStore = Depends(get_artifact_store),
+) -> dict[str, object]:
+    try:
+        job = store.load_job(job_id)
+    except FileNotFoundError as exc:
+        logger.warning("video.verify_lookup_missing job_id=%s", job_id)
+        raise build_http_error(
+            status_code=status.HTTP_404_NOT_FOUND,
+            code="job_not_found",
+            message="Job not found.",
+            retryable=False,
+        ) from exc
+
+    if job.source_video.storage_backend != "s3":
+        logger.info(
+            "video.verify_not_applicable job_id=%s storage_backend=%s",
+            job_id,
+            job.source_video.storage_backend,
+        )
+        raise build_http_error(
+            status_code=status.HTTP_409_CONFLICT,
+            code="playback_verification_not_applicable",
+            message="Playback verification is only available for object-storage-backed jobs.",
+            retryable=False,
+        )
+
+    checks: dict[str, object] = {
+        "objectStoreReachable": artifact_store.is_reachable(),
+        "playbackRangeReadable": False,
+        "contentTypeMatchesManifest": None,
+        "contentLengthMatchesManifest": None,
+    }
+    payload: dict[str, object] = {
+        "status": "ok",
+        "jobId": job.job_id,
+        "fileName": job.source_video.file_name,
+        "storageBackend": job.source_video.storage_backend,
+        "checks": checks,
+    }
+
+    if not checks["objectStoreReachable"]:
+        payload["status"] = "degraded"
+        payload["error"] = {
+            "code": "object_store_unavailable",
+            "message": "Object storage is unavailable right now.",
+        }
+        return payload
+
+    try:
+        probe = artifact_store.probe_video_playback(job.source_video)
+    except (BotoCoreError, ClientError) as exc:
+        logger.warning(
+            "video.verify_failed job_id=%s storage_backend=%s error_type=%s",
+            job_id,
+            job.source_video.storage_backend,
+            type(exc).__name__,
+        )
+        payload["status"] = "degraded"
+        payload["error"] = {
+            "code": "object_store_playback_probe_failed",
+            "message": "Object storage playback verification failed.",
+        }
+        return payload
+
+    checks["playbackRangeReadable"] = probe.bytes_read > 0
+    checks["contentTypeMatchesManifest"] = (
+        probe.content_type == job.source_video.content_type if probe.content_type else None
+    )
+    checks["contentLengthMatchesManifest"] = (
+        probe.content_length == job.source_video.size_bytes if probe.content_length is not None else None
+    )
+    if not checks["playbackRangeReadable"]:
+        payload["status"] = "degraded"
+        payload["error"] = {
+            "code": "object_store_playback_probe_empty",
+            "message": "Object storage playback verification did not return any bytes.",
+        }
+    payload["probe"] = {
+        "rangeHeader": probe.range_header,
+        "bytesRead": probe.bytes_read,
+        "contentLength": probe.content_length,
+        "contentRange": probe.content_range,
+        "contentType": probe.content_type,
+        "etag": probe.etag,
+    }
+    return payload
+
+
 @router.get("/jobs/{job_id}/export.json")
 async def export_job(job_id: str, store: JobStore = Depends(get_job_store)) -> Response:
     try:

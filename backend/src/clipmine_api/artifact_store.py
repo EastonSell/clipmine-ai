@@ -22,6 +22,16 @@ class UploadPartDescriptor:
     url: str
 
 
+@dataclass(slots=True)
+class PlaybackProbeResult:
+    range_header: str
+    bytes_read: int
+    content_length: int | None = None
+    content_range: str | None = None
+    content_type: str | None = None
+    etag: str | None = None
+
+
 class ArtifactStore(ABC):
     backend_name = "local"
     supports_multipart_uploads = False
@@ -60,6 +70,14 @@ class ArtifactStore(ABC):
 
     def build_video_response(self, source: SourceVideoRecord, *, range_header: str | None):
         raise RuntimeError("Remote video streaming is unavailable for the current storage backend.")
+
+    def probe_video_playback(
+        self,
+        source: SourceVideoRecord,
+        *,
+        range_header: str = "bytes=0-0",
+    ) -> PlaybackProbeResult:
+        raise RuntimeError("Remote video playback verification is unavailable for the current storage backend.")
 
 
 class LocalArtifactStore(ArtifactStore):
@@ -207,8 +225,59 @@ class S3ArtifactStore(ArtifactStore):
         status_code = 206 if "Content-Range" in headers else 200
         return StreamingResponse(iterator(), media_type=source.content_type, status_code=status_code, headers=headers)
 
+    def probe_video_playback(
+        self,
+        source: SourceVideoRecord,
+        *,
+        range_header: str = "bytes=0-0",
+    ) -> PlaybackProbeResult:
+        response = self.client.get_object(
+            Bucket=self.bucket,
+            Key=source.relative_path,
+            Range=range_header,
+        )
+        body = response["Body"]
+        try:
+            payload = body.read()
+        finally:
+            with suppress(Exception):
+                body.close()
+
+        content_range = _normalize_optional_str(response.get("ContentRange"))
+        content_length = _parse_total_content_length(
+            content_range=content_range,
+            fallback_length=response.get("ContentLength"),
+        )
+        return PlaybackProbeResult(
+            range_header=range_header,
+            bytes_read=len(payload),
+            content_length=content_length,
+            content_range=content_range,
+            content_type=_normalize_optional_str(response.get("ContentType")),
+            etag=_normalize_optional_str(response.get("ETag")),
+        )
+
 
 def create_artifact_store(settings: Settings) -> ArtifactStore:
     if settings.storage_backend == "s3":
         return S3ArtifactStore(settings)
     return LocalArtifactStore(settings)
+
+
+def _normalize_optional_str(value: object) -> str | None:
+    if value is None:
+        return None
+    return str(value)
+
+
+def _parse_total_content_length(*, content_range: str | None, fallback_length: object) -> int | None:
+    if content_range and "/" in content_range:
+        maybe_total = content_range.rsplit("/", maxsplit=1)[-1]
+        if maybe_total.isdigit():
+            return int(maybe_total)
+    if fallback_length is None:
+        return None
+    try:
+        return int(fallback_length)
+    except (TypeError, ValueError):
+        return None

@@ -4,9 +4,15 @@ from pathlib import Path
 
 from fastapi.testclient import TestClient
 
-from clipmine_api.schemas import JobSummary, SourceVideoRecord, UploadSessionRecord
+from clipmine_api.artifact_store import PlaybackProbeResult
 from clipmine_api.main import app
-from clipmine_api.schemas import JobStatus, ProgressPhase
+from clipmine_api.schemas import (
+    JobStatus,
+    JobSummary,
+    ProgressPhase,
+    SourceVideoRecord,
+    UploadSessionRecord,
+)
 
 
 class FakeMultipartArtifactStore:
@@ -18,6 +24,7 @@ class FakeMultipartArtifactStore:
         self.created_sources: list[SourceVideoRecord] = []
         self.completed_uploads: list[dict[str, object]] = []
         self.aborted_sessions: list[str] = []
+        self.probed_sources: list[SourceVideoRecord] = []
 
     def is_reachable(self) -> bool:
         return self.reachable
@@ -47,6 +54,22 @@ class FakeMultipartArtifactStore:
 
     def abort_multipart_upload(self, session: UploadSessionRecord) -> None:
         self.aborted_sessions.append(session.session_id)
+
+    def probe_video_playback(
+        self,
+        source: SourceVideoRecord,
+        *,
+        range_header: str = "bytes=0-0",
+    ) -> PlaybackProbeResult:
+        self.probed_sources.append(source)
+        return PlaybackProbeResult(
+            range_header=range_header,
+            bytes_read=1,
+            content_length=source.size_bytes,
+            content_range=f"bytes 0-0/{source.size_bytes}",
+            content_type=source.content_type,
+            etag='"etag-1"',
+        )
 
 
 def test_create_job_accepts_valid_video_upload(tmp_path: Path) -> None:
@@ -299,6 +322,126 @@ def test_export_returns_conflict_while_job_is_incomplete(tmp_path: Path) -> None
             settings.model_cache_dir = original_model_cache
 
     assert response.status_code == 409
+
+
+def test_verify_remote_video_playback_reports_probe_metadata(tmp_path: Path) -> None:
+    with TestClient(app) as client:
+        settings = client.app.state.settings
+        original_storage = settings.storage_dir
+        original_model_cache = settings.model_cache_dir
+        original_storage_backend = settings.storage_backend
+        original_artifact_store = client.app.state.artifact_store
+        settings.storage_dir = tmp_path / "storage"
+        settings.model_cache_dir = tmp_path / "models"
+        settings.storage_backend = "s3"
+        artifact_store = FakeMultipartArtifactStore()
+        client.app.state.artifact_store = artifact_store
+
+        try:
+            client.app.state.job_store.create_manifest_for_job(
+                job_id="remote-job",
+                file_name="sample.mp4",
+                content_type="video/mp4",
+                size_bytes=42,
+                relative_path="jobs/remote-job/source/sample.mp4",
+                storage_backend="s3",
+            )
+            response = client.get("/api/jobs/remote-job/video/verify")
+        finally:
+            settings.storage_dir = original_storage
+            settings.model_cache_dir = original_model_cache
+            settings.storage_backend = original_storage_backend
+            client.app.state.artifact_store = original_artifact_store
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["status"] == "ok"
+    assert payload["checks"] == {
+        "objectStoreReachable": True,
+        "playbackRangeReadable": True,
+        "contentTypeMatchesManifest": True,
+        "contentLengthMatchesManifest": True,
+    }
+    assert payload["probe"] == {
+        "rangeHeader": "bytes=0-0",
+        "bytesRead": 1,
+        "contentLength": 42,
+        "contentRange": "bytes 0-0/42",
+        "contentType": "video/mp4",
+        "etag": '"etag-1"',
+    }
+    assert [source.id for source in artifact_store.probed_sources] == ["remote-job"]
+
+
+def test_verify_remote_video_playback_reports_unreachable_object_store(tmp_path: Path) -> None:
+    with TestClient(app) as client:
+        settings = client.app.state.settings
+        original_storage = settings.storage_dir
+        original_model_cache = settings.model_cache_dir
+        original_storage_backend = settings.storage_backend
+        original_artifact_store = client.app.state.artifact_store
+        settings.storage_dir = tmp_path / "storage"
+        settings.model_cache_dir = tmp_path / "models"
+        settings.storage_backend = "s3"
+        artifact_store = FakeMultipartArtifactStore(reachable=False)
+        client.app.state.artifact_store = artifact_store
+
+        try:
+            client.app.state.job_store.create_manifest_for_job(
+                job_id="remote-job",
+                file_name="sample.mp4",
+                content_type="video/mp4",
+                size_bytes=42,
+                relative_path="jobs/remote-job/source/sample.mp4",
+                storage_backend="s3",
+            )
+            response = client.get("/api/jobs/remote-job/video/verify")
+        finally:
+            settings.storage_dir = original_storage
+            settings.model_cache_dir = original_model_cache
+            settings.storage_backend = original_storage_backend
+            client.app.state.artifact_store = original_artifact_store
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["status"] == "degraded"
+    assert payload["checks"] == {
+        "objectStoreReachable": False,
+        "playbackRangeReadable": False,
+        "contentTypeMatchesManifest": None,
+        "contentLengthMatchesManifest": None,
+    }
+    assert payload["error"] == {
+        "code": "object_store_unavailable",
+        "message": "Object storage is unavailable right now.",
+    }
+    assert artifact_store.probed_sources == []
+
+
+def test_verify_remote_video_playback_rejects_local_jobs(tmp_path: Path) -> None:
+    with TestClient(app) as client:
+        settings = client.app.state.settings
+        original_storage = settings.storage_dir
+        original_model_cache = settings.model_cache_dir
+        settings.storage_dir = tmp_path / "storage"
+        settings.model_cache_dir = tmp_path / "models"
+
+        try:
+            client.app.state.job_store.create_manifest_for_job(
+                job_id="local-job",
+                file_name="sample.mp4",
+                content_type="video/mp4",
+                size_bytes=42,
+                relative_path="jobs/local-job/source/sample.mp4",
+                storage_backend="local",
+            )
+            response = client.get("/api/jobs/local-job/video/verify")
+        finally:
+            settings.storage_dir = original_storage
+            settings.model_cache_dir = original_model_cache
+
+    assert response.status_code == 409
+    assert response.json()["detail"]["code"] == "playback_verification_not_applicable"
 
 
 def test_initialize_multipart_upload_returns_session_and_parts(tmp_path: Path) -> None:

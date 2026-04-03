@@ -471,8 +471,10 @@ Avoid:
 - [ ] Add batch export partial-failure manifest warnings
   Prompt: "If some selected jobs fail during combined export, preserve successful jobs in the archive and record the failed jobs in the manifest warnings."
 
-- [ ] Add object-storage playback verification endpoint
+- [x] Add object-storage playback verification endpoint
   Prompt: "Expose a lightweight diagnostic path or health detail that confirms remote source playback reads are working end to end."
+  Notes: Completed on 2026-04-03 by adding a job-scoped `/api/jobs/{jobId}/video/verify` diagnostic endpoint, plus a lightweight S3 ranged-read probe that reports playback readability and manifest-vs-object metadata alignment without streaming the full source.
+  Verified: `PYTHONPATH=backend/src python3.11 -m pytest backend/tests/test_health.py backend/tests/test_jobs_api.py -k "healthcheck or verify_remote_video_playback"`
 
 ## Testing Tasks
 
@@ -503,6 +505,9 @@ Avoid:
 
 - [ ] Add large-file benchmark harness
   Prompt: "Create a repeatable local benchmark script that measures transfer time, transcription time, and package-export time for larger fixture files."
+
+- [ ] Add degraded-probe regression coverage for object-storage playback verification
+  Prompt: "Exercise the playback verification endpoint when the object-store client throws during the ranged read so deployment diagnostics stay structured instead of surfacing a generic 500."
 
 ## Docs and Ops Tasks
 

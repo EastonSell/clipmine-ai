@@ -1,5 +1,25 @@
 # Verification Log
 
+## Object-Storage Playback Verification Pass
+
+Date: 2026-04-03
+
+- Added a lightweight object-storage playback probe to the backend S3 artifact store so the API can confirm a ranged source-video read succeeds without proxying the full media file.
+- Exposed that probe through `/api/jobs/{jobId}/video/verify`, returning structured checks for object-store reachability, playback readability, and manifest-vs-object content metadata alignment for S3-backed jobs.
+- The existing editable Python install in this environment pointed at a different worktree, so verification ran against the current checkout with `PYTHONPATH=backend/src` instead of relying on the stale package path.
+
+### Checks run
+
+```bash
+PYTHONPATH=backend/src python3.11 -m pytest backend/tests/test_health.py backend/tests/test_jobs_api.py -k "healthcheck or verify_remote_video_playback"
+```
+
+### Result
+
+- `4 / 4` targeted backend tests passed
+- remote S3-backed jobs now expose a structured playback verification response without streaming the full source video
+- local-backed jobs still reject the diagnostic endpoint as not applicable, and unreachable object storage degrades cleanly with machine-readable error details
+
 ## Batch Threshold Recovery Lead Source Pass
 
 Date: 2026-04-03
