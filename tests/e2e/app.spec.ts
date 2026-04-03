@@ -860,7 +860,9 @@ test("batch workspace groups jobs and exports thresholded clips", async ({ page 
 
   await page.addInitScript(
     ({ batchSessionsKey, session }) => {
-      window.localStorage.setItem(batchSessionsKey, JSON.stringify([session]));
+      if (!window.localStorage.getItem(batchSessionsKey)) {
+        window.localStorage.setItem(batchSessionsKey, JSON.stringify([session]));
+      }
     },
     {
       batchSessionsKey,
@@ -870,6 +872,7 @@ test("batch workspace groups jobs and exports thresholded clips", async ({ page 
         createdAt: "2026-04-02T12:00:00.000Z",
         updatedAt: "2026-04-02T12:10:00.000Z",
         qualityThreshold: 84,
+        batchExportPreset: "full-av",
         items: [
           {
             id: "upload-1",
@@ -935,6 +938,22 @@ test("batch workspace groups jobs and exports thresholded clips", async ({ page 
   await page.getByRole("button", { name: /Audio-only package/i }).click();
   await expect(page.getByText(/clipmine-batch-export-3-sources-queued-audio\//i)).toBeVisible();
   await expect(page.getByText(/clip_001__clip-1\.wav/i)).toBeVisible();
+  await expect(page.getByText(/clip_001__job-beta-clip-1\.wav/i)).toBeVisible();
+  await expect
+    .poll(() =>
+      page.evaluate(() => JSON.parse(window.localStorage.getItem("clipmine:batches:v1") ?? "[]")[0]?.batchExportPreset ?? null)
+    )
+    .toBe("audio-only");
+
+  await page.reload();
+  await expect(page.getByRole("heading", { name: "3 sources queued" })).toBeVisible();
+  await expect(page.getByText(/clipmine-batch-export-3-sources-queued-audio\//i)).toBeVisible();
+  await expect(page.getByText(/clip_001__clip-1\.wav/i)).toBeVisible();
+
+  await page.goto("/");
+  await page.goto("/batches/demo-batch");
+  await expect(page.getByRole("heading", { name: "3 sources queued" })).toBeVisible();
+  await expect(page.getByText(/clipmine-batch-export-3-sources-queued-audio\//i)).toBeVisible();
   await expect(page.getByText(/clip_001__job-beta-clip-1\.wav/i)).toBeVisible();
 
   const downloadPromise = page.waitForEvent("download");

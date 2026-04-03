@@ -245,8 +245,13 @@ Avoid:
   Notes: Completed on 2026-04-03 by reusing the preset model from the single-workspace export flow, adding preset cards and preview layout updates in the batch workspace, and wiring preset-aware combined batch exports through the frontend API and backend archive builder.
   Verified: `npm ci`, `python3.11 -m pip install -e backend`, `npm run build:web`, `python3.11 -m pytest backend/tests/test_package_export.py -k 'batch_package_export'`, `npm run test:e2e -- --grep "batch workspace groups jobs and exports thresholded clips"`
 
-- [ ] Persist batch export preset choice per batch session
+- [x] Persist batch export preset choice per batch session
   Prompt: "Remember the last preset chosen in the batch workspace so refreshes and reopened saved sessions keep the same export mode instead of snapping back to full AV."
+  Notes: Completed on 2026-04-03 by storing the selected batch export preset in the saved batch-session record, hydrating the batch workspace from that stored value on load, and keeping the aggregate export preview and download path aligned after refreshes and reopened sessions.
+  Verified: `npm ci`, `npm run test:web -- --run src/lib/batch-sessions.test.ts`, `env -u FORCE_COLOR -u NO_COLOR PLAYWRIGHT_BROWSERS_PATH=/tmp/clipmine-playwright-browsers npx playwright test --grep "batch workspace groups jobs and exports thresholded clips"`
+
+- [ ] Persist batch export preset in the URL
+  Prompt: "Keep the batch workspace URL aligned with the active export preset so shared or bookmarked batch links can reopen the same export mode without depending on local browser storage alone."
 
 - [x] Add queue completion toast and summary state
   Prompt: "When a batch queue finishes, show a stronger completion summary before navigating so the user understands how many sources succeeded or failed."
@@ -411,3 +416,5 @@ Avoid:
 - 2026-04-03: Added `Add batch export preset selector` as the follow-up so batch downloads match the new single-workspace preset choices.
 - 2026-04-03: Completed `Add batch export preset selector` after installing frontend dependencies, refreshing the editable backend install, and passing targeted build, batch package-export pytest, and Playwright verification.
 - 2026-04-03: Added `Persist batch export preset choice per batch session` as the next aggregate-export follow-up.
+- 2026-04-03: Completed `Persist batch export preset choice per batch session` after targeted batch-session unit coverage and a refreshed Playwright batch export flow that proves reload and reopen behavior.
+- 2026-04-03: Added `Persist batch export preset in the URL` as the next aggregate-export deep-link follow-up.

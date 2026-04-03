@@ -91,6 +91,7 @@ export function BatchWorkspace({
     sessionRef.current = nextSession;
     setIssuesOnly(nextIssuesOnly);
     setQualityThreshold(nextSession?.qualityThreshold ?? 84);
+    setSelectedPreset(nextSession?.batchExportPreset ?? "full-av");
     setActiveJobId(nextActiveJobId);
   }, [batchId, initialActiveJobId, initialIssuesOnly, prioritizeIssues]);
 
@@ -219,6 +220,7 @@ export function BatchWorkspace({
     });
 
     const sessionChanged =
+      session.batchExportPreset !== selectedPreset ||
       session.qualityThreshold !== qualityThreshold ||
       JSON.stringify(nextItems) !== JSON.stringify(session.items);
     if (!sessionChanged) {
@@ -227,12 +229,13 @@ export function BatchWorkspace({
 
     const nextSession: BatchSessionRecord = {
       ...session,
+      batchExportPreset: selectedPreset,
       qualityThreshold,
       items: nextItems,
       updatedAt: new Date().toISOString(),
     };
     commitSession(nextSession);
-  }, [jobsById, qualityThreshold, retryingItemIdSet, session]);
+  }, [jobsById, qualityThreshold, retryingItemIdSet, selectedPreset, session]);
 
   useEffect(() => {
     if (queueItems.length === 0) {

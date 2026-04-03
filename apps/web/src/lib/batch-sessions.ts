@@ -88,12 +88,18 @@ function isBatchSessionRecord(value: unknown): value is BatchSessionRecord {
   }
 
   const record = value as Partial<BatchSessionRecord>;
+  const hasValidBatchExportPreset =
+    typeof record.batchExportPreset === "undefined" ||
+    record.batchExportPreset === "full-av" ||
+    record.batchExportPreset === "audio-only" ||
+    record.batchExportPreset === "metadata-only";
   return (
     typeof record.batchId === "string" &&
     typeof record.label === "string" &&
     typeof record.createdAt === "string" &&
     typeof record.updatedAt === "string" &&
     typeof record.qualityThreshold === "number" &&
+    hasValidBatchExportPreset &&
     Array.isArray(record.items)
   );
 }

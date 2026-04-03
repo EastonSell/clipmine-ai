@@ -39,6 +39,7 @@ export type BatchSessionRecord = {
   createdAt: string;
   updatedAt: string;
   qualityThreshold: number;
+  batchExportPreset?: PackageExportPreset;
   items: BatchUploadItemRecord[];
   lastCompletionSummary?: BatchCompletionSummary | null;
 };

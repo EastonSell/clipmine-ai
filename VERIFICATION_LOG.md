@@ -1,5 +1,29 @@
 # Verification Log
 
+## Batch Export Preset Persistence Pass
+
+Date: 2026-04-03
+
+- Persisted the batch aggregate export preset in the saved batch-session record so refreshes and reopened saved sessions restore the last selected mode instead of defaulting back to full AV.
+- Hydrated the batch workspace preset state from storage on load and kept the existing aggregate export preview and download request synchronized with the stored value.
+- Extended the focused Playwright batch-export scenario to prove the preset survives a browser reload and leaving/reopening the saved batch workspace, while updating the test seed so reloads no longer wipe the persisted local session state.
+- This checkout started without frontend dependencies installed, so `npm ci` was required before verification. The fresh checkout also needed a one-time `npx playwright install chromium` into the shared Playwright cache path before the targeted browser spec could run.
+
+### Checks run
+
+```bash
+npm ci
+env -u FORCE_COLOR -u NO_COLOR PLAYWRIGHT_BROWSERS_PATH=/tmp/clipmine-playwright-browsers npx playwright install chromium
+npm run test:web -- --run src/lib/batch-sessions.test.ts
+env -u FORCE_COLOR -u NO_COLOR PLAYWRIGHT_BROWSERS_PATH=/tmp/clipmine-playwright-browsers npx playwright test --grep "batch workspace groups jobs and exports thresholded clips"
+```
+
+### Result
+
+- `5 / 5` targeted batch-session unit tests passed
+- `1 / 1` targeted Playwright batch export tests passed
+- reload and reopen coverage now proves the saved batch preset survives beyond the original tab view
+
 ## Batch Queue ETA Hints Pass
 
 Date: 2026-04-03

@@ -91,6 +91,7 @@ function createBatchSnapshot(
     createdAt,
     updatedAt: new Date().toISOString(),
     qualityThreshold: DEFAULT_BATCH_THRESHOLD,
+    batchExportPreset: "full-av",
     items,
     lastCompletionSummary,
   };

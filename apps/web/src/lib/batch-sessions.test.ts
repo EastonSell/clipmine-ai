@@ -32,6 +32,7 @@ function createBatchSession(overrides: Partial<BatchSessionRecord> = {}): BatchS
     createdAt: "2026-04-02T12:00:00.000Z",
     updatedAt: "2026-04-02T12:00:00.000Z",
     qualityThreshold: 84,
+    batchExportPreset: "full-av",
     items: [
       {
         id: "upload-1",
@@ -98,6 +99,18 @@ describe("batch-sessions", () => {
     );
 
     expect(loadBatchSession("batch-1", storage)?.lastCompletionSummary).toEqual(createCompletionSummary());
+  });
+
+  it("preserves the saved batch export preset when sessions reload", () => {
+    const storage = createStorage();
+    saveBatchSession(
+      createBatchSession({
+        batchExportPreset: "audio-only",
+      }),
+      storage
+    );
+
+    expect(loadBatchSession("batch-1", storage)?.batchExportPreset).toBe("audio-only");
   });
 
   it("returns the newest saved session with a completion summary", () => {
