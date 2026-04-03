@@ -14,7 +14,7 @@
     "test:e2e": "env -u FORCE_COLOR -u NO_COLOR PLAYWRIGHT_BROWSERS_PATH=/tmp/clipmine-playwright-browsers playwright test",
     "generate:readme-assets": "env -u FORCE_COLOR -u NO_COLOR PLAYWRIGHT_BROWSERS_PATH=/tmp/clipmine-playwright-browsers README_CAPTURE_BASE_URL=http://127.0.0.1:3000 node scripts/generate-readme-assets.mjs",
     "dev:api": "cd backend && . .venv/bin/activate && uvicorn clipmine_api.main:app --reload --host 127.0.0.1 --port 8000",
-    "test:api": "cd backend && . .venv/bin/activate && pytest"
+    "test:api": "cd backend && python -m pytest"
   },
   "devDependencies": {
     "@playwright/test": "^1.59.1"

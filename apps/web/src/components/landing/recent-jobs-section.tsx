@@ -7,11 +7,11 @@ import { useSyncExternalStore } from "react";
 import { Card } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { SectionHeader } from "@/components/ui/section-header";
-import { loadRecentJobs } from "@/lib/recent-jobs";
+import { getRecentJobsSnapshot, loadRecentJobs, RECENT_JOBS_STORAGE_EVENT } from "@/lib/recent-jobs";
 import { formatDateTime, formatSeconds, formatSignedScore } from "@/lib/format";
 import type { RecentJobRecord } from "@/lib/types";
 
-const EMPTY_RECENT_JOBS: RecentJobRecord[] = [];
+const EMPTY_RECENT_JOBS_SNAPSHOT = "[]";
 
 function subscribeToRecentJobs(onStoreChange: () => void) {
   if (typeof window === "undefined") {
@@ -20,15 +20,21 @@ function subscribeToRecentJobs(onStoreChange: () => void) {
 
   const handleStorage = () => onStoreChange();
   window.addEventListener("storage", handleStorage);
-  return () => window.removeEventListener("storage", handleStorage);
+  window.addEventListener(RECENT_JOBS_STORAGE_EVENT, handleStorage);
+  return () => {
+    window.removeEventListener("storage", handleStorage);
+    window.removeEventListener(RECENT_JOBS_STORAGE_EVENT, handleStorage);
+  };
 }
 
 export function RecentJobsSection() {
-  const recentJobs = useSyncExternalStore(
+  const recentJobsSnapshot = useSyncExternalStore(
     subscribeToRecentJobs,
-    loadRecentJobs,
-    () => EMPTY_RECENT_JOBS
+    getRecentJobsSnapshot,
+    () => EMPTY_RECENT_JOBS_SNAPSHOT
   );
+  const recentJobs: RecentJobRecord[] =
+    recentJobsSnapshot === EMPTY_RECENT_JOBS_SNAPSHOT ? [] : loadRecentJobs();
 
   return (
     <section id="recent-jobs" className="border-t border-[var(--line)] py-16 sm:py-20">
