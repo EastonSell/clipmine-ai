@@ -64,6 +64,7 @@ describe("batch-upload-eta", () => {
       queueSeconds: 30,
       queueBasis: "live",
       queueHistorySampleCount: null,
+      historyAnchorFileName: null,
     });
   });
 
@@ -116,6 +117,7 @@ describe("batch-upload-eta", () => {
       queueSeconds: 40,
       queueBasis: "history",
       queueHistorySampleCount: 1,
+      historyAnchorFileName: "alpha.mp4",
     });
   });
 
@@ -168,6 +170,7 @@ describe("batch-upload-eta", () => {
       queueSeconds: 30,
       queueBasis: "mixed",
       queueHistorySampleCount: 1,
+      historyAnchorFileName: "alpha.mp4",
     });
   });
 
@@ -209,6 +212,59 @@ describe("batch-upload-eta", () => {
       queueSeconds: null,
       queueBasis: null,
       queueHistorySampleCount: null,
+      historyAnchorFileName: null,
+    });
+  });
+
+  it("drops the history anchor label once multiple completed uploads inform the estimate", () => {
+    const items = [
+      createItem({
+        id: "source-1",
+        fileName: "alpha.mp4",
+        status: "processing",
+        uploadPhase: "complete",
+        uploadProgress: 100,
+      }),
+      createItem({
+        id: "source-2",
+        fileName: "beta.mp4",
+        status: "ready",
+        uploadPhase: "complete",
+        uploadProgress: 100,
+      }),
+      createItem({
+        id: "source-3",
+        fileName: "gamma.mp4",
+        status: "uploading",
+        uploadPhase: "validating",
+      }),
+    ];
+
+    expect(
+      estimateBatchUploadEta({
+        items,
+        activeItemId: "source-3",
+        uploadPhase: "validating",
+        uploadStats: {
+          loaded: 0,
+          total: 100 * 1024 * 1024,
+          percentage: 0,
+        },
+        nowMs: 30_000,
+        sourceStartedAtByItemId: {
+          "source-3": 28_000,
+        },
+        completedSourceDurationsMsByItemId: {
+          "source-1": 20_000,
+          "source-2": 18_000,
+        },
+      })
+    ).toMatchObject({
+      currentSourceBasis: "history",
+      currentSourceHistorySampleCount: 2,
+      queueBasis: "history",
+      queueHistorySampleCount: 2,
+      historyAnchorFileName: null,
     });
   });
 
@@ -217,10 +273,14 @@ describe("batch-upload-eta", () => {
     expect(formatUploadEta(null)).toBe("Estimating");
     expect(formatUploadEtaBasis("live")).toBe("Live transfer rate");
     expect(formatUploadEtaBasis("history")).toBe("Completed upload history");
-    expect(formatUploadEtaBasis("history", 1)).toBe("Completed upload history · 1 completed source · Low confidence");
+    expect(formatUploadEtaBasis("history", 1, "alpha.mp4")).toBe(
+      "Completed upload history · 1 completed source · Based on alpha.mp4 · Low confidence"
+    );
     expect(formatUploadEtaBasis("history", 3)).toBe("Completed upload history · 3 completed sources");
     expect(formatUploadEtaBasis("mixed")).toBe("Live + completed uploads");
-    expect(formatUploadEtaBasis("mixed", 1)).toBe("Live + completed uploads · 1 completed source · Low confidence");
+    expect(formatUploadEtaBasis("mixed", 1, "alpha.mp4")).toBe(
+      "Live + completed uploads · 1 completed source · Based on alpha.mp4 · Low confidence"
+    );
     expect(formatUploadEtaBasis("mixed", 2)).toBe("Live + completed uploads · 2 completed sources");
     expect(formatUploadEtaBasis(null)).toBeNull();
   });

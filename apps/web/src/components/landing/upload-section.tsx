@@ -818,7 +818,8 @@ export function UploadSection() {
                                         value={formatUploadEta(batchUploadEta.currentSourceSeconds)}
                                         basis={formatUploadEtaBasis(
                                           batchUploadEta.currentSourceBasis,
-                                          batchUploadEta.currentSourceHistorySampleCount
+                                          batchUploadEta.currentSourceHistorySampleCount,
+                                          batchUploadEta.historyAnchorFileName
                                         )}
                                         isLowConfidence={isLowConfidenceUploadEta(
                                           batchUploadEta.currentSourceBasis,
@@ -830,7 +831,8 @@ export function UploadSection() {
                                         value={formatUploadEta(batchUploadEta.queueSeconds)}
                                         basis={formatUploadEtaBasis(
                                           batchUploadEta.queueBasis,
-                                          batchUploadEta.queueHistorySampleCount
+                                          batchUploadEta.queueHistorySampleCount,
+                                          batchUploadEta.historyAnchorFileName
                                         )}
                                         isLowConfidence={isLowConfidenceUploadEta(
                                           batchUploadEta.queueBasis,

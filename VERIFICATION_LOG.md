@@ -1,5 +1,28 @@
 # Verification Log
 
+## Batch ETA Anchor Source Pass
+
+Date: 2026-04-03
+
+- Extended the shared batch ETA estimate model so history-backed queue hints now retain the single completed source filename when only one completed upload is informing the estimate.
+- Updated the landing upload queue timing copy to append that anchor source name to history-only and mixed ETA labels, which makes the provisional baseline concrete without changing live-only hints.
+- Added focused unit coverage for the new anchor filename field and label text, then validated the touched landing ETA files with a scoped ESLint run.
+- This synced checkout started without frontend dependencies installed, and the first `npm ci` attempt hit `ENOSPC` until the generated `node_modules` and `/tmp/clipmine-npm-cache` artifacts were cleared and the install was retried.
+
+### Checks run
+
+```bash
+npm_config_cache=/tmp/clipmine-npm-cache npm ci
+npm run test:web -- --run src/lib/batch-upload-eta.test.ts
+cd apps/web && npx eslint src/lib/batch-upload-eta.ts src/lib/batch-upload-eta.test.ts src/components/landing/upload-section.tsx --max-warnings=0
+```
+
+### Result
+
+- `7 / 7` focused `batch-upload-eta` unit tests passed
+- targeted frontend lint passed for the touched landing ETA files
+- single-sample history-based batch ETA hints now name the completed source anchoring the estimate
+
 ## Batch ETA Low-Confidence Indicator Pass
 
 Date: 2026-04-03
