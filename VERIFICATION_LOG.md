@@ -1,5 +1,27 @@
 # Verification Log
 
+## Batch Threshold Recovery Total Duration Summary Pass
+
+Date: 2026-04-03
+
+- Extended the empty aggregate export recovery copy so the suggested broader threshold now reports the total eligible duration it would restore, not just the restored clip count and source preview list.
+- Reused the existing broader-threshold recovery data by summing the projected per-source durations, which kept the change scoped to the batch workspace recovery summary without altering the current thresholded export rows.
+- Restored the frontend toolchain in this synced checkout with `npm ci`, then reran the focused batch workspace lint and the targeted Playwright export scenario that already exercises the empty recovery state.
+
+### Checks run
+
+```bash
+npm_config_cache=/tmp/clipmine-npm-cache npm ci
+cd apps/web && npx eslint src/components/batch/batch-workspace.tsx --max-warnings=0
+npm run test:e2e -- --grep "batch workspace groups jobs and exports thresholded clips"
+```
+
+### Result
+
+- targeted frontend lint passed for the touched batch workspace component
+- `1 / 1` targeted Playwright batch export tests passed
+- empty aggregate recovery summaries now show the total eligible duration restored by the suggested broader threshold
+
 ## Batch ETA Anchor Duration Pass
 
 Date: 2026-04-03

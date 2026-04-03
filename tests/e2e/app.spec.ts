@@ -1108,7 +1108,9 @@ test("batch workspace groups jobs and exports thresholded clips", async ({ page 
   await expect(page.getByText("100/100")).toBeVisible();
   await expect(page.locator('[data-testid^="aggregate-source-summary-"]')).toHaveCount(0);
   await expect(page.getByText("No ready sources contribute clips at 100+ right now.")).toBeVisible();
-  await expect(page.getByText("Strict 92+ reopens 1 eligible clip from beta.mp4 without dragging the slider.")).toBeVisible();
+  await expect(
+    page.getByText("Strict 92+ reopens 1 eligible clip and 0:02 of eligible duration from beta.mp4 without dragging the slider.")
+  ).toBeVisible();
   const broaderPreviewInspectButton = page.getByRole("button", {
     name: "Inspect beta.mp4 from the broader-threshold preview",
   });

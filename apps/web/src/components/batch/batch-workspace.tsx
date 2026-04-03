@@ -564,6 +564,10 @@ export function BatchWorkspace({
     0,
     nextBroaderReadySourcePreview.length - nextBroaderReadySourcePreviewList.length
   );
+  const nextBroaderPresetEligibleDuration = useMemo(
+    () => nextBroaderReadySourcePreview.reduce((total, entry) => total + entry.eligibleDuration, 0),
+    [nextBroaderReadySourcePreview]
+  );
   const nextBroaderReadySourceMessage =
     nextBroaderReadySourcePreview.length === 1
       ? `from ${nextBroaderReadySourcePreview[0]?.fileName}`
@@ -994,7 +998,9 @@ export function BatchWorkspace({
                           {nextBroaderPresetEligibleClipCount > 0
                             ? `${nextBroaderThresholdPreset.label} ${nextBroaderThresholdPreset.value}+ reopens ${nextBroaderPresetEligibleClipCount} eligible ${
                                 nextBroaderPresetEligibleClipCount === 1 ? "clip" : "clips"
-                              }${nextBroaderReadySourceMessage ? ` ${nextBroaderReadySourceMessage}` : ""} without dragging the slider.`
+                              } and ${formatSeconds(nextBroaderPresetEligibleDuration)} of eligible duration${
+                                nextBroaderReadySourceMessage ? ` ${nextBroaderReadySourceMessage}` : ""
+                              } without dragging the slider.`
                             : `Jump to ${nextBroaderThresholdPreset.label} ${nextBroaderThresholdPreset.value}+ to keep broadening the export floor.`}
                         </p>
                         {nextBroaderReadySourcePreviewList.length > 0 ? (
