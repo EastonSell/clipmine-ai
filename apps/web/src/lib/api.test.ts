@@ -8,6 +8,7 @@ import {
   getJob,
   isRetryableApiError,
   resetApiBaseUrlMemory,
+  retryJob,
   resolveUploadMode,
 } from "./api";
 
@@ -163,5 +164,29 @@ describe("api upload helpers", () => {
       { cache: "no-store" }
     );
     expect(getApiBaseUrl()).toBe("http://127.0.0.1:8000");
+  });
+
+  it("retries a failed job through the api", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          jobId: "job-failed",
+          status: "queued",
+          fileName: "sample.mp4",
+        }),
+        {
+          status: 200,
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
+      )
+    ));
+
+    await expect(retryJob("job-failed")).resolves.toEqual({
+      jobId: "job-failed",
+      status: "queued",
+      fileName: "sample.mp4",
+    });
   });
 });

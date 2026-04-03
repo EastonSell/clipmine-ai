@@ -215,8 +215,10 @@ Avoid:
   Notes: Added on 2026-04-02 and completed in the same pass.
   Verified: `npm run test:e2e`, `npm run test:web`, `npm run build:web`
 
-- [ ] Add per-job retry from batch workspace
+- [x] Add per-job retry from batch workspace
   Prompt: "Let users retry a failed source from the batch workspace instead of forcing them back to the landing page."
+  Notes: Completed on 2026-04-03 by adding inline retry controls in the batch workspace for both upload-stage failures and backend processing failures. Failed uploads now reuse the original source file while it remains available in the active browser tab, and failed jobs can be re-queued against the existing backend job record.
+  Verified: `npm run test:web`, `python3.11 -m pytest backend/tests/test_jobs_api.py`, `npm run test:e2e -- --grep "batch workspace groups jobs and exports thresholded clips|batch workspace retries a failed source without returning home|landing page completes a batch queue and then opens the workspace on demand"`
 
 - [ ] Add side-by-side shortlisted clip comparison
   Prompt: "Build a compact comparison mode for two shortlisted clips so users can inspect transcript, metrics, and recommendation differences without switching context."
@@ -244,6 +246,9 @@ Avoid:
 
 - [ ] Add per-source ETA hints to the active queue card
   Prompt: "Estimate queue progress for the current source and remaining queue so large multi-file uploads feel less opaque while the active transfer is running."
+
+- [ ] Preserve failed-upload retry readiness across reloads
+  Prompt: "Persist enough local source reference data that a failed upload in the batch workspace can still be retried after a refresh or reopened saved batch, instead of only within the original tab lifetime."
 
 ## Backend Tasks
 
@@ -312,3 +317,5 @@ Avoid:
 - 2026-04-02: Completed `Surface the latest finished batch session from the landing page` after adding the persisted landing shortcut and passing web test, lint, and build verification.
 - 2026-04-03: Completed `Add dismiss action for stale finished batch shortcuts` after web unit, lint, and targeted Playwright verification.
 - 2026-04-03: Added `Preview failed source names in the saved batch shortcut` as the next landing-session follow-up.
+- 2026-04-03: Completed `Add per-job retry from batch workspace` after web unit, backend API, and targeted Playwright verification.
+- 2026-04-03: Added `Preserve failed-upload retry readiness across reloads` as the follow-up to the new batch retry flow.

@@ -13,6 +13,7 @@ import { useRouter } from "next/navigation";
 import { startTransition, useEffect, useMemo, useRef, useState } from "react";
 
 import { loadLatestCompletedBatchSession, removeBatchSession, saveBatchSession } from "@/lib/batch-sessions";
+import { clearBatchSourceFiles, removeBatchSourceFile, saveBatchSourceFile } from "@/lib/batch-source-files";
 import { ApiError, createJob, getUploadMode, isRetryableApiError } from "@/lib/api";
 import { formatBytes, formatDateTime } from "@/lib/format";
 import type {
@@ -318,6 +319,13 @@ export function UploadSection() {
     const createdAt = new Date().toISOString();
     const initialItems = createBatchItems(files);
 
+    initialItems.forEach((item, index) => {
+      const file = files[index];
+      if (file) {
+        saveBatchSourceFile(batchId, item.id, file);
+      }
+    });
+
     batchCancelledRef.current = false;
     setDismissedBatchId(null);
     setCompletedBatchSummary(null);
@@ -390,6 +398,7 @@ export function UploadSection() {
           uploadProgress: 100,
           updatedAt: new Date().toISOString(),
         }));
+        removeBatchSourceFile(batchId, workingItems[index].id);
       } catch (uploadError) {
         const resolvedError =
           uploadError instanceof ApiError
@@ -502,6 +511,7 @@ export function UploadSection() {
     setSelectedFiles([]);
     setBatchQueue([]);
     setError(null);
+    clearBatchSourceFiles(batchId);
 
     if (source === "saved") {
       removeBatchSession(batchId);

@@ -631,6 +631,162 @@ test("batch workspace groups jobs and exports thresholded clips", async ({ page 
   ]);
 });
 
+test("batch workspace retries a failed source without returning home", async ({ page }) => {
+  const beta = createMockJob({
+    jobId: "job-beta",
+    sourceVideo: {
+      id: "video-beta",
+      file_name: "beta.mp4",
+      content_type: "video/mp4",
+      size_bytes: 11_000_000,
+      duration_seconds: 155,
+      url: "/api/jobs/job-beta/video",
+    },
+  });
+  const alphaRetry = createMockJob({
+    jobId: "job-alpha-retry",
+    sourceVideo: {
+      id: "video-alpha-retry",
+      file_name: "alpha.mp4",
+      content_type: "video/mp4",
+      size_bytes: 10_000_000,
+      duration_seconds: 140,
+      url: "/api/jobs/job-alpha-retry/video",
+    },
+  });
+  const uploadSessions = [
+    {
+      uploadSessionId: "session-beta-success",
+      jobId: "job-beta",
+      fileName: "beta.mp4",
+      uploadPartUrl: buildMultipartPartUrl("session-beta-success", 1),
+    },
+    {
+      uploadSessionId: "session-alpha-retry",
+      jobId: "job-alpha-retry",
+      fileName: "alpha.mp4",
+      uploadPartUrl: buildMultipartPartUrl("session-alpha-retry", 1),
+    },
+  ];
+  let initCallCount = 0;
+
+  await page.route("**/api/uploads/init", async (route) => {
+    if (initCallCount === 0) {
+      initCallCount += 1;
+      await route.fulfill({
+        status: 400,
+        contentType: "application/json",
+        body: JSON.stringify({
+          detail: {
+            code: "invalid_request",
+            message: "Upload init failed.",
+            retryable: false,
+          },
+        }),
+      });
+      return;
+    }
+
+    const payload = uploadSessions[initCallCount - 1];
+    initCallCount += 1;
+
+    await route.fulfill({
+      status: 201,
+      contentType: "application/json",
+      body: JSON.stringify({
+        uploadSessionId: payload.uploadSessionId,
+        jobId: payload.jobId,
+        fileName: payload.fileName,
+        partSizeBytes: 16 * 1024 * 1024,
+        expiresAt: "2026-04-02T12:30:00.000Z",
+        parts: [{ partNumber: 1, url: payload.uploadPartUrl }],
+      }),
+    });
+  });
+  for (const session of uploadSessions) {
+    await page.route(session.uploadPartUrl, async (route) => {
+      await route.fulfill({
+        status: 200,
+        headers: {
+          ETag: `"etag-${session.uploadSessionId}"`,
+        },
+        body: "",
+      });
+    });
+  }
+  await page.route("**/api/uploads/session-beta-success/complete", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        jobId: "job-beta",
+        status: "queued",
+        fileName: "beta.mp4",
+      }),
+    });
+  });
+  await page.route("**/api/uploads/session-alpha-retry/complete", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        jobId: "job-alpha-retry",
+        status: "queued",
+        fileName: "alpha.mp4",
+      }),
+    });
+  });
+  await page.route("**/api/jobs/job-beta", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(beta),
+    });
+  });
+  await page.route("**/api/jobs/job-alpha-retry", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(alphaRetry),
+    });
+  });
+
+  await page.goto("/");
+  await page.locator('input[type="file"]').setInputFiles([
+    {
+      name: "alpha.mp4",
+      mimeType: "video/mp4",
+      buffer: Buffer.from("alpha"),
+    },
+    {
+      name: "beta.mp4",
+      mimeType: "video/mp4",
+      buffer: Buffer.from("beta"),
+    },
+  ]);
+  await page.getByRole("button", { name: "Queue 2 videos" }).click();
+
+  await expect(page.getByRole("heading", { name: "Batch review session is ready" })).toBeVisible();
+  await expect(page.getByText("1 of 2 sources reached the workspace stage.")).toBeVisible();
+
+  await page.getByRole("button", { name: "Open batch workspace" }).click();
+  await page.waitForURL("**/batches/*");
+  await expect(page.getByRole("button", { name: "Retry alpha.mp4" })).toBeVisible();
+
+  await page.getByRole("button", { name: "Retry alpha.mp4" }).click();
+
+  await expect(page.getByRole("button", { name: /alpha\.mp4 ready/i })).toBeVisible();
+  await expect
+    .poll(async () =>
+      page.evaluate((storageKey) => {
+        const sessions = JSON.parse(window.localStorage.getItem(storageKey) ?? "[]");
+        const alphaItem = sessions[0]?.items?.find?.((item: { fileName: string }) => item.fileName === "alpha.mp4");
+        return alphaItem?.jobId ?? null;
+      }, batchSessionsKey)
+    )
+    .toBe("job-alpha-retry");
+});
+
 test("landing page completes a batch queue and then opens the workspace on demand", async ({ page }) => {
   const alpha = createMockJob({
     jobId: "queued-alpha",

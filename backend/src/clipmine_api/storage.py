@@ -11,7 +11,7 @@ from uuid import uuid4
 import orjson
 
 from .config import Settings
-from .schemas import JobManifest, JobStatus, ProgressPhase, SourceVideoRecord, UploadSessionRecord
+from .schemas import JobManifest, JobStatus, ProcessingStats, ProgressPhase, SourceVideoRecord, UploadSessionRecord
 
 
 class JobStore:
@@ -200,6 +200,28 @@ class JobStore:
         job = self.load_job(job_id)
         updated = job.model_copy(update={**changes, "updated_at": _utc_now()})
         return self.save_job(updated)
+
+    def prepare_job_for_retry(self, job_id: str) -> JobManifest:
+        job = self.load_job(job_id)
+        retried_job = job.model_copy(
+            update={
+                "status": JobStatus.QUEUED,
+                "progress_phase": ProgressPhase.QUEUED,
+                "error": None,
+                "transcript_text": None,
+                "language": None,
+                "clips": [],
+                "timeline": [],
+                "summary": None,
+                "processing_timings": {},
+                "warnings": [],
+                "processing_stats": ProcessingStats(),
+            }
+        )
+        self.audio_path(job_id).unlink(missing_ok=True)
+        if job.source_video.storage_backend != "local":
+            self.processing_video_path(job).unlink(missing_ok=True)
+        return self.save_job(retried_job)
 
     def cleanup_expired_jobs(self, retention_hours: int) -> int:
         if retention_hours <= 0:

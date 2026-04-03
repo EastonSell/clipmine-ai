@@ -349,6 +349,45 @@ async def get_job(job_id: str, store: JobStore = Depends(get_job_store)) -> dict
     return serialize_job(job)
 
 
+@router.post("/jobs/{job_id}/retry")
+async def retry_job(
+    job_id: str,
+    store: JobStore = Depends(get_job_store),
+    processor: JobProcessor = Depends(get_job_processor),
+) -> dict[str, object]:
+    try:
+        job = store.load_job(job_id)
+    except FileNotFoundError as exc:
+        logger.warning("job.retry_missing job_id=%s", job_id)
+        raise build_http_error(
+            status_code=status.HTTP_404_NOT_FOUND,
+            code="job_not_found",
+            message="Job not found.",
+            retryable=False,
+        ) from exc
+
+    if job.status != JobStatus.FAILED:
+        raise build_http_error(
+            status_code=status.HTTP_409_CONFLICT,
+            code="job_retry_not_allowed",
+            message="Only failed jobs can be retried.",
+            retryable=False,
+        )
+
+    if job.source_video.storage_backend == "local" and not store.source_video_path(job).exists():
+        raise build_http_error(
+            status_code=status.HTTP_404_NOT_FOUND,
+            code="video_not_found",
+            message="Video file not found.",
+            retryable=False,
+        )
+
+    retried_job = store.prepare_job_for_retry(job_id)
+    await processor.enqueue(job_id)
+    logger.info("job.retry_enqueued job_id=%s filename=%s", retried_job.job_id, retried_job.source_video.file_name)
+    return {"jobId": retried_job.job_id, "status": retried_job.status.value, "fileName": retried_job.source_video.file_name}
+
+
 @router.get("/jobs/{job_id}/video")
 async def get_job_video(
     job_id: str,

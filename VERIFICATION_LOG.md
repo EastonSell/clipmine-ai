@@ -700,3 +700,34 @@ npm run test:e2e -- --grep "landing page reopens the most recent finished batch 
 - `npm run lint:web`: passed
 - `npm run build:web`: passed
 - `npm run test:e2e -- --grep "landing page reopens the most recent finished batch session|landing page completes a batch queue and then opens the workspace on demand"`: 2 / 2 tests passed
+
+## Batch Retry Pass
+
+- Added batch-workspace retry controls for failed sources.
+- The retry flow now covers two failure modes:
+  - upload-stage failures with no `jobId`, by replaying the original source file while it is still available in the active browser tab
+  - backend processing failures on an existing `jobId`, by resetting the failed job and re-enqueueing it through a new API endpoint
+- Failed-job retries now clear stale derived artifacts and previous transcript/clip output before reprocessing.
+
+## Batch Retry Checks Run
+
+```bash
+npm ci
+python3.11 -m pip install -e backend
+python3.11 -m pip install pytest
+npm run test:web
+python3.11 -m pytest backend/tests/test_jobs_api.py
+npm run test:e2e -- --grep "batch workspace groups jobs and exports thresholded clips|batch workspace retries a failed source without returning home|landing page completes a batch queue and then opens the workspace on demand"
+```
+
+## Batch Retry Results
+
+- `npm run test:web`: 22 / 22 tests passed
+- `python3.11 -m pytest backend/tests/test_jobs_api.py`: 11 / 11 tests passed
+- `npm run test:e2e -- --grep "batch workspace groups jobs and exports thresholded clips|batch workspace retries a failed source without returning home|landing page completes a batch queue and then opens the workspace on demand"`: 3 / 3 tests passed
+
+## Batch Retry Environment Notes
+
+- The repo did not have Node dependencies installed at the start of this run, so `npm ci` was required before frontend verification.
+- The default `python3` on this machine is 3.13, and that environment segfaulted inside the backend dependency stack before pytest reached the repo tests.
+- Backend verification was therefore run with `python3.11`, which completed cleanly against the targeted API test file.

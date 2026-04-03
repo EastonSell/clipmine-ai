@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { Download, ExternalLink, RefreshCcw, SlidersHorizontal } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import useSWR from "swr";
 
 import { AppShell } from "@/components/ui/app-shell";
@@ -16,7 +16,8 @@ import { PageContainer } from "@/components/ui/page-container";
 import { ProgressBar } from "@/components/ui/progress-bar";
 import { SectionHeader } from "@/components/ui/section-header";
 import { TopBar } from "@/components/ui/top-bar";
-import { downloadBatchClipPackage, getJob, ApiError, isRetryableApiError } from "@/lib/api";
+import { loadBatchSourceFile, removeBatchSourceFile } from "@/lib/batch-source-files";
+import { createJob, downloadBatchClipPackage, getJob, retryJob, ApiError, isRetryableApiError } from "@/lib/api";
 import { loadBatchSession, saveBatchSession } from "@/lib/batch-sessions";
 import { formatSeconds, formatSignedScore } from "@/lib/format";
 import type { BatchSessionRecord, BatchUploadItemRecord, ClipRecord, JobResponse } from "@/lib/types";
@@ -37,13 +38,20 @@ export function BatchWorkspace({ batchId }: BatchWorkspaceProps) {
   const [qualityThreshold, setQualityThreshold] = useState(84);
   const [downloadError, setDownloadError] = useState<ApiError | null>(null);
   const [isDownloading, setIsDownloading] = useState(false);
+  const [retryingItemIds, setRetryingItemIds] = useState<string[]>([]);
+  const sessionRef = useRef<BatchSessionRecord | null>(null);
 
   useEffect(() => {
     const nextSession = loadBatchSession(batchId);
     setSession(nextSession);
+    sessionRef.current = nextSession;
     setQualityThreshold(nextSession?.qualityThreshold ?? 84);
     setActiveJobId(nextSession?.items.find((item) => item.jobId)?.jobId ?? null);
   }, [batchId]);
+
+  useEffect(() => {
+    sessionRef.current = session;
+  }, [session]);
 
   const jobIds = useMemo(
     () => Array.from(new Set((session?.items ?? []).map((item) => item.jobId).filter((value): value is string => Boolean(value)))),
@@ -67,6 +75,28 @@ export function BatchWorkspace({ batchId }: BatchWorkspaceProps) {
 
   const jobs = useMemo(() => data ?? [], [data]);
   const jobsById = useMemo(() => new Map(jobs.map((job) => [job.jobId, job])), [jobs]);
+  const retryingItemIdSet = useMemo(() => new Set(retryingItemIds), [retryingItemIds]);
+
+  function commitSession(nextSession: BatchSessionRecord) {
+    sessionRef.current = nextSession;
+    setSession(nextSession);
+    saveBatchSession(nextSession);
+  }
+
+  function updateSessionItem(itemId: string, updater: (item: BatchUploadItemRecord) => BatchUploadItemRecord) {
+    const currentSession = sessionRef.current;
+    if (!currentSession) {
+      return null;
+    }
+
+    const nextSession: BatchSessionRecord = {
+      ...currentSession,
+      items: currentSession.items.map((item) => (item.id === itemId ? updater(item) : item)),
+      updatedAt: new Date().toISOString(),
+    };
+    commitSession(nextSession);
+    return nextSession;
+  }
 
   useEffect(() => {
     if (!session) {
@@ -74,6 +104,10 @@ export function BatchWorkspace({ batchId }: BatchWorkspaceProps) {
     }
 
     const nextItems: BatchUploadItemRecord[] = session.items.map((item) => {
+      if (retryingItemIdSet.has(item.id)) {
+        return item;
+      }
+
       if (!item.jobId) {
         return item;
       }
@@ -104,9 +138,8 @@ export function BatchWorkspace({ batchId }: BatchWorkspaceProps) {
       items: nextItems,
       updatedAt: new Date().toISOString(),
     };
-    setSession(nextSession);
-    saveBatchSession(nextSession);
-  }, [jobsById, qualityThreshold, session]);
+    commitSession(nextSession);
+  }, [jobsById, qualityThreshold, retryingItemIdSet, session]);
 
   useEffect(() => {
     if (!activeJobId && jobs.length > 0) {
@@ -152,6 +185,101 @@ export function BatchWorkspace({ batchId }: BatchWorkspaceProps) {
       }))
       .filter((selection) => selection.clipIds.length > 0);
   }, [jobs, qualityThreshold]);
+
+  async function handleRetryBatchItem(item: BatchUploadItemRecord) {
+    if (retryingItemIdSet.has(item.id)) {
+      return;
+    }
+
+    setRetryingItemIds((current) => [...current, item.id]);
+
+    try {
+      if (item.jobId) {
+        updateSessionItem(item.id, (current) => ({
+          ...current,
+          status: "processing",
+          error: null,
+          uploadPhase: "complete",
+          uploadProgress: 100,
+          updatedAt: new Date().toISOString(),
+        }));
+        await retryJob(item.jobId);
+        setActiveJobId(item.jobId);
+        await mutate();
+        return;
+      }
+
+      const file = loadBatchSourceFile(batchId, item.id);
+      if (!file) {
+        updateSessionItem(item.id, (current) => ({
+          ...current,
+          error: "The original source is no longer available in this tab. Re-queue it from home.",
+          updatedAt: new Date().toISOString(),
+        }));
+        return;
+      }
+
+      updateSessionItem(item.id, (current) => ({
+        ...current,
+        status: "uploading",
+        uploadPhase: "validating",
+        uploadProgress: 0,
+        error: null,
+        updatedAt: new Date().toISOString(),
+      }));
+
+      const uploadTask = createJob(file, {
+        onPhaseChange(phase) {
+          updateSessionItem(item.id, (current) => ({
+            ...current,
+            status: phase === "processing" ? "processing" : "uploading",
+            uploadPhase: phase,
+            uploadProgress: phase === "processing" ? 100 : current.uploadProgress,
+            error: null,
+            updatedAt: new Date().toISOString(),
+          }));
+        },
+        onUploadProgress(progress) {
+          updateSessionItem(item.id, (current) => ({
+            ...current,
+            status: "uploading",
+            uploadProgress: progress.percentage,
+            error: null,
+            updatedAt: new Date().toISOString(),
+          }));
+        },
+      });
+      const job = await uploadTask.promise;
+      removeBatchSourceFile(batchId, item.id);
+      updateSessionItem(item.id, (current) => ({
+        ...current,
+        jobId: job.jobId,
+        status: "processing",
+        uploadPhase: "complete",
+        uploadProgress: 100,
+        error: null,
+        updatedAt: new Date().toISOString(),
+      }));
+      setActiveJobId(job.jobId);
+    } catch (retryFailure) {
+      const apiError =
+        retryFailure instanceof ApiError
+          ? retryFailure
+          : new ApiError({
+              code: "request_failed",
+              message: "The source could not be retried right now.",
+              retryable: true,
+            });
+      updateSessionItem(item.id, (current) => ({
+        ...current,
+        status: "failed",
+        error: apiError.message,
+        updatedAt: new Date().toISOString(),
+      }));
+    } finally {
+      setRetryingItemIds((current) => current.filter((value) => value !== item.id));
+    }
+  }
 
   async function handleDownloadCombinedPackage() {
     if (aggregateSelections.length === 0 || !session) {
@@ -342,12 +470,15 @@ export function BatchWorkspace({ batchId }: BatchWorkspaceProps) {
               {session.items.map((item, index) => {
                 const job = item.jobId ? jobsById.get(item.jobId) ?? null : null;
                 const active = item.jobId && item.jobId === selectedJob?.jobId;
+                const isRetrying = retryingItemIdSet.has(item.id);
+                const hasCachedSourceFile = Boolean(loadBatchSourceFile(batchId, item.id));
+                const canRetry = item.status === "failed" && (Boolean(item.jobId) || hasCachedSourceFile);
+                const statusLabel = job ? (isRetrying ? "processing" : job.status) : item.status;
+                const progressValue = statusLabel === "ready" ? 100 : item.uploadProgress;
 
                 return (
-                  <button
+                  <div
                     key={item.id}
-                    type="button"
-                    onClick={() => item.jobId && setActiveJobId(item.jobId)}
                     className={[
                       "w-full rounded-[1.15rem] border px-4 py-4 text-left transition duration-200",
                       active
@@ -355,24 +486,50 @@ export function BatchWorkspace({ batchId }: BatchWorkspaceProps) {
                         : "border-[var(--line)] bg-white/[0.03] hover:border-[var(--line-strong)] hover:bg-white/[0.05]",
                     ].join(" ")}
                   >
-                    <div className="flex items-center justify-between gap-3">
-                      <div className="flex items-center gap-3">
-                        <span className="font-mono text-xs text-[var(--muted)]">{`0${index + 1}`}</span>
-                        <div>
-                          <div className="font-medium text-[var(--text)]">{item.fileName}</div>
-                          <div className="mt-1 text-xs text-[var(--muted)]">
-                            {job
-                              ? `${job.status} · ${job.sourceVideo.duration_seconds ? formatSeconds(job.sourceVideo.duration_seconds) : "Duration pending"}`
-                              : item.error || item.status}
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <button
+                        type="button"
+                        onClick={() => item.jobId && setActiveJobId(item.jobId)}
+                        disabled={!item.jobId}
+                        className="min-w-0 flex-1 text-left"
+                      >
+                        <div className="flex items-center gap-3">
+                          <span className="font-mono text-xs text-[var(--muted)]">{`0${index + 1}`}</span>
+                          <div className="min-w-0">
+                            <div className="truncate font-medium text-[var(--text)]">{item.fileName}</div>
+                            <div className="mt-1 text-xs text-[var(--muted)]">
+                              {job
+                                ? `${statusLabel} · ${job.sourceVideo.duration_seconds ? formatSeconds(job.sourceVideo.duration_seconds) : "Duration pending"}`
+                                : item.error || item.status}
+                            </div>
                           </div>
                         </div>
+                      </button>
+                      <div className="flex flex-wrap items-center justify-end gap-2">
+                        <Badge tone={statusLabel === "ready" ? "accent" : statusLabel === "failed" ? "danger" : "neutral"}>
+                          {statusLabel}
+                        </Badge>
+                        {canRetry ? (
+                          <Button
+                            size="sm"
+                            variant="secondary"
+                            onClick={() => void handleRetryBatchItem(item)}
+                            disabled={isRetrying}
+                            aria-label={`Retry ${item.fileName}`}
+                          >
+                            <RefreshCcw className={isRetrying ? "size-4 animate-spin" : "size-4"} />
+                            {isRetrying ? "Retrying" : "Retry source"}
+                          </Button>
+                        ) : null}
                       </div>
-                      <Badge tone={job?.status === "ready" ? "accent" : job?.status === "failed" ? "danger" : "neutral"}>
-                        {job?.status ?? item.status}
-                      </Badge>
                     </div>
-                    <ProgressBar value={job?.status === "ready" ? 100 : item.uploadProgress} className="mt-4" />
-                  </button>
+                    <ProgressBar value={progressValue} className="mt-4" />
+                    {item.status === "failed" && !item.jobId && !hasCachedSourceFile ? (
+                      <p className="mt-3 text-xs leading-5 text-[var(--muted)]">
+                        The original source is no longer cached in this tab, so this retry has to start from home.
+                      </p>
+                    ) : null}
+                  </div>
                 );
               })}
             </div>
@@ -411,29 +568,39 @@ export function BatchWorkspace({ batchId }: BatchWorkspaceProps) {
                   </button>
                 </div>
 
-                <div className="mt-6 space-y-3">
-                  {selectedJob.clips.slice(0, 5).map((clip) => (
-                    <Link
-                      key={`${selectedJob.jobId}-${clip.id}`}
-                      href={`/jobs/${selectedJob.jobId}?clip=${clip.id}`}
-                      className="block rounded-[1.15rem] border border-[var(--line)] bg-white/[0.03] px-4 py-4 transition duration-200 hover:border-[var(--line-strong)] hover:bg-white/[0.05]"
-                    >
-                      <div className="flex items-center justify-between gap-3">
-                        <div className="flex flex-wrap gap-2">
-                          <Badge tone={clip.quality_label === "Excellent" ? "accent" : clip.quality_label === "Good" ? "neutral" : "danger"}>
-                            {clip.quality_label}
-                          </Badge>
-                          <Badge tone="neutral">{clip.selection_recommendation}</Badge>
+                {selectedJob.status === "failed" ? (
+                  <div className="mt-6 rounded-[1.1rem] border border-red-500/30 bg-[rgba(120,24,32,0.18)] px-4 py-4 text-sm text-red-100">
+                    <div className="font-medium">Processing failed for this source</div>
+                    <p className="mt-2 leading-6">{selectedJob.error ?? "The backend could not finish processing this source."}</p>
+                    <p className="mt-2 text-xs text-red-100/80">
+                      Use the retry action beside this source in the queue list to run it again without leaving the batch workspace.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="mt-6 space-y-3">
+                    {selectedJob.clips.slice(0, 5).map((clip) => (
+                      <Link
+                        key={`${selectedJob.jobId}-${clip.id}`}
+                        href={`/jobs/${selectedJob.jobId}?clip=${clip.id}`}
+                        className="block rounded-[1.15rem] border border-[var(--line)] bg-white/[0.03] px-4 py-4 transition duration-200 hover:border-[var(--line-strong)] hover:bg-white/[0.05]"
+                      >
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="flex flex-wrap gap-2">
+                            <Badge tone={clip.quality_label === "Excellent" ? "accent" : clip.quality_label === "Good" ? "neutral" : "danger"}>
+                              {clip.quality_label}
+                            </Badge>
+                            <Badge tone="neutral">{clip.selection_recommendation}</Badge>
+                          </div>
+                          <div className="font-mono text-xs text-[var(--muted)]">{formatSignedScore(clip.score)}</div>
                         </div>
-                        <div className="font-mono text-xs text-[var(--muted)]">{formatSignedScore(clip.score)}</div>
-                      </div>
-                      <div className="mt-3 text-base font-semibold tracking-[-0.03em] text-[var(--text)]">{clip.text}</div>
-                      <div className="mt-3 text-sm text-[var(--muted)]">
-                        {selectedJob.sourceVideo.file_name} · {formatSeconds(clip.start)} - {formatSeconds(clip.end)}
-                      </div>
-                    </Link>
-                  ))}
-                </div>
+                        <div className="mt-3 text-base font-semibold tracking-[-0.03em] text-[var(--text)]">{clip.text}</div>
+                        <div className="mt-3 text-sm text-[var(--muted)]">
+                          {selectedJob.sourceVideo.file_name} · {formatSeconds(clip.start)} - {formatSeconds(clip.end)}
+                        </div>
+                      </Link>
+                    ))}
+                  </div>
+                )}
               </>
             ) : (
               <EmptyState

@@ -30,6 +30,7 @@ const API_ERROR_MESSAGES: Record<string, string> = {
   package_export_failed: "The selected package could not be built right now.",
   batch_package_export_failed: "The combined package could not be built right now.",
   job_not_found: "This workspace could not be found.",
+  job_retry_not_allowed: "This source can only be retried after it reaches a failed state.",
   video_not_found: "The source video is no longer available.",
   invalid_request: "The request payload was invalid.",
   network_unreachable:
@@ -181,6 +182,26 @@ export async function getJob(jobId: string) {
     try {
       return await requestJson<JobResponse>(`${baseUrl}/api/jobs/${jobId}`, {
         cache: "no-store",
+      });
+    } catch (error) {
+      const apiError = toApiError(error);
+      lastError = apiError;
+      if (!apiError.retryable) {
+        throw apiError;
+      }
+    }
+  }
+
+  throw lastError ?? new ApiError(buildErrorDetail("request_failed", "Something went wrong.", true));
+}
+
+export async function retryJob(jobId: string) {
+  let lastError: ApiError | null = null;
+
+  for (const baseUrl of getApiBaseUrls()) {
+    try {
+      return await requestJson<UploadJobResponse>(`${baseUrl}/api/jobs/${jobId}/retry`, {
+        method: "POST",
       });
     } catch (error) {
       const apiError = toApiError(error);

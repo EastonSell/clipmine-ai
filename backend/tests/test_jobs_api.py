@@ -4,7 +4,7 @@ from pathlib import Path
 
 from fastapi.testclient import TestClient
 
-from clipmine_api.schemas import SourceVideoRecord, UploadSessionRecord
+from clipmine_api.schemas import JobSummary, SourceVideoRecord, UploadSessionRecord
 from clipmine_api.main import app
 from clipmine_api.schemas import JobStatus, ProgressPhase
 
@@ -183,6 +183,90 @@ def test_create_job_accepts_upload_at_exact_size_limit(tmp_path: Path) -> None:
 
     assert response.status_code == 201
     assert response.json()["fileName"] == "limit.mp4"
+
+
+def test_retry_failed_job_requeues_processing_and_clears_stale_outputs(tmp_path: Path) -> None:
+    with TestClient(app) as client:
+        settings = client.app.state.settings
+        original_storage = settings.storage_dir
+        original_model_cache = settings.model_cache_dir
+        original_enqueue = client.app.state.job_processor.enqueue
+        settings.storage_dir = tmp_path / "storage"
+        settings.model_cache_dir = tmp_path / "models"
+        enqueued_job_ids: list[str] = []
+
+        async def capture_enqueue(job_id: str) -> None:
+            enqueued_job_ids.append(job_id)
+
+        client.app.state.job_processor.enqueue = capture_enqueue
+
+        try:
+            manifest = client.app.state.job_store.create_manifest_for_job(
+                job_id="failed-job",
+                file_name="sample.mp4",
+                content_type="video/mp4",
+                size_bytes=42,
+                relative_path="jobs/failed-job/source/sample.mp4",
+            )
+            source_path = client.app.state.job_store.source_video_path(manifest)
+            source_path.parent.mkdir(parents=True, exist_ok=True)
+            source_path.write_bytes(b"video-bytes")
+            audio_path = client.app.state.job_store.audio_path(manifest.job_id)
+            audio_path.parent.mkdir(parents=True, exist_ok=True)
+            audio_path.write_bytes(b"audio-bytes")
+            client.app.state.job_store.save_job(
+                manifest.model_copy(
+                    update={
+                        "status": JobStatus.FAILED,
+                        "progress_phase": ProgressPhase.FAILED,
+                        "error": "Processing failed unexpectedly before clips could be generated.",
+                        "transcript_text": "stale transcript",
+                        "language": "en",
+                        "clips": [],
+                        "timeline": [],
+                        "summary": JobSummary(
+                            duration_seconds=12,
+                            transcript_preview="stale transcript",
+                            clip_count=1,
+                            excellent_count=0,
+                            good_count=1,
+                            weak_count=0,
+                            average_score=72,
+                            top_score=72,
+                            shortlist_recommended_count=0,
+                        ),
+                        "processing_timings": {"total": 42},
+                        "warnings": ["stale warning"],
+                    }
+                )
+            )
+
+            response = client.post("/api/jobs/failed-job/retry")
+            retried_job = client.app.state.job_store.load_job("failed-job")
+        finally:
+            settings.storage_dir = original_storage
+            settings.model_cache_dir = original_model_cache
+            client.app.state.job_processor.enqueue = original_enqueue
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "jobId": "failed-job",
+        "status": "queued",
+        "fileName": "sample.mp4",
+    }
+    assert enqueued_job_ids == ["failed-job"]
+    assert retried_job.status == JobStatus.QUEUED
+    assert retried_job.progress_phase == ProgressPhase.QUEUED
+    assert retried_job.error is None
+    assert retried_job.transcript_text is None
+    assert retried_job.language is None
+    assert retried_job.clips == []
+    assert retried_job.timeline == []
+    assert retried_job.summary is None
+    assert retried_job.processing_timings == {}
+    assert retried_job.warnings == []
+    assert retried_job.processing_stats.clip_count == 0
+    assert not audio_path.exists()
 
 
 def test_export_returns_conflict_while_job_is_incomplete(tmp_path: Path) -> None:
