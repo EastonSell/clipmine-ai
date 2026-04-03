@@ -810,6 +810,9 @@ test("batch queue shows current source progress before completion", async ({ pag
   await expect(page.getByText("Source 1 of 2")).toBeVisible();
   await expect(page.getByText("Backend ready")).toBeVisible();
   await expect(page.getByText("Failed / cancelled")).toBeVisible();
+  await expect(page.getByText("Queue guidance")).toBeVisible();
+  await expect(page.getByText("Review opens after the first handoff")).toBeVisible();
+  await expect(page.getByText("ETA waiting for enough signal")).toBeVisible();
 
   await page.getByRole("button", { name: "Cancel", exact: true }).click();
   await expect(page.getByText("The batch queue was cancelled before any upload reached the processing stage.")).toBeVisible();

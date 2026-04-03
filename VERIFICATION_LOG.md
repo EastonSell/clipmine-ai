@@ -1720,3 +1720,23 @@ npm run test:e2e -- --grep "landing page completes a batch queue and then opens 
 - `env -u FORCE_COLOR -u NO_COLOR PLAYWRIGHT_BROWSERS_PATH=/tmp/clipmine-playwright-browsers npx playwright test --grep "landing page completes a batch queue and then opens the workspace on demand"`: blocked before `npm ci` because `@playwright/test` was not installed in the synced checkout
 - `npm ci`: completed successfully
 - Final `npm run test:e2e -- --grep "landing page completes a batch queue and then opens the workspace on demand"`: 1 / 1 test passed
+
+## Live Queue Guidance Pass
+
+- Added a dedicated queue-guidance model for the landing uploader so active batch queues now explain remaining intake backlog, review handoff timing, and whether the ETA is missing, low-confidence, live, historical, or in recovery.
+- Rendered the new guidance panel beside the in-flight batch queue progress UI so large uploads show actionable next-step copy without forcing reviewers to interpret raw counters alone.
+- Extended the existing queue-progress Playwright scenario and added focused unit coverage for the new guidance states.
+
+## Live Queue Guidance Checks Run
+
+```bash
+npm ci
+npm run test:web -- --run src/lib/batch-queue-guidance.test.ts src/lib/batch-upload-eta.test.ts
+npm run test:e2e -- --grep "batch queue shows current source progress before completion"
+```
+
+## Live Queue Guidance Results
+
+- `npm ci`: completed successfully
+- `npm run test:web -- --run src/lib/batch-queue-guidance.test.ts src/lib/batch-upload-eta.test.ts`: 10 / 10 tests passed
+- `npm run test:e2e -- --grep "batch queue shows current source progress before completion"`: 1 / 1 test passed

@@ -18,6 +18,7 @@ import {
   formatUploadEtaBasis,
   isLowConfidenceUploadEta,
 } from "@/lib/batch-upload-eta";
+import { buildBatchQueueGuidance } from "@/lib/batch-queue-guidance";
 import { loadLatestCompletedBatchSession, removeBatchSession, saveBatchSession } from "@/lib/batch-sessions";
 import { clearBatchSourceFiles, removeBatchSourceFile, saveBatchSourceFile } from "@/lib/batch-source-files";
 import { ApiError, createJob, getUploadMode, isRetryableApiError } from "@/lib/api";
@@ -247,6 +248,23 @@ export function UploadSection() {
         completedSourceDurationsMsByItemId: batchUploadTimingRef.current.completedSourceDurationsMsByItemId,
       }),
     [activeQueueItem?.id, batchQueue, uploadPhase, uploadStats]
+  );
+  const batchQueueGuidance = useMemo(
+    () =>
+      buildBatchQueueGuidance({
+        items: batchQueue,
+        activeItemId: activeQueueItem?.id ?? null,
+        queueEtaSeconds: batchUploadEta.queueSeconds,
+        queueEtaBasis: batchUploadEta.queueBasis,
+        queueEtaHistorySampleCount: batchUploadEta.queueHistorySampleCount,
+      }),
+    [
+      activeQueueItem?.id,
+      batchQueue,
+      batchUploadEta.queueBasis,
+      batchUploadEta.queueHistorySampleCount,
+      batchUploadEta.queueSeconds,
+    ]
   );
   const savedBatchSummary =
     latestCompletedBatch && latestCompletedBatch.batchId !== dismissedBatchId
@@ -863,6 +881,8 @@ export function UploadSection() {
                           </div>
                         </div>
 
+                        {batchQueueGuidance.length > 0 ? <QueueGuidancePanel guidance={batchQueueGuidance} /> : null}
+
                         {batchQueue.map((item, index) => (
                           <div
                             key={item.id}
@@ -995,6 +1015,45 @@ function QueueTimingHint({
           Low confidence
         </Badge>
       ) : null}
+    </div>
+  );
+}
+
+function QueueGuidancePanel({
+  guidance,
+}: {
+  guidance: Array<{
+    title: string;
+    emphasis: string;
+    description: string;
+    tone: "accent" | "neutral" | "danger";
+  }>;
+}) {
+  return (
+    <div className="rounded-[1rem] border border-[var(--line)] bg-[var(--surface-overlay)] px-4 py-4">
+      <div className="metric-label text-[var(--accent)]">Queue guidance</div>
+      <div className="mt-3 grid gap-3 xl:grid-cols-3">
+        {guidance.map((item) => {
+          const labelClass =
+            item.tone === "danger"
+              ? "text-red-200"
+              : item.tone === "accent"
+                ? "text-[var(--accent)]"
+                : "text-[var(--muted)]";
+          const emphasisClass =
+            item.tone === "danger" ? "text-red-100" : "text-[var(--text)]";
+          const borderClass =
+            item.tone === "danger" ? "border-red-500/20 bg-[var(--danger-soft)]" : "border-[var(--line)] bg-white/[0.03]";
+
+          return (
+            <div key={item.title} className={`rounded-[1rem] border px-4 py-4 ${borderClass}`}>
+              <div className={`metric-label ${labelClass}`}>{item.title}</div>
+              <div className={`mt-2 text-base font-semibold tracking-[-0.03em] ${emphasisClass}`}>{item.emphasis}</div>
+              <p className="mt-2 text-sm leading-6 text-[var(--muted)]">{item.description}</p>
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }

@@ -214,7 +214,7 @@ Avoid:
 
 - [x] Premium dark app shell
 - [x] README visuals and generated assets
-- [ ] Better live queue guidance for large batch uploads
+- [x] Better live queue guidance for large batch uploads
 - [x] Side-by-side shortlist comparison
 - [ ] Export preset options beyond JSON + zip
 
@@ -224,6 +224,11 @@ Avoid:
   Prompt: "Rework the landing upload progress area so multi-file queues clearly show the current source, queue position, waiting count, backend-ready count, and failed count while uploads are in flight."
   Notes: Added on 2026-04-02 and completed in the same pass.
   Verified: `npm run test:e2e`, `npm run test:web`, `npm run build:web`
+
+- [x] Better live queue guidance for large batch uploads
+  Prompt: "Turn the in-flight queue status into actionable guidance so large batch uploads explain what backlog remains, when review actually starts, and when the ETA is still too early to trust."
+  Notes: Completed on 2026-04-03 by adding a dedicated queue-guidance panel to the landing uploader, summarizing remaining intake backlog, review handoff timing, and ETA confidence or recovery state directly beside the active batch queue.
+  Verified: `npm ci`, `npm run test:web -- --run src/lib/batch-queue-guidance.test.ts src/lib/batch-upload-eta.test.ts`, `npm run test:e2e -- --grep "batch queue shows current source progress before completion"`
 
 - [x] Add per-job retry from batch workspace
   Prompt: "Let users retry a failed source from the batch workspace instead of forcing them back to the landing page."
@@ -503,6 +508,9 @@ Avoid:
 - [ ] Add browser coverage for single-sample batch ETA anchor details
   Prompt: "Exercise the landing batch queue timing card so the anchor source filename and duration appear when only one completed upload informs the estimate, then disappear after a second completed source is available."
 
+- [ ] Add browser coverage for final-source queue guidance copy
+  Prompt: "Exercise the landing queue guidance panel when only the last source remains so the final-source runway and low-confidence ETA copy stay stable."
+
 - [ ] Add large-file benchmark harness
   Prompt: "Create a repeatable local benchmark script that measures transfer time, transcription time, and package-export time for larger fixture files."
 
@@ -611,3 +619,5 @@ Avoid:
 - 2026-04-03: Added `Show the anchor upload duration behind single-sample batch ETA hints` as the next queue-estimation context follow-up.
 - 2026-04-03: Completed `Show the anchor upload duration behind single-sample batch ETA hints` after carrying the single-sample upload duration through the shared ETA model and validating it with a focused `tsx` assertion after `npm ci` hit `ENOSPC` in this synced checkout.
 - 2026-04-03: Added `Add browser coverage for single-sample batch ETA anchor details` as the next queue-estimation regression follow-up.
+- 2026-04-03: Completed `Better live queue guidance for large batch uploads` after adding a dedicated landing queue-guidance panel and passing focused queue-guidance unit plus Playwright verification.
+- 2026-04-03: Added `Add browser coverage for final-source queue guidance copy` as the next landing-queue guidance regression follow-up.
