@@ -228,6 +228,23 @@ export type BatchPackageJobSelection = {
   clipIds: string[];
 };
 
+export type BatchPackageExportWarning = {
+  code: string;
+  jobId: string;
+  fileName: string;
+  message: string;
+  detail: string;
+};
+
+export type BatchPackageExportWarningSummary = {
+  preset: PackageExportPreset;
+  qualityThreshold: number | null;
+  requestedJobCount: number;
+  exportedJobCount: number;
+  failedJobCount: number;
+  warnings: BatchPackageExportWarning[];
+};
+
 export type RecentJobRecord = {
   jobId: string;
   fileName: string;

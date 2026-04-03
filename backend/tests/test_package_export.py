@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import base64
 import subprocess
 import zipfile
 from io import BytesIO
@@ -9,6 +10,7 @@ import imageio_ffmpeg
 import orjson
 from fastapi.testclient import TestClient
 
+from clipmine_api.api import BATCH_EXPORT_WARNING_SUMMARY_HEADER
 from clipmine_api.main import app
 from clipmine_api.presentation import build_summary, build_timeline
 from clipmine_api.schemas import ClipRecord, JobStatus, PlaybackMetadata, ProgressPhase
@@ -435,6 +437,17 @@ def test_batch_package_export_keeps_successful_jobs_when_one_source_is_missing(t
             "detail": "Source video not found for job job-beta.",
         }
     ]
+
+    encoded_warning_summary = response.headers[BATCH_EXPORT_WARNING_SUMMARY_HEADER]
+    decoded_warning_summary = orjson.loads(base64.urlsafe_b64decode(f"{encoded_warning_summary}==="))
+    assert decoded_warning_summary == {
+        "preset": "full-av",
+        "qualityThreshold": None,
+        "requestedJobCount": 2,
+        "exportedJobCount": 1,
+        "failedJobCount": 1,
+        "warnings": manifest_payload["warnings"],
+    }
 
 
 def test_batch_package_export_supports_audio_only_preset(tmp_path: Path) -> None:

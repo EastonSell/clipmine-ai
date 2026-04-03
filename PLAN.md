@@ -465,8 +465,13 @@ Avoid:
   Notes: Completed on 2026-04-03 by adding a saved-session `Resume ready review` action on the landing shortcut, routing that CTA through the existing ready-only batch URL state, and seeding the reopened batch workspace with the first ready job so reviewers land directly in clip review without losing the existing full-workspace or issue-triage reopen path.
   Verified: `npm ci`, `npm run test:web -- --run src/lib/batch-focus.test.ts`, `npm run test:e2e -- --grep "landing page reopens the most recent finished batch session|saved batch shortcuts can resume ready review directly"`
 
-- [ ] Surface skipped-job batch export warnings in the workspace
+- [x] Surface skipped-job batch export warnings in the workspace
   Prompt: "When a combined batch export omits one or more jobs, show a download warning summary in the batch workspace so reviewers know which sources were skipped without opening the manifest by hand."
+  Notes: Completed on 2026-04-03 by exposing a compact skipped-job summary on successful batch package downloads, decoding that warning metadata in the web client, and rendering the latest skipped-source summary directly in the batch workspace after export.
+  Verified: `PYTHONPATH=backend/src python3.11 -m pytest backend/tests/test_package_export.py -k "batch_package_export_keeps_successful_jobs_when_one_source_is_missing"`, `cd apps/web && PATH='/Users/easton/.codex/worktrees/7287/Codex Creator Challenge/apps/web/node_modules/.bin:/Users/easton/.codex/worktrees/7287/Codex Creator Challenge/node_modules/.bin:'"$PATH" NODE_PATH='/Users/easton/.codex/worktrees/7287/Codex Creator Challenge/apps/web/node_modules:/Users/easton/.codex/worktrees/7287/Codex Creator Challenge/node_modules' vitest run src/lib/api.test.ts`, `cd apps/web && PATH='/Users/easton/.codex/worktrees/7287/Codex Creator Challenge/apps/web/node_modules/.bin:/Users/easton/.codex/worktrees/7287/Codex Creator Challenge/node_modules/.bin:'"$PATH" NODE_PATH='/Users/easton/.codex/worktrees/7287/Codex Creator Challenge/apps/web/node_modules:/Users/easton/.codex/worktrees/7287/Codex Creator Challenge/node_modules' eslint src/components/batch/batch-workspace.tsx src/lib/api.ts src/lib/api.test.ts src/lib/types.ts --max-warnings=0`
+
+- [ ] Add inspect actions to skipped-job batch export warnings
+  Prompt: "Let reviewers jump from the batch export warning summary straight into each skipped source so they can diagnose missing media and retry the combined export without scanning the full queue."
 
 ## Backend Tasks
 
@@ -618,6 +623,8 @@ Avoid:
 - 2026-04-03: Completed `Add a ready-only filter to the batch queue` after reinstalling frontend dependencies in the worktree and passing focused web-unit and Playwright verification.
 - 2026-04-03: Added `Persist ready-only batch queue scope in the URL` as the next batch-review deep-link follow-up.
 - 2026-04-03: Completed `Persist ready-only batch queue scope in the URL` after reinstalling frontend dependencies in the worktree and passing focused web-unit plus reload-aware Playwright verification.
+- 2026-04-03: Completed `Surface skipped-job batch export warnings in the workspace` after adding batch-export response warning metadata, passing targeted backend pytest, and reusing sibling-worktree frontend dependencies for focused web unit and lint verification because `npm ci` hit `ENOSPC` in this checkout.
+- 2026-04-03: Added `Add inspect actions to skipped-job batch export warnings` as the next batch-export recovery follow-up.
 - 2026-04-03: Added `Add ready-review reopen action to saved batch shortcuts` as the next batch-review resume follow-up.
 - 2026-04-03: Completed `Add ready-review reopen action to saved batch shortcuts` after reinstalling frontend dependencies, passing focused batch-focus unit coverage, and rerunning the saved-batch landing Playwright reopen scenarios.
 - 2026-04-03: Completed `Flag low-confidence batch ETA history when only one completed source is available` after installing frontend dependencies in the worktree, passing focused `batch-upload-eta` unit coverage, and linting the touched landing ETA files.

@@ -11,7 +11,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from .artifact_store import create_artifact_store
-from .api import router
+from .api import BATCH_EXPORT_WARNING_SUMMARY_HEADER, router
 from .errors import build_error_detail, normalize_error_detail
 from .config import get_settings
 from .processor import JobProcessor
@@ -79,6 +79,7 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["content-disposition", BATCH_EXPORT_WARNING_SUMMARY_HEADER],
 )
 
 

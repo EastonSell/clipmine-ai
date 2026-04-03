@@ -4,6 +4,7 @@ import {
   aggregateUploadProgress,
   ApiError,
   buildApiError,
+  downloadBatchClipPackage,
   getApiBaseUrl,
   getJob,
   isRetryableApiError,
@@ -187,6 +188,52 @@ describe("api upload helpers", () => {
       jobId: "job-failed",
       status: "queued",
       fileName: "sample.mp4",
+    });
+  });
+
+  it("decodes skipped-job warning summaries from batch package downloads", async () => {
+    const warningSummary = {
+      preset: "full-av",
+      qualityThreshold: 84,
+      requestedJobCount: 2,
+      exportedJobCount: 1,
+      failedJobCount: 1,
+      warnings: [
+        {
+          code: "job_export_failed",
+          jobId: "job-beta",
+          fileName: "beta.mp4",
+          message: "This job was skipped because its media could not be packaged.",
+          detail: "Source video not found for job job-beta.",
+        },
+      ],
+    };
+    const encodedWarningSummary = Buffer.from(JSON.stringify(warningSummary), "utf-8")
+      .toString("base64")
+      .replace(/\+/g, "-")
+      .replace(/\//g, "_")
+      .replace(/=+$/g, "");
+
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValueOnce(
+      new Response(new Blob(["zip"]), {
+        status: 200,
+        headers: {
+          "Content-Disposition": 'attachment; filename="clipmine-batch-export.zip"',
+          "X-ClipMine-Batch-Export-Summary": encodedWarningSummary,
+        },
+      })
+    ));
+
+    await expect(
+      downloadBatchClipPackage([
+        {
+          jobId: "job-alpha",
+          clipIds: ["job-alpha-clip-001"],
+        },
+      ])
+    ).resolves.toMatchObject({
+      fileName: "clipmine-batch-export.zip",
+      batchWarningSummary: warningSummary,
     });
   });
 });

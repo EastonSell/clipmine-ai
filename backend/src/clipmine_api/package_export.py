@@ -33,6 +33,7 @@ class PackageExportArtifact:
     archive_name: str
     archive_path: Path
     cleanup_root: Path
+    batch_warning_summary: dict[str, object] | None = None
 
 
 @dataclass(slots=True)
@@ -303,6 +304,18 @@ def build_batch_package_export(
         archive_name=archive_name,
         archive_path=archive_path,
         cleanup_root=cleanup_root,
+        batch_warning_summary=(
+            {
+                "preset": preset.value,
+                "qualityThreshold": quality_threshold,
+                "requestedJobCount": manifest_payload["requestedJobCount"],
+                "exportedJobCount": manifest_payload["jobCount"],
+                "failedJobCount": manifest_payload["failedJobCount"],
+                "warnings": manifest_payload["warnings"],
+            }
+            if manifest_payload["warnings"]
+            else None
+        ),
     )
 
 

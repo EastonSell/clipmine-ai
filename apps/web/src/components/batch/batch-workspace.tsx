@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import {
+  AlertTriangle,
   ChevronLeft,
   ChevronRight,
   ChevronsLeft,
@@ -60,7 +61,15 @@ import {
 import { createJob, downloadBatchClipPackage, getJob, retryJob, ApiError, isRetryableApiError } from "@/lib/api";
 import { loadBatchSession, saveBatchSession } from "@/lib/batch-sessions";
 import { formatPercent, formatSeconds, formatSignedScore } from "@/lib/format";
-import type { BatchPackageJobSelection, BatchSessionRecord, BatchUploadItemRecord, ClipRecord, JobResponse, PackageExportPreset } from "@/lib/types";
+import type {
+  BatchPackageExportWarningSummary,
+  BatchPackageJobSelection,
+  BatchSessionRecord,
+  BatchUploadItemRecord,
+  ClipRecord,
+  JobResponse,
+  PackageExportPreset,
+} from "@/lib/types";
 
 type BatchWorkspaceProps = {
   batchId: string;
@@ -121,6 +130,7 @@ export function BatchWorkspace({
   const [selectedPreset, setSelectedPreset] = useState<PackageExportPreset>(initialSelectedPreset ?? "full-av");
   const [showContributorsOnly, setShowContributorsOnly] = useState(false);
   const [downloadError, setDownloadError] = useState<ApiError | null>(null);
+  const [downloadWarningSummary, setDownloadWarningSummary] = useState<BatchPackageExportWarningSummary | null>(null);
   const [isDownloading, setIsDownloading] = useState(false);
   const [retryingItemIds, setRetryingItemIds] = useState<string[]>([]);
   const [cachedSourceFileItemIds, setCachedSourceFileItemIds] = useState<string[]>([]);
@@ -716,6 +726,7 @@ export function BatchWorkspace({
         preset: selectedPreset,
         qualityThreshold,
       });
+      setDownloadWarningSummary(response.batchWarningSummary);
       const objectUrl = URL.createObjectURL(response.blob);
       const anchor = document.createElement("a");
       anchor.href = objectUrl;
@@ -725,6 +736,7 @@ export function BatchWorkspace({
       anchor.remove();
       window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1_000);
     } catch (downloadFailure) {
+      setDownloadWarningSummary(null);
       setDownloadError(
         downloadFailure instanceof ApiError
           ? downloadFailure
@@ -1504,6 +1516,43 @@ export function BatchWorkspace({
                   {isRetryableApiError(downloadError)
                     ? "You can retry the combined export without changing the current threshold."
                     : "Adjust the threshold or refresh the batch session before retrying."}
+                </p>
+              </div>
+            ) : null}
+
+            {downloadWarningSummary?.warnings.length ? (
+              <div
+                data-testid="batch-export-warning-summary"
+                className="mt-6 rounded-[1.1rem] border border-amber-400/30 bg-[rgba(120,74,12,0.18)] px-4 py-4 text-sm text-amber-50"
+              >
+                <div className="flex flex-wrap items-center gap-2">
+                  <AlertTriangle className="size-4" />
+                  <div className="font-medium">
+                    Latest combined export skipped {downloadWarningSummary.failedJobCount}{" "}
+                    {downloadWarningSummary.failedJobCount === 1 ? "source" : "sources"}
+                  </div>
+                </div>
+                <p className="mt-2 leading-6 text-amber-50/90">
+                  The downloaded {getPackageExportPresetOption(downloadWarningSummary.preset).title.toLowerCase()} kept{" "}
+                  {downloadWarningSummary.exportedJobCount}{" "}
+                  {downloadWarningSummary.exportedJobCount === 1 ? "source" : "sources"} and omitted{" "}
+                  {downloadWarningSummary.failedJobCount}{" "}
+                  {downloadWarningSummary.failedJobCount === 1 ? "source" : "sources"} whose media could not be packaged.
+                </p>
+                <div className="mt-3 space-y-2">
+                  {downloadWarningSummary.warnings.map((warning) => (
+                    <div
+                      key={`${warning.jobId}-${warning.fileName}`}
+                      className="rounded-[1rem] border border-amber-300/20 bg-black/10 px-3 py-3 text-sm leading-6 text-amber-50/90"
+                    >
+                      <div className="font-medium text-amber-50">{warning.fileName}</div>
+                      <p className="mt-1">{warning.message}</p>
+                      <p className="mt-1 text-xs text-amber-100/75">{warning.detail}</p>
+                    </div>
+                  ))}
+                </div>
+                <p className="mt-3 text-xs text-amber-100/75">
+                  Review the skipped sources in the queue before retrying the combined export.
                 </p>
               </div>
             ) : null}

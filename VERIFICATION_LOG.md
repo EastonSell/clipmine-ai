@@ -1,5 +1,29 @@
 # Verification Log
 
+## Batch Workspace Export Warning Summary Pass
+
+Date: 2026-04-03
+
+- Exposed skipped-job warning metadata on successful batch package downloads so the frontend can see omitted-source details without unpacking the archive manifest.
+- Decoded that warning summary in the shared web API helper and surfaced the latest skipped-source summary directly in the batch workspace after a combined export finishes.
+- Added focused backend and frontend regression coverage for the response-header path and the client-side decoding path.
+- A local `npm ci` attempt in this synced checkout failed with `ENOSPC`, so the frontend checks reused the installed `node_modules` from a sibling ClipMine worktree through `PATH` and `NODE_PATH`.
+
+### Checks run
+
+```bash
+PYTHONPATH=backend/src python3.11 -m pytest backend/tests/test_package_export.py -k "batch_package_export_keeps_successful_jobs_when_one_source_is_missing"
+cd apps/web && PATH='/Users/easton/.codex/worktrees/7287/Codex Creator Challenge/apps/web/node_modules/.bin:/Users/easton/.codex/worktrees/7287/Codex Creator Challenge/node_modules/.bin:'"$PATH" NODE_PATH='/Users/easton/.codex/worktrees/7287/Codex Creator Challenge/apps/web/node_modules:/Users/easton/.codex/worktrees/7287/Codex Creator Challenge/node_modules' vitest run src/lib/api.test.ts
+cd apps/web && PATH='/Users/easton/.codex/worktrees/7287/Codex Creator Challenge/apps/web/node_modules/.bin:/Users/easton/.codex/worktrees/7287/Codex Creator Challenge/node_modules/.bin:'"$PATH" NODE_PATH='/Users/easton/.codex/worktrees/7287/Codex Creator Challenge/apps/web/node_modules:/Users/easton/.codex/worktrees/7287/Codex Creator Challenge/node_modules' eslint src/components/batch/batch-workspace.tsx src/lib/api.ts src/lib/api.test.ts src/lib/types.ts --max-warnings=0
+```
+
+### Result
+
+- `1 / 1` targeted backend batch package export tests passed
+- `9 / 9` focused `api.test.ts` unit tests passed
+- targeted frontend lint passed for the touched batch export warning files
+- the batch workspace now shows which sources were skipped after a partial combined export, including the packaging failure detail
+
 ## Batch Export Partial-Failure Manifest Warning Pass
 
 Date: 2026-04-03

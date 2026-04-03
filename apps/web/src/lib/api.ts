@@ -1,5 +1,6 @@
 import type {
   ApiErrorDetail,
+  BatchPackageExportWarningSummary,
   BatchPackageJobSelection,
   JobResponse,
   PackageExportPreset,
@@ -18,6 +19,7 @@ const LOOPBACK_API_BASE_URLS: Record<string, string[]> = {
 const DEFAULT_UPLOAD_MODE: UploadMode = "direct";
 const MULTIPART_CONCURRENCY = 3;
 const MULTIPART_RETRY_LIMIT = 3;
+const BATCH_EXPORT_WARNING_SUMMARY_HEADER = "x-clipmine-batch-export-summary";
 let lastSuccessfulApiBaseUrl: string | null = null;
 const API_ERROR_MESSAGES: Record<string, string> = {
   unsupported_file_type: "Only .mp4 and .mov files are supported.",
@@ -55,6 +57,12 @@ type MultipartCompletedPart = {
 
 type ErrorPayload = {
   detail?: string | Partial<ApiErrorDetail> | null;
+};
+
+type BlobDownloadResponse = {
+  blob: Blob;
+  fileName: string;
+  batchWarningSummary: BatchPackageExportWarningSummary | null;
 };
 
 export type CreateJobTask = {
@@ -661,7 +669,7 @@ async function requestJson<T>(url: string, init?: RequestInit): Promise<T> {
   }
 }
 
-async function requestBlob(url: string, init?: RequestInit): Promise<{ blob: Blob; fileName: string }> {
+async function requestBlob(url: string, init?: RequestInit): Promise<BlobDownloadResponse> {
   try {
     const response = await fetch(url, init);
     if (!response.ok) {
@@ -673,6 +681,9 @@ async function requestBlob(url: string, init?: RequestInit): Promise<{ blob: Blo
     return {
       blob: await response.blob(),
       fileName: parseContentDispositionFilename(response.headers.get("content-disposition")) ?? "clipmine-export.zip",
+      batchWarningSummary: parseBatchExportWarningSummary(
+        response.headers.get(BATCH_EXPORT_WARNING_SUMMARY_HEADER)
+      ),
     };
   } catch (error) {
     if (error instanceof ApiError) {
@@ -807,4 +818,24 @@ function parseContentDispositionFilename(contentDisposition: string | null) {
 
   const bareMatch = contentDisposition.match(/filename=([^;]+)/i);
   return bareMatch?.[1]?.trim() ?? null;
+}
+
+function parseBatchExportWarningSummary(headerValue: string | null): BatchPackageExportWarningSummary | null {
+  if (!headerValue) {
+    return null;
+  }
+
+  try {
+    const normalizedValue = headerValue.replace(/-/g, "+").replace(/_/g, "/");
+    const padding = normalizedValue.length % 4;
+    const paddedValue = padding === 0 ? normalizedValue : `${normalizedValue}${"=".repeat(4 - padding)}`;
+    if (typeof globalThis.atob !== "function") {
+      return null;
+    }
+    const decodedValue = globalThis.atob(paddedValue);
+
+    return JSON.parse(decodedValue) as BatchPackageExportWarningSummary;
+  } catch {
+    return null;
+  }
 }

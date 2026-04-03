@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import base64
 import logging
 from pathlib import Path
 
@@ -42,6 +43,7 @@ CANONICAL_CONTENT_TYPES = {
     ".mov": "video/quicktime",
 }
 UPLOAD_READ_CHUNK_BYTES = 4 * 1024 * 1024
+BATCH_EXPORT_WARNING_SUMMARY_HEADER = "x-clipmine-batch-export-summary"
 
 
 def get_job_store(request: Request) -> JobStore:
@@ -693,7 +695,18 @@ async def export_batch_package(
         media_type="application/zip",
         filename=package_export.archive_name,
         background=background_tasks,
+        headers=_build_batch_export_headers(package_export.batch_warning_summary),
     )
+
+
+def _build_batch_export_headers(summary: dict[str, object] | None) -> dict[str, str]:
+    if not summary:
+        return {}
+
+    encoded_summary = base64.urlsafe_b64encode(orjson.dumps(summary)).decode("ascii")
+    return {
+        BATCH_EXPORT_WARNING_SUMMARY_HEADER: encoded_summary,
+    }
 
 
 def _validate_upload_metadata(
