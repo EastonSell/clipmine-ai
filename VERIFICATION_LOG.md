@@ -1,5 +1,28 @@
 # Verification Log
 
+## Batch ETA Sample Count Pass
+
+Date: 2026-04-03
+
+- Extended the batch ETA estimate model so history-backed timing hints now carry the number of completed sources that contributed to the estimate, instead of only exposing the basis label.
+- Updated the landing upload queue card to append that completed-source count to history and mixed ETA labels, which makes thin history signals visible without changing live-only hints or the existing estimating fallback.
+- Added focused unit assertions for the new sample-count fields and the rendered label text, then validated the touched frontend files with a scoped ESLint pass.
+- This synced checkout started without frontend dependencies installed, so `npm ci` was required after the first focused `vitest` attempt failed with `sh: vitest: command not found`.
+
+### Checks run
+
+```bash
+npm ci
+npm run test:web -- --run src/lib/batch-upload-eta.test.ts
+cd apps/web && npx eslint src/lib/batch-upload-eta.ts src/lib/batch-upload-eta.test.ts src/components/landing/upload-section.tsx --max-warnings=0
+```
+
+### Result
+
+- `5 / 5` focused `batch-upload-eta` unit tests passed
+- targeted frontend lint passed for the touched landing ETA files
+- history-backed batch ETA hints now show how many completed sources informed the estimate
+
 ## Batch ETA Basis Labels Pass
 
 Date: 2026-04-03

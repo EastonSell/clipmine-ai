@@ -378,8 +378,13 @@ Avoid:
   Notes: Completed on 2026-04-03 by extending the batch ETA helper to return per-card estimate basis metadata, surfacing live-vs-history labels in the landing queue timing hints, and calling out the mixed case where the active source uses live transfer data while later queued sources still rely on completed-upload history.
   Verified: `npm ci`, `npm run test:web -- --run src/lib/batch-upload-eta.test.ts`, `cd apps/web && npx eslint src/components/landing/upload-section.tsx src/lib/batch-upload-eta.ts src/lib/batch-upload-eta.test.ts --max-warnings=0`, `npm run build:web`
 
-- [ ] Show completed-source sample counts beside history-based batch ETA hints
+- [x] Show completed-source sample counts beside history-based batch ETA hints
   Prompt: "When a batch ETA falls back to completed-upload history, show how many completed sources contributed to that estimate so reviewers can judge whether the timing signal is still thin or stable."
+  Notes: Completed on 2026-04-03 by extending the batch ETA estimate model with completed-history sample counts, appending those counts to the history and mixed ETA basis labels, and wiring the landing queue card to show that context only when completed uploads contribute to the estimate.
+  Verified: `npm ci`, `npm run test:web -- --run src/lib/batch-upload-eta.test.ts`, `cd apps/web && npx eslint src/lib/batch-upload-eta.ts src/lib/batch-upload-eta.test.ts src/components/landing/upload-section.tsx --max-warnings=0`
+
+- [ ] Flag low-confidence batch ETA history when only one completed source is available
+  Prompt: "When a history-based queue ETA is still based on a single completed source, add a low-confidence indicator so reviewers know the estimate may swing sharply as more uploads finish."
 
 - [x] Preserve failed-upload retry readiness across reloads
   Prompt: "Persist enough local source reference data that a failed upload in the batch workspace can still be retried after a refresh or reopened saved batch, instead of only within the original tab lifetime."

@@ -18,11 +18,18 @@ type BatchUploadEtaOptions = {
 export type BatchUploadEtaEstimate = {
   currentSourceSeconds: number | null;
   currentSourceBasis: BatchUploadEtaBasis | null;
+  currentSourceHistorySampleCount: number | null;
   queueSeconds: number | null;
   queueBasis: BatchUploadEtaBasis | null;
+  queueHistorySampleCount: number | null;
 };
 
 export type BatchUploadEtaBasis = "live" | "history" | "mixed";
+
+type BatchUploadHistoricalPace = {
+  msPerByte: number;
+  sampleCount: number;
+};
 
 export function estimateBatchUploadEta({
   items,
@@ -37,8 +44,10 @@ export function estimateBatchUploadEta({
     return {
       currentSourceSeconds: null,
       currentSourceBasis: null,
+      currentSourceHistorySampleCount: null,
       queueSeconds: null,
       queueBasis: null,
+      queueHistorySampleCount: null,
     };
   }
 
@@ -47,13 +56,17 @@ export function estimateBatchUploadEta({
     return {
       currentSourceSeconds: null,
       currentSourceBasis: null,
+      currentSourceHistorySampleCount: null,
       queueSeconds: null,
       queueBasis: null,
+      queueHistorySampleCount: null,
     };
   }
 
   const activeItem = items[activeIndex];
-  const historicalMsPerByte = getHistoricalMsPerByte(items, completedSourceDurationsMsByItemId);
+  const historicalPace = getHistoricalMsPerByte(items, completedSourceDurationsMsByItemId);
+  const historicalMsPerByte = historicalPace?.msPerByte ?? null;
+  const historicalSampleCount = historicalPace?.sampleCount ?? 0;
   const liveMsPerByte = getLiveMsPerByte({
     itemId: activeItem.id,
     uploadPhase,
@@ -66,6 +79,7 @@ export function estimateBatchUploadEta({
 
   let currentSourceMs: number | null = null;
   let currentSourceBasis: BatchUploadEtaBasis | null = null;
+  let currentSourceHistorySampleCount: number | null = null;
   if (activeItem.status === "uploading") {
     if (liveMsPerByte !== null && uploadStats) {
       const activeTotalBytes = uploadStats.total > 0 ? uploadStats.total : activeItem.sizeBytes;
@@ -75,6 +89,7 @@ export function estimateBatchUploadEta({
     } else if (queueMsPerByte !== null && activeItem.sizeBytes > 0) {
       currentSourceMs = activeItem.sizeBytes * queueMsPerByte;
       currentSourceBasis = remainingQueueBasis;
+      currentSourceHistorySampleCount = remainingQueueBasis === "history" ? historicalSampleCount : null;
     }
   }
 
@@ -91,12 +106,16 @@ export function estimateBatchUploadEta({
     currentSourceMs !== null ? currentSourceBasis : null,
     remainingQueueMs !== null ? remainingQueueBasis : null
   );
+  const queueHistorySampleCount =
+    historicalSampleCount > 0 && queueBasis && queueBasis !== "live" ? historicalSampleCount : null;
 
   return {
     currentSourceSeconds: toRoundedSeconds(currentSourceMs),
     currentSourceBasis,
+    currentSourceHistorySampleCount,
     queueSeconds: toRoundedSeconds(queueMs),
     queueBasis,
+    queueHistorySampleCount,
   };
 }
 
@@ -108,17 +127,19 @@ export function formatUploadEta(seconds: number | null) {
   return `~${formatSeconds(Math.max(1, Math.ceil(seconds)))}`;
 }
 
-export function formatUploadEtaBasis(basis: BatchUploadEtaBasis | null) {
+export function formatUploadEtaBasis(basis: BatchUploadEtaBasis | null, completedSourceCount?: number | null) {
+  const historySampleLabel = formatCompletedSourceCount(completedSourceCount);
+
   if (basis === "live") {
     return "Live transfer rate";
   }
 
   if (basis === "history") {
-    return "Completed upload history";
+    return historySampleLabel ? `Completed upload history · ${historySampleLabel}` : "Completed upload history";
   }
 
   if (basis === "mixed") {
-    return "Live + completed uploads";
+    return historySampleLabel ? `Live + completed uploads · ${historySampleLabel}` : "Live + completed uploads";
   }
 
   return null;
@@ -127,9 +148,10 @@ export function formatUploadEtaBasis(basis: BatchUploadEtaBasis | null) {
 function getHistoricalMsPerByte(
   items: BatchUploadItemRecord[],
   completedSourceDurationsMsByItemId: Record<string, number>
-) {
+): BatchUploadHistoricalPace | null {
   let totalBytes = 0;
   let totalDurationMs = 0;
+  let sampleCount = 0;
 
   for (const item of items) {
     const durationMs = completedSourceDurationsMsByItemId[item.id];
@@ -143,13 +165,17 @@ function getHistoricalMsPerByte(
 
     totalBytes += item.sizeBytes;
     totalDurationMs += durationMs;
+    sampleCount += 1;
   }
 
   if (totalBytes <= 0 || totalDurationMs <= 0) {
     return null;
   }
 
-  return totalDurationMs / totalBytes;
+  return {
+    msPerByte: totalDurationMs / totalBytes,
+    sampleCount,
+  };
 }
 
 function getLiveMsPerByte({
@@ -214,4 +240,12 @@ function combineEtaBasis(
   }
 
   return "mixed";
+}
+
+function formatCompletedSourceCount(count?: number | null) {
+  if (!count || count < 1) {
+    return null;
+  }
+
+  return `${count} completed source${count === 1 ? "" : "s"}`;
 }

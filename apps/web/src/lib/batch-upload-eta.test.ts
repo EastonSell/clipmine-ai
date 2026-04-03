@@ -55,8 +55,10 @@ describe("batch-upload-eta", () => {
     ).toEqual({
       currentSourceSeconds: 10,
       currentSourceBasis: "live",
+      currentSourceHistorySampleCount: null,
       queueSeconds: 30,
       queueBasis: "live",
+      queueHistorySampleCount: null,
     });
   });
 
@@ -105,8 +107,10 @@ describe("batch-upload-eta", () => {
     ).toEqual({
       currentSourceSeconds: 30,
       currentSourceBasis: "history",
+      currentSourceHistorySampleCount: 1,
       queueSeconds: 40,
       queueBasis: "history",
+      queueHistorySampleCount: 1,
     });
   });
 
@@ -155,8 +159,10 @@ describe("batch-upload-eta", () => {
     ).toEqual({
       currentSourceSeconds: 10,
       currentSourceBasis: "live",
+      currentSourceHistorySampleCount: null,
       queueSeconds: 30,
       queueBasis: "mixed",
+      queueHistorySampleCount: 1,
     });
   });
 
@@ -194,8 +200,10 @@ describe("batch-upload-eta", () => {
     ).toEqual({
       currentSourceSeconds: null,
       currentSourceBasis: null,
+      currentSourceHistorySampleCount: null,
       queueSeconds: null,
       queueBasis: null,
+      queueHistorySampleCount: null,
     });
   });
 
@@ -204,7 +212,10 @@ describe("batch-upload-eta", () => {
     expect(formatUploadEta(null)).toBe("Estimating");
     expect(formatUploadEtaBasis("live")).toBe("Live transfer rate");
     expect(formatUploadEtaBasis("history")).toBe("Completed upload history");
+    expect(formatUploadEtaBasis("history", 1)).toBe("Completed upload history · 1 completed source");
+    expect(formatUploadEtaBasis("history", 3)).toBe("Completed upload history · 3 completed sources");
     expect(formatUploadEtaBasis("mixed")).toBe("Live + completed uploads");
+    expect(formatUploadEtaBasis("mixed", 2)).toBe("Live + completed uploads · 2 completed sources");
     expect(formatUploadEtaBasis(null)).toBeNull();
   });
 });

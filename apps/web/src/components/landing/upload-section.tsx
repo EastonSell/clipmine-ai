@@ -811,12 +811,18 @@ export function UploadSection() {
                                       <QueueTimingHint
                                         label="This source ETA"
                                         value={formatUploadEta(batchUploadEta.currentSourceSeconds)}
-                                        basis={formatUploadEtaBasis(batchUploadEta.currentSourceBasis)}
+                                        basis={formatUploadEtaBasis(
+                                          batchUploadEta.currentSourceBasis,
+                                          batchUploadEta.currentSourceHistorySampleCount
+                                        )}
                                       />
                                       <QueueTimingHint
                                         label="Queue intake ETA"
                                         value={formatUploadEta(batchUploadEta.queueSeconds)}
-                                        basis={formatUploadEtaBasis(batchUploadEta.queueBasis)}
+                                        basis={formatUploadEtaBasis(
+                                          batchUploadEta.queueBasis,
+                                          batchUploadEta.queueHistorySampleCount
+                                        )}
                                       />
                                     </div>
                                     <p className="mt-3 text-xs leading-5 text-[var(--muted)]">
