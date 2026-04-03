@@ -1,5 +1,26 @@
 # Verification Log
 
+## Batch Aggregate Eligible Duration Pass
+
+Date: 2026-04-03
+
+- Added a per-source eligible-duration total to the ready-source aggregate export summary so the current thresholded download value is visible beside each source's clip count.
+- Kept the new duration badge derived from the same filtered clip set as the aggregate selection, which keeps the source rows synchronized as reviewers switch thresholds.
+- Extended the existing batch export Playwright scenario so it asserts the per-source duration totals at the balanced, strict, and broad thresholds already covered by the export flow.
+- This checkout started without frontend dependencies installed, so `npm ci` was required before the targeted Playwright command could run.
+
+### Checks run
+
+```bash
+npm ci
+npm run test:e2e -- --grep "batch workspace groups jobs and exports thresholded clips"
+```
+
+### Result
+
+- `1 / 1` targeted Playwright batch export tests passed
+- ready-source aggregate rows now expose both eligible clip counts and eligible duration before export
+- threshold changes keep the per-source duration totals aligned with the active batch selection
 ## Batch Aggregate Source Jump Pass
 
 Date: 2026-04-03

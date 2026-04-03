@@ -369,6 +369,16 @@ export function BatchWorkspace({
       ),
     [jobs, qualityThreshold]
   );
+  const eligibleClipDurationsByJobId = useMemo(
+    () =>
+      new Map(
+        jobs.map((job) => [
+          job.jobId,
+          job.clips.reduce((total, clip) => (clip.score >= qualityThreshold ? total + clip.duration : total), 0),
+        ])
+      ),
+    [jobs, qualityThreshold]
+  );
   const readySourceEligibleClipSummaries = useMemo(
     () =>
       (session?.items ?? [])
@@ -377,8 +387,9 @@ export function BatchWorkspace({
           jobId: item.jobId,
           fileName: jobsById.get(item.jobId)?.sourceVideo.file_name ?? item.fileName,
           eligibleClipCount: eligibleClipCountsByJobId.get(item.jobId) ?? 0,
+          eligibleDuration: eligibleClipDurationsByJobId.get(item.jobId) ?? 0,
         })),
-    [eligibleClipCountsByJobId, jobsById, session?.items]
+    [eligibleClipCountsByJobId, eligibleClipDurationsByJobId, jobsById, session?.items]
   );
   const contributingReadySourceCount = useMemo(
     () => readySourceEligibleClipSummaries.filter((entry) => entry.eligibleClipCount > 0).length,
@@ -750,6 +761,9 @@ export function BatchWorkspace({
                           <div className="flex flex-wrap items-center justify-end gap-2">
                             <span className="rounded-full border border-[var(--line)] bg-white/[0.05] px-2.5 py-1 text-xs font-medium text-[var(--muted-strong)]">
                               {entry.eligibleClipCount} eligible {entry.eligibleClipCount === 1 ? "clip" : "clips"}
+                            </span>
+                            <span className="rounded-full border border-[var(--line)] bg-white/[0.05] px-2.5 py-1 text-xs font-medium text-[var(--muted-strong)]">
+                              {formatSeconds(entry.eligibleDuration)} eligible duration
                             </span>
                             <Button
                               size="sm"

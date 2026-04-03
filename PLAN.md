@@ -280,8 +280,13 @@ Avoid:
   Notes: Completed on 2026-04-03 by adding per-source inspect actions to the ready-source export summary, syncing those actions with the selected batch source panel, and highlighting the currently selected source directly inside the aggregate export card.
   Verified: `npm ci`, `npm run lint:web -- --file src/components/batch/batch-workspace.tsx`, `npm run test:e2e -- --grep "batch workspace groups jobs and exports thresholded clips"`
 
-- [ ] Show eligible duration totals in the aggregate export summary
+- [x] Show eligible duration totals in the aggregate export summary
   Prompt: "Add per-source eligible clip duration totals beside the clip counts in the ready-source aggregate export summary so reviewers can compare likely download value before exporting."
+  Notes: Completed on 2026-04-03 by deriving eligible-duration totals per ready source from the current thresholded batch clips and surfacing that runtime beside each source's eligible clip-count badge in the aggregate export summary.
+  Verified: `npm ci`, `npm run test:e2e -- --grep "batch workspace groups jobs and exports thresholded clips"`
+
+- [ ] Show each ready source's share of eligible duration in the aggregate export summary
+  Prompt: "Add a per-source share of total eligible duration to the ready-source aggregate export summary so reviewers can compare how much of the download each source contributes before exporting."
 
 - [x] Add queue completion toast and summary state
   Prompt: "When a batch queue finishes, show a stronger completion summary before navigating so the user understands how many sources succeeded or failed."
@@ -461,3 +466,5 @@ Avoid:
 - 2026-04-03: Added `Warn when browser source persistence is unavailable for failed batch retries` as the next retry-reliability follow-up.
 - 2026-04-03: Completed `Show per-job eligible clip totals in the batch aggregate export summary` after installing frontend dependencies and passing focused lint plus Playwright verification.
 - 2026-04-03: Added `Add source-jump actions to the aggregate export summary` as the next aggregate-review follow-up.
+- 2026-04-03: Completed `Show eligible duration totals in the aggregate export summary` after installing frontend dependencies and passing focused Playwright batch export verification.
+- 2026-04-03: Added `Show each ready source's share of eligible duration in the aggregate export summary` as the next aggregate-review follow-up.
