@@ -1109,14 +1109,22 @@ test("batch workspace groups jobs and exports thresholded clips", async ({ page 
   await expect(page.locator('[data-testid^="aggregate-source-summary-"]')).toHaveCount(0);
   await expect(page.getByText("No ready sources contribute clips at 100+ right now.")).toBeVisible();
   await expect(page.getByText("Strict 92+ reopens 1 eligible clip from beta.mp4 without dragging the slider.")).toBeVisible();
-  await expect(page.getByText("beta.mp4 · 1 clip")).toBeVisible();
+  const broaderPreviewInspectButton = page.getByRole("button", {
+    name: "Inspect beta.mp4 from the broader-threshold preview",
+  });
+  await expect(broaderPreviewInspectButton).toContainText("beta.mp4 · 1 clip");
+  await expect(broaderPreviewInspectButton).toHaveAttribute("aria-pressed", "false");
+  await broaderPreviewInspectButton.click();
+  await expect(page).toHaveURL(/\/batches\/demo-batch\?job=job-beta&threshold=100$/);
+  await expect(page.getByRole("heading", { name: "beta.mp4" })).toBeVisible();
+  await expect(broaderPreviewInspectButton).toHaveAttribute("aria-pressed", "true");
   await page.getByRole("button", { name: "Try Strict 92+" }).click();
-  await expect(page).toHaveURL(/\/batches\/demo-batch\?job=job-alpha&threshold=92$/);
+  await expect(page).toHaveURL(/\/batches\/demo-batch\?job=job-beta&threshold=92$/);
   await expect(page.getByTestId("aggregate-source-summary-job-beta")).toBeVisible();
 
   await page.locator('input[type="range"]').fill("90");
   await page.getByRole("button", { name: /Audio-only package/i }).click();
-  await expect(page).toHaveURL(/\/batches\/demo-batch\?job=job-alpha&preset=audio-only&threshold=90$/);
+  await expect(page).toHaveURL(/\/batches\/demo-batch\?job=job-beta&preset=audio-only&threshold=90$/);
   await expect(page.getByText(/clipmine-batch-export-3-sources-queued-audio\//i)).toBeVisible();
   await expect(page.getByText(/clip_001__clip-1\.wav/i)).toBeVisible();
   await expect(page.getByText(/clip_001__job-beta-clip-1\.wav/i)).toBeVisible();

@@ -320,8 +320,13 @@ Avoid:
   Notes: Completed on 2026-04-03 by extending the empty aggregate-summary recovery state to preview the ready source names and eligible clip counts that return at the next broader preset, so reviewers can see which sources will re-enter the export before changing the threshold.
   Verified: `npm_config_cache=/tmp/clipmine-npm-cache npm run lint --workspace apps/web -- src/components/batch/batch-workspace.tsx`, `npm_config_cache=/tmp/clipmine-npm-cache npm run test:e2e -- --grep "batch workspace groups jobs and exports thresholded clips"`
 
-- [ ] Add inspect actions to broader-threshold recovery previews
+- [x] Add inspect actions to broader-threshold recovery previews
   Prompt: "When the empty aggregate export summary previews returning ready sources, let reviewers jump straight into those source workspaces before they commit to a broader threshold."
+  Notes: Completed on 2026-04-03 by turning the broader-threshold recovery preview chips into inspect actions that reuse the existing batch source jump behavior, keep the current threshold in place, and highlight the currently inspected preview source.
+  Verified: `npm ci`, `npm run lint:web -- --file src/components/batch/batch-workspace.tsx`, `npm run test:e2e -- --grep "batch workspace groups jobs and exports thresholded clips"`
+
+- [ ] Show projected eligible duration in broader-threshold recovery previews
+  Prompt: "When the empty aggregate export summary previews returning ready sources, include how much eligible duration each source would add at the suggested threshold so reviewers can compare likely export value before inspecting or broadening."
 
 - [x] Add queue completion toast and summary state
   Prompt: "When a batch queue finishes, show a stronger completion summary before navigating so the user understands how many sources succeeded or failed."
@@ -532,6 +537,8 @@ Avoid:
 - 2026-04-03: Added `Preview which ready sources return after a broader-threshold recovery jump` as the next aggregate-export recovery follow-up.
 - 2026-04-03: Completed `Preview which ready sources return after a broader-threshold recovery jump` after installing frontend dependencies in the worktree, passing focused lint, and rerunning the targeted batch export Playwright flow.
 - 2026-04-03: Added `Add inspect actions to broader-threshold recovery previews` as the next aggregate-export recovery follow-up.
+- 2026-04-03: Completed `Add inspect actions to broader-threshold recovery previews` after reinstalling frontend dependencies in the worktree, passing focused lint, and rerunning the targeted batch export Playwright flow.
+- 2026-04-03: Added `Show projected eligible duration in broader-threshold recovery previews` as the next aggregate-export recovery follow-up.
 - 2026-04-03: Completed `Add a ready-only filter to the batch queue` after reinstalling frontend dependencies in the worktree and passing focused web-unit and Playwright verification.
 - 2026-04-03: Added `Persist ready-only batch queue scope in the URL` as the next batch-review deep-link follow-up.
 - 2026-04-03: Completed `Persist ready-only batch queue scope in the URL` after reinstalling frontend dependencies in the worktree and passing focused web-unit plus reload-aware Playwright verification.

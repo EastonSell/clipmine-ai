@@ -1445,3 +1445,23 @@ npm run test:e2e -- --grep "batch workspace can collapse the queue to ready sour
 - `npm ci`: completed successfully to restore frontend dependencies after the sync reset removed them from this worktree
 - `npm run test:web -- --run src/lib/batch-focus.test.ts`: 16 / 16 tests passed
 - `npm run test:e2e -- --grep "batch workspace can collapse the queue to ready sources only"`: 1 / 1 test passed
+
+## Broader-Threshold Recovery Inspect Pass
+
+- Turned the empty aggregate-summary recovery preview chips into inspect actions so reviewers can jump into a suggested ready source before broadening the threshold.
+- Reused the existing aggregate-summary source-jump behavior so the preview inspect action updates the selected workspace while preserving the current threshold and export context.
+- Extended the existing batch export Playwright scenario to assert the preview inspect action changes the active source without forcing the broader-threshold jump first.
+
+## Broader-Threshold Recovery Inspect Checks Run
+
+```bash
+npm ci
+npm run lint:web -- --file src/components/batch/batch-workspace.tsx
+npm run test:e2e -- --grep "batch workspace groups jobs and exports thresholded clips"
+```
+
+## Broader-Threshold Recovery Inspect Results
+
+- `npm ci`: completed successfully to restore frontend dependencies after the sync reset removed them from this worktree
+- `npm run lint:web -- --file src/components/batch/batch-workspace.tsx`: passed
+- `npm run test:e2e -- --grep "batch workspace groups jobs and exports thresholded clips"`: 1 / 1 test passed

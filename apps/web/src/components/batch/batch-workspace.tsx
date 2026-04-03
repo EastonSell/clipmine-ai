@@ -953,14 +953,22 @@ export function BatchWorkspace({
                         </p>
                         {nextBroaderReadySourcePreviewList.length > 0 ? (
                           <div className="flex flex-wrap items-center gap-2">
-                            {nextBroaderReadySourcePreviewList.map((entry) => (
-                              <span
-                                key={entry.jobId}
-                                className="rounded-full border border-[var(--line)] bg-white/[0.05] px-2.5 py-1 text-[11px] font-medium text-[var(--muted-strong)]"
-                              >
-                                {entry.fileName} · {entry.eligibleClipCount} {entry.eligibleClipCount === 1 ? "clip" : "clips"}
-                              </span>
-                            ))}
+                            {nextBroaderReadySourcePreviewList.map((entry) => {
+                              const isActivePreviewSource = activeJobId === entry.jobId;
+                              return (
+                                <Button
+                                  key={entry.jobId}
+                                  size="sm"
+                                  variant={isActivePreviewSource ? "primary" : "secondary"}
+                                  className="rounded-full px-2.5 py-1 text-[11px]"
+                                  onClick={() => inspectBatchJobFromExportSummary(entry.jobId)}
+                                  aria-label={`Inspect ${entry.fileName} from the broader-threshold preview`}
+                                  aria-pressed={isActivePreviewSource}
+                                >
+                                  {entry.fileName} · {entry.eligibleClipCount} {entry.eligibleClipCount === 1 ? "clip" : "clips"}
+                                </Button>
+                              );
+                            })}
                             {nextBroaderReadySourceOverflowCount > 0 ? (
                               <span className="rounded-full border border-dashed border-[var(--line)] px-2.5 py-1 text-[11px] font-medium text-[var(--muted)]">
                                 +{nextBroaderReadySourceOverflowCount} more{" "}
