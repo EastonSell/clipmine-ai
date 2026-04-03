@@ -1,5 +1,28 @@
 # Verification Log
 
+## Batch Threshold Preset Count Labels Pass
+
+Date: 2026-04-03
+
+- Added a small batch-threshold helper that counts how many clips clear any requested score floor across the currently loaded batch jobs.
+- Updated the aggregate export quick-preset buttons to show live eligible clip totals for Strict, Balanced, and Broad so reviewers can compare the export tradeoff before switching thresholds.
+- Extended the existing batch export Playwright scenario so it asserts the annotated preset counts alongside the current threshold URL and export-preset behavior.
+- This checkout started without frontend dependencies installed, so `npm ci` was required before the targeted checks could run.
+
+### Checks run
+
+```bash
+npm ci
+npm run test:web -- --run src/lib/batch-focus.test.ts
+env -u FORCE_COLOR -u NO_COLOR PLAYWRIGHT_BROWSERS_PATH=/tmp/clipmine-playwright-browsers npx playwright test --grep "batch workspace groups jobs and exports thresholded clips"
+```
+
+### Result
+
+- `13 / 13` targeted batch-focus unit tests passed
+- `1 / 1` targeted Playwright batch export tests passed
+- batch reviewers can now compare preset tradeoffs from the button labels before changing the score floor
+
 ## Batch Threshold Quick Presets Pass
 
 Date: 2026-04-03

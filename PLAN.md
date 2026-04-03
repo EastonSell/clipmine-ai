@@ -265,8 +265,13 @@ Avoid:
   Notes: Completed on 2026-04-03 by adding shared Strict, Balanced, and Broad threshold presets, wiring one-click buttons beside the aggregate export slider, and keeping those preset jumps aligned with the existing URL and saved-session threshold state.
   Verified: `npm ci`, `npm run test:web -- --run src/lib/batch-focus.test.ts`, `npm run test:e2e -- --grep "batch workspace groups jobs and exports thresholded clips"`
 
-- [ ] Show eligible clip counts inside batch threshold presets
+- [x] Show eligible clip counts inside batch threshold presets
   Prompt: "Annotate the Strict, Balanced, and Broad quick preset buttons with the current eligible clip counts so reviewers can see the export tradeoff before switching thresholds."
+  Notes: Completed on 2026-04-03 by deriving live eligible-clip totals for each shared threshold preset, surfacing those counts directly inside the Strict, Balanced, and Broad buttons, and extending the existing batch export coverage to prove the annotated counts stay aligned with the seeded clip data.
+  Verified: `npm ci`, `npm run test:web -- --run src/lib/batch-focus.test.ts`, `env -u FORCE_COLOR -u NO_COLOR PLAYWRIGHT_BROWSERS_PATH=/tmp/clipmine-playwright-browsers npx playwright test --grep "batch workspace groups jobs and exports thresholded clips"`
+
+- [ ] Show per-job eligible clip totals in the batch aggregate export summary
+  Prompt: "Break the aggregate export selection down by ready source so reviewers can see which uploads contribute clips at the current threshold before downloading."
 
 - [x] Add queue completion toast and summary state
   Prompt: "When a batch queue finishes, show a stronger completion summary before navigating so the user understands how many sources succeeded or failed."

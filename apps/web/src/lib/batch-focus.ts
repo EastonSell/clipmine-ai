@@ -1,4 +1,4 @@
-import type { BatchUploadItemRecord, PackageExportPreset } from "./types";
+import type { BatchUploadItemRecord, JobResponse, PackageExportPreset } from "./types";
 
 export type BatchTriageState = {
   prioritizeIssues: boolean;
@@ -217,4 +217,14 @@ export function getReadyBatchJobShortcutDirection({
 
 export function hasBatchIssues(items: BatchUploadItemRecord[]) {
   return items.some(isBatchIssueItem);
+}
+
+export function getBatchEligibleClipCount(
+  jobs: Array<Pick<JobResponse, "clips">>,
+  threshold: number
+) {
+  return jobs.reduce(
+    (total, job) => total + job.clips.filter((clip) => clip.score >= threshold).length,
+    0
+  );
 }

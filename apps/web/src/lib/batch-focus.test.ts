@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   BATCH_QUALITY_THRESHOLD_PRESETS,
   DEFAULT_BATCH_QUALITY_THRESHOLD,
+  getBatchEligibleClipCount,
   getBatchWorkspaceHref,
   getOrderedBatchItems,
   getPreferredBatchJobId,
@@ -15,7 +16,7 @@ import {
   parseBatchSelectedPreset,
   parseBatchTriageState,
 } from "./batch-focus";
-import type { BatchUploadItemRecord } from "./types";
+import type { BatchUploadItemRecord, JobResponse } from "./types";
 
 function createItem(
   overrides: Partial<BatchUploadItemRecord> & Pick<BatchUploadItemRecord, "id" | "fileName" | "status">
@@ -40,6 +41,48 @@ describe("batch-focus", () => {
       { label: "Balanced", value: DEFAULT_BATCH_QUALITY_THRESHOLD },
       { label: "Broad", value: 72 },
     ]);
+  });
+
+  it("counts the clips eligible at a given batch threshold", () => {
+    expect(
+      getBatchEligibleClipCount(
+        [
+          {
+            clips: [
+              { score: 94 },
+              { score: 83 },
+            ],
+          },
+          {
+            clips: [
+              { score: 91 },
+              { score: 73 },
+            ],
+          },
+        ] as Array<Pick<JobResponse, "clips">>,
+        84
+      )
+    ).toBe(2);
+
+    expect(
+      getBatchEligibleClipCount(
+        [
+          {
+            clips: [
+              { score: 94 },
+              { score: 83 },
+            ],
+          },
+          {
+            clips: [
+              { score: 91 },
+              { score: 73 },
+            ],
+          },
+        ] as Array<Pick<JobResponse, "clips">>,
+        72
+      )
+    ).toBe(4);
   });
 
   it("parses the saved batch triage state from search params", () => {

@@ -32,6 +32,7 @@ import { loadBatchSourceFile, removeBatchSourceFile } from "@/lib/batch-source-f
 import {
   BATCH_QUALITY_THRESHOLD_PRESETS,
   DEFAULT_BATCH_QUALITY_THRESHOLD,
+  getBatchEligibleClipCount,
   getBatchWorkspaceHref,
   getOrderedBatchItems,
   getPreferredBatchJobId,
@@ -333,6 +334,13 @@ export function BatchWorkspace({
     () => aggregateClips.reduce((total, entry) => total + entry.clip.duration, 0),
     [aggregateClips]
   );
+  const presetEligibleClipCounts = useMemo(
+    () =>
+      new Map(
+        BATCH_QUALITY_THRESHOLD_PRESETS.map((preset) => [preset.value, getBatchEligibleClipCount(jobs, preset.value)])
+      ),
+    [jobs]
+  );
   const activeThresholdPreset =
     BATCH_QUALITY_THRESHOLD_PRESETS.find((preset) => preset.value === qualityThreshold) ?? null;
   const activePreset = getPackageExportPresetOption(selectedPreset);
@@ -613,6 +621,7 @@ export function BatchWorkspace({
                 <div className="mt-4 grid gap-2 sm:grid-cols-3">
                   {BATCH_QUALITY_THRESHOLD_PRESETS.map((preset) => {
                     const isActive = qualityThreshold === preset.value;
+                    const eligibleClipCount = presetEligibleClipCounts.get(preset.value) ?? 0;
 
                     return (
                       <button
@@ -630,6 +639,9 @@ export function BatchWorkspace({
                         <div className="flex items-center justify-between gap-3">
                           <span className="text-sm font-semibold text-[var(--text)]">{preset.label}</span>
                           <span className="font-mono text-xs text-[var(--muted-strong)]">{preset.value}+</span>
+                        </div>
+                        <div className="mt-2 inline-flex rounded-full border border-[var(--line)] bg-white/[0.05] px-2.5 py-1 text-[11px] font-medium tracking-[0.01em] text-[var(--muted-strong)]">
+                          {eligibleClipCount} eligible {eligibleClipCount === 1 ? "clip" : "clips"}
                         </div>
                         <p className="mt-2 text-xs leading-5 text-[var(--muted)]">{preset.description}</p>
                       </button>

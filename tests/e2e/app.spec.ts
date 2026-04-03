@@ -933,17 +933,19 @@ test("batch workspace groups jobs and exports thresholded clips", async ({ page 
   await expect(page.getByRole("heading", { name: "Top clips across the batch" })).toBeVisible();
   await expect(page.getByRole("button", { name: /alpha\.mp4 ready/i })).toBeVisible();
   await expect(page.getByRole("button", { name: /beta\.mp4 ready/i })).toBeVisible();
-  await expect(page.getByRole("button", { name: /Balanced 84\+/i })).toHaveAttribute("aria-pressed", "true");
+  await expect(page.getByRole("button", { name: /Strict 92\+ 1 eligible clip/i })).toBeVisible();
+  await expect(page.getByRole("button", { name: /Balanced 84\+ 2 eligible clips/i })).toHaveAttribute("aria-pressed", "true");
+  await expect(page.getByRole("button", { name: /Broad 72\+ 4 eligible clips/i })).toBeVisible();
 
-  await page.getByRole("button", { name: /Strict 92\+/i }).click();
+  await page.getByRole("button", { name: /Strict 92\+ 1 eligible clip/i }).click();
   await expect(page).toHaveURL(/\/batches\/demo-batch\?job=job-alpha&threshold=92$/);
   await expect(page.getByText("92/100")).toBeVisible();
-  await expect(page.getByRole("button", { name: /Strict 92\+/i })).toHaveAttribute("aria-pressed", "true");
+  await expect(page.getByRole("button", { name: /Strict 92\+ 1 eligible clip/i })).toHaveAttribute("aria-pressed", "true");
 
-  await page.getByRole("button", { name: /Broad 72\+/i }).click();
+  await page.getByRole("button", { name: /Broad 72\+ 4 eligible clips/i }).click();
   await expect(page).toHaveURL(/\/batches\/demo-batch\?job=job-alpha&threshold=72$/);
   await expect(page.getByText("72/100")).toBeVisible();
-  await expect(page.getByRole("button", { name: /Broad 72\+/i })).toHaveAttribute("aria-pressed", "true");
+  await expect(page.getByRole("button", { name: /Broad 72\+ 4 eligible clips/i })).toHaveAttribute("aria-pressed", "true");
 
   await page.locator('input[type="range"]').fill("90");
   await page.getByRole("button", { name: /Audio-only package/i }).click();
