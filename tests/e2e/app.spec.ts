@@ -1112,7 +1112,7 @@ test("batch workspace groups jobs and exports thresholded clips", async ({ page 
   const broaderPreviewInspectButton = page.getByRole("button", {
     name: "Inspect beta.mp4 from the broader-threshold preview",
   });
-  await expect(broaderPreviewInspectButton).toContainText("beta.mp4 · 1 clip");
+  await expect(broaderPreviewInspectButton).toContainText("beta.mp4 · 1 clip · 0:02 duration");
   await expect(broaderPreviewInspectButton).toHaveAttribute("aria-pressed", "false");
   await broaderPreviewInspectButton.click();
   await expect(page).toHaveURL(/\/batches\/demo-batch\?job=job-beta&threshold=100$/);

@@ -1,5 +1,28 @@
 # Verification Log
 
+## Batch Threshold Recovery Duration Preview Pass
+
+Date: 2026-04-03
+
+- Extended the empty aggregate export recovery preview chips so each returning ready source now shows its projected eligible duration at the suggested broader threshold, not just the recovered clip count.
+- Kept the inspect action and one-click threshold jump intact while using the same projected duration as the recovery-preview tie-breaker when multiple sources recover the same number of clips.
+- Reused the existing focused Playwright batch export scenario to assert the new recovery-preview duration copy, and validated the touched batch workspace component with a scoped ESLint run.
+- This synced checkout started without frontend dependencies installed, so `npm ci` was required before the focused lint and Playwright checks could run.
+
+### Checks run
+
+```bash
+npm ci
+cd apps/web && npx eslint src/components/batch/batch-workspace.tsx --max-warnings=0
+npm run test:e2e -- --grep "batch workspace groups jobs and exports thresholded clips"
+```
+
+### Result
+
+- targeted frontend lint passed for the touched batch workspace component
+- `1 / 1` targeted Playwright batch export tests passed
+- broader-threshold recovery previews now show per-source projected duration before the reviewer broadens the export floor
+
 ## Batch ETA Sample Count Pass
 
 Date: 2026-04-03

@@ -325,8 +325,13 @@ Avoid:
   Notes: Completed on 2026-04-03 by turning the broader-threshold recovery preview chips into inspect actions that reuse the existing batch source jump behavior, keep the current threshold in place, and highlight the currently inspected preview source.
   Verified: `npm ci`, `npm run lint:web -- --file src/components/batch/batch-workspace.tsx`, `npm run test:e2e -- --grep "batch workspace groups jobs and exports thresholded clips"`
 
-- [ ] Show projected eligible duration in broader-threshold recovery previews
+- [x] Show projected eligible duration in broader-threshold recovery previews
   Prompt: "When the empty aggregate export summary previews returning ready sources, include how much eligible duration each source would add at the suggested threshold so reviewers can compare likely export value before inspecting or broadening."
+  Notes: Completed on 2026-04-03 by extending the broader-threshold recovery preview chips with per-source eligible duration at the suggested preset and using that same projected duration to break ties when preview sources have matching clip counts.
+  Verified: `npm ci`, `cd apps/web && npx eslint src/components/batch/batch-workspace.tsx --max-warnings=0`, `npm run test:e2e -- --grep "batch workspace groups jobs and exports thresholded clips"`
+
+- [ ] Show total projected eligible duration in the broader-threshold recovery summary
+  Prompt: "When the empty aggregate export summary suggests a broader preset, show the total eligible duration that threshold would restore so reviewers can compare the full export gain before clicking."
 
 - [x] Add queue completion toast and summary state
   Prompt: "When a batch queue finishes, show a stronger completion summary before navigating so the user understands how many sources succeeded or failed."
@@ -552,6 +557,8 @@ Avoid:
 - 2026-04-03: Added `Add inspect actions to broader-threshold recovery previews` as the next aggregate-export recovery follow-up.
 - 2026-04-03: Completed `Add inspect actions to broader-threshold recovery previews` after reinstalling frontend dependencies in the worktree, passing focused lint, and rerunning the targeted batch export Playwright flow.
 - 2026-04-03: Added `Show projected eligible duration in broader-threshold recovery previews` as the next aggregate-export recovery follow-up.
+- 2026-04-03: Completed `Show projected eligible duration in broader-threshold recovery previews` after reinstalling frontend dependencies in the worktree, passing focused lint, and rerunning the targeted batch export Playwright flow.
+- 2026-04-03: Added `Show total projected eligible duration in the broader-threshold recovery summary` as the next aggregate-export recovery follow-up.
 - 2026-04-03: Completed `Add a ready-only filter to the batch queue` after reinstalling frontend dependencies in the worktree and passing focused web-unit and Playwright verification.
 - 2026-04-03: Added `Persist ready-only batch queue scope in the URL` as the next batch-review deep-link follow-up.
 - 2026-04-03: Completed `Persist ready-only batch queue scope in the URL` after reinstalling frontend dependencies in the worktree and passing focused web-unit plus reload-aware Playwright verification.

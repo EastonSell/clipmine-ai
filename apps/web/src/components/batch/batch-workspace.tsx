@@ -81,6 +81,7 @@ type ReadySourceRecoveryPreview = {
   jobId: string;
   fileName: string;
   eligibleClipCount: number;
+  eligibleDuration: number;
   readySourceIndex: number;
 };
 
@@ -527,17 +528,33 @@ export function BatchWorkspace({
             .filter((item): item is BatchUploadItemRecord & { jobId: string } => item.status === "ready" && Boolean(item.jobId))
             .map((item, index) => {
               const job = jobsById.get(item.jobId);
+              const eligibleMetrics =
+                job?.clips.reduce(
+                  (metrics, clip) => {
+                    if (clip.score >= nextBroaderThresholdPreset.value) {
+                      metrics.eligibleClipCount += 1;
+                      metrics.eligibleDuration += clip.duration;
+                    }
+
+                    return metrics;
+                  },
+                  { eligibleClipCount: 0, eligibleDuration: 0 }
+                ) ?? { eligibleClipCount: 0, eligibleDuration: 0 };
+
               return {
                 jobId: item.jobId,
                 fileName: job?.sourceVideo.file_name ?? item.fileName,
-                eligibleClipCount: job?.clips.filter((clip) => clip.score >= nextBroaderThresholdPreset.value).length ?? 0,
+                eligibleClipCount: eligibleMetrics.eligibleClipCount,
+                eligibleDuration: eligibleMetrics.eligibleDuration,
                 readySourceIndex: index,
               };
             })
             .filter((entry) => entry.eligibleClipCount > 0)
             .toSorted(
               (left, right) =>
-                right.eligibleClipCount - left.eligibleClipCount || left.readySourceIndex - right.readySourceIndex
+                right.eligibleDuration - left.eligibleDuration ||
+                right.eligibleClipCount - left.eligibleClipCount ||
+                left.readySourceIndex - right.readySourceIndex
             )
         : [],
     [jobsById, nextBroaderThresholdPreset, session?.items]
@@ -994,7 +1011,8 @@ export function BatchWorkspace({
                                   aria-label={`Inspect ${entry.fileName} from the broader-threshold preview`}
                                   aria-pressed={isActivePreviewSource}
                                 >
-                                  {entry.fileName} · {entry.eligibleClipCount} {entry.eligibleClipCount === 1 ? "clip" : "clips"}
+                                  {entry.fileName} · {entry.eligibleClipCount} {entry.eligibleClipCount === 1 ? "clip" : "clips"} ·{" "}
+                                  {formatSeconds(entry.eligibleDuration)} duration
                                 </Button>
                               );
                             })}
