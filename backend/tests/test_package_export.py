@@ -67,11 +67,129 @@ def test_package_export_returns_zip_with_manifest_and_clip_files(tmp_path: Path)
 
     manifest_payload = orjson.loads(archive.read("clipmine-export-package-job/manifest.json"))
     assert manifest_payload["jobId"] == job_id
+    assert manifest_payload["preset"] == "full-av"
+    assert manifest_payload["mediaKind"] == "video"
+    assert manifest_payload["includesMediaFiles"] is True
     assert manifest_payload["clipCount"] == 2
     assert manifest_payload["clips"][0]["clipId"] == clip_one.id
     assert manifest_payload["clips"][0]["relativePath"] == "clips/clip_001__package-job-clip-001.mp4"
     assert manifest_payload["clips"][1]["clipId"] == clip_two.id
     assert manifest_payload["clips"][1]["relativePath"] == "clips/clip_002__package-job-clip-002.mp4"
+
+
+def test_package_export_supports_audio_only_preset(tmp_path: Path) -> None:
+    with TestClient(app) as client:
+        settings = client.app.state.settings
+        original_storage = settings.storage_dir
+        original_model_cache = settings.model_cache_dir
+        settings.storage_dir = tmp_path / "storage"
+        settings.model_cache_dir = tmp_path / "models"
+
+        try:
+            job_id = "package-job"
+            clip = build_clip_record(job_id=job_id, clip_id="package-job-clip-001", start=0.0, end=1.1, score=94.0)
+            manifest = client.app.state.job_store.create_manifest_for_job(
+                job_id=job_id,
+                file_name="sample.mp4",
+                content_type="video/mp4",
+                size_bytes=2048,
+                relative_path="jobs/package-job/source/sample.mp4",
+            )
+            create_sample_video(client.app.state.job_store.source_video_path(manifest))
+            client.app.state.job_store.save_job(
+                manifest.model_copy(
+                    update={
+                        "status": JobStatus.READY,
+                        "progress_phase": ProgressPhase.READY,
+                        "clips": [clip],
+                        "summary": build_summary([clip], duration_seconds=2.0, transcript_text="Example transcript"),
+                        "timeline": build_timeline([clip], duration_seconds=2.0),
+                    }
+                )
+            )
+
+            response = client.post(
+                f"/api/jobs/{job_id}/exports/package",
+                json={"clipIds": [clip.id], "preset": "audio-only"},
+            )
+        finally:
+            settings.storage_dir = original_storage
+            settings.model_cache_dir = original_model_cache
+
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "application/zip"
+    assert 'filename="clipmine-export-package-job-audio.zip"' in response.headers["content-disposition"]
+
+    archive = zipfile.ZipFile(BytesIO(response.content))
+    archive_names = set(archive.namelist())
+    audio_path = "clipmine-export-package-job-audio/audio/clip_001__package-job-clip-001.wav"
+    assert "clipmine-export-package-job-audio/manifest.json" in archive_names
+    assert audio_path in archive_names
+
+    audio_bytes = archive.read(audio_path)
+    assert audio_bytes[:4] == b"RIFF"
+    assert audio_bytes[8:12] == b"WAVE"
+
+    manifest_payload = orjson.loads(archive.read("clipmine-export-package-job-audio/manifest.json"))
+    assert manifest_payload["preset"] == "audio-only"
+    assert manifest_payload["mediaKind"] == "audio"
+    assert manifest_payload["includesMediaFiles"] is True
+    assert manifest_payload["clips"][0]["fileName"] == "clip_001__package-job-clip-001.wav"
+    assert manifest_payload["clips"][0]["relativePath"] == "audio/clip_001__package-job-clip-001.wav"
+
+
+def test_package_export_supports_metadata_only_preset(tmp_path: Path) -> None:
+    with TestClient(app) as client:
+        settings = client.app.state.settings
+        original_storage = settings.storage_dir
+        original_model_cache = settings.model_cache_dir
+        settings.storage_dir = tmp_path / "storage"
+        settings.model_cache_dir = tmp_path / "models"
+
+        try:
+            job_id = "package-job"
+            clip = build_clip_record(job_id=job_id, clip_id="package-job-clip-001", start=0.0, end=0.9, score=94.0)
+            manifest = client.app.state.job_store.create_manifest_for_job(
+                job_id=job_id,
+                file_name="sample.mp4",
+                content_type="video/mp4",
+                size_bytes=2048,
+                relative_path="jobs/package-job/source/sample.mp4",
+            )
+            client.app.state.job_store.save_job(
+                manifest.model_copy(
+                    update={
+                        "status": JobStatus.READY,
+                        "progress_phase": ProgressPhase.READY,
+                        "clips": [clip],
+                        "summary": build_summary([clip], duration_seconds=1.0, transcript_text="Example transcript"),
+                        "timeline": build_timeline([clip], duration_seconds=1.0),
+                    }
+                )
+            )
+
+            response = client.post(
+                f"/api/jobs/{job_id}/exports/package",
+                json={"clipIds": [clip.id], "preset": "metadata-only"},
+            )
+        finally:
+            settings.storage_dir = original_storage
+            settings.model_cache_dir = original_model_cache
+
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "application/zip"
+    assert 'filename="clipmine-export-package-job-metadata.zip"' in response.headers["content-disposition"]
+
+    archive = zipfile.ZipFile(BytesIO(response.content))
+    archive_names = set(archive.namelist())
+    assert archive_names == {"clipmine-export-package-job-metadata/manifest.json"}
+
+    manifest_payload = orjson.loads(archive.read("clipmine-export-package-job-metadata/manifest.json"))
+    assert manifest_payload["preset"] == "metadata-only"
+    assert manifest_payload["mediaKind"] == "metadata"
+    assert manifest_payload["includesMediaFiles"] is False
+    assert manifest_payload["clips"][0]["fileName"] is None
+    assert manifest_payload["clips"][0]["relativePath"] is None
 
 
 def test_package_export_rejects_empty_selection(tmp_path: Path) -> None:

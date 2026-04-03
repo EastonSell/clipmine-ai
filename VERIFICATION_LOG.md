@@ -927,3 +927,30 @@ npm run test:e2e -- --grep "shortlisted clips can be compared side by side"
 - `npm run lint:web`: passed
 - `npm run test:web`: 29 / 29 tests passed
 - `npm run test:e2e -- --grep "shortlisted clips can be compared side by side"`: 1 / 1 test passed
+
+## Export Preset Pass
+
+- Added preset-aware selected-package exports for the single-job workspace.
+- The export panel now lets users switch between:
+  - the existing full AV package
+  - a wav-based audio-only package
+  - a metadata-only manifest bundle
+- The backend package export route now accepts a `preset` field, builds preset-specific archive names and file layouts, and skips the source-video existence requirement for metadata-only exports.
+
+## Export Preset Checks Run
+
+```bash
+python3.11 -m pip install -e backend
+npm ci
+python3.11 -m pytest backend/tests/test_package_export.py
+npm run build:web
+npm run test:e2e -- --grep "selected clips can be batched into a package export"
+```
+
+## Export Preset Results
+
+- `python3.11 -m pip install -e backend`: completed successfully
+- `npm ci`: completed successfully
+- `python3.11 -m pytest backend/tests/test_package_export.py`: 6 / 6 tests passed
+- `npm run build:web`: passed
+- `npm run test:e2e -- --grep "selected clips can be batched into a package export"`: 1 / 1 test passed

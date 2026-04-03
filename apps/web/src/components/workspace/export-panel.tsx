@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 
-import { AlertCircle, FileArchive, FileJson2, LoaderCircle, PackageOpen } from "lucide-react";
+import { AlertCircle, FileArchive, FileJson2, Film, LoaderCircle, PackageOpen, Waves } from "lucide-react";
 
 import { downloadClipPackage, isRetryableApiError, ApiError } from "@/lib/api";
 import { buttonClassName, Button } from "@/components/ui/button";
@@ -10,7 +10,7 @@ import { Card } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { SectionHeader } from "@/components/ui/section-header";
 import { formatSeconds, formatTokenLabel } from "@/lib/format";
-import type { ClipRecord, JobResponse } from "@/lib/types";
+import type { ClipRecord, JobResponse, PackageExportPreset } from "@/lib/types";
 
 type ExportPanelProps = {
   job: JobResponse;
@@ -19,7 +19,48 @@ type ExportPanelProps = {
   selectedClips: ClipRecord[];
 };
 
+type ExportPresetOption = {
+  value: PackageExportPreset;
+  title: string;
+  description: string;
+  accent: string;
+  buttonLabel: string;
+  treeLabel: string;
+  listLabel: string;
+};
+
+const EXPORT_PRESET_OPTIONS: ExportPresetOption[] = [
+  {
+    value: "full-av",
+    title: "Full AV package",
+    description: "Trim selected clips into mp4 files plus a linked manifest for training and review handoff.",
+    accent: "mp4 clips + manifest",
+    buttonLabel: "Download selected package",
+    treeLabel: "Video files and manifest",
+    listLabel: "Trimmed media files",
+  },
+  {
+    value: "audio-only",
+    title: "Audio-only package",
+    description: "Export each selected clip as a mono wav segment while keeping the same manifest linkage.",
+    accent: "wav clips + manifest",
+    buttonLabel: "Download audio-only package",
+    treeLabel: "Audio clips and manifest",
+    listLabel: "Audio files and manifest",
+  },
+  {
+    value: "metadata-only",
+    title: "Metadata-only package",
+    description: "Keep the selected clip manifest without bundling media files when downstream tooling already has source access.",
+    accent: "manifest only",
+    buttonLabel: "Download metadata-only package",
+    treeLabel: "Manifest only",
+    listLabel: "Manifest-only clip entries",
+  },
+];
+
 export function ExportPanel({ job, exportUrl, disabled, selectedClips }: ExportPanelProps) {
+  const [selectedPreset, setSelectedPreset] = useState<PackageExportPreset>("full-av");
   const [isDownloadingPackage, setIsDownloadingPackage] = useState(false);
   const [packageError, setPackageError] = useState<ApiError | null>(null);
 
@@ -31,7 +72,8 @@ export function ExportPanel({ job, exportUrl, disabled, selectedClips }: ExportP
     { shortlist: 0, review: 0, discard: 0 }
   );
   const selectedDuration = selectedClips.reduce((total, clip) => total + clip.duration, 0);
-  const packageTree = buildPackageTree(job.jobId, selectedClips);
+  const activePreset = EXPORT_PRESET_OPTIONS.find((option) => option.value === selectedPreset) ?? EXPORT_PRESET_OPTIONS[0];
+  const packageTree = buildPackageTree(job.jobId, selectedClips, selectedPreset);
 
   async function handleDownloadPackage() {
     if (selectedClips.length === 0) {
@@ -43,7 +85,8 @@ export function ExportPanel({ job, exportUrl, disabled, selectedClips }: ExportP
     try {
       const response = await downloadClipPackage(
         job.jobId,
-        selectedClips.map((clip) => clip.id)
+        selectedClips.map((clip) => clip.id),
+        selectedPreset
       );
       const objectUrl = URL.createObjectURL(response.blob);
       const anchor = document.createElement("a");
@@ -80,7 +123,7 @@ export function ExportPanel({ job, exportUrl, disabled, selectedClips }: ExportP
         <SectionHeader
           eyebrow="Selected package"
           title="Build a training-ready clip archive"
-          description="Export selected clips as trimmed media files plus a linked manifest that preserves clip IDs, timings, scores, and alignment metadata."
+          description="Choose how the selected clips leave the workspace, from the default video package to audio-only or manifest-only handoff."
         />
 
         <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
@@ -90,38 +133,82 @@ export function ExportPanel({ job, exportUrl, disabled, selectedClips }: ExportP
           <PreviewMetric label="Review / discard" value={`${recommendationCounts.review} / ${recommendationCounts.discard}`} />
         </div>
 
+        <div className="mt-6 grid gap-3 xl:grid-cols-3">
+          {EXPORT_PRESET_OPTIONS.map((option) => {
+            const isActive = option.value === selectedPreset;
+            const Icon = option.value === "full-av" ? Film : option.value === "audio-only" ? Waves : FileJson2;
+
+            return (
+              <button
+                key={option.value}
+                type="button"
+                aria-pressed={isActive}
+                onClick={() => {
+                  setSelectedPreset(option.value);
+                  setPackageError(null);
+                }}
+                className={[
+                  "rounded-[1.2rem] border px-4 py-4 text-left transition",
+                  isActive
+                    ? "border-[var(--accent)] bg-[var(--accent-soft)] shadow-[var(--shadow-soft)]"
+                    : "border-[var(--line)] bg-white/[0.03] hover:border-[var(--line-strong)] hover:bg-white/[0.05]",
+                ].join(" ")}
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex size-10 items-center justify-center rounded-[1rem] border border-[var(--line)] bg-white/[0.04] text-[var(--accent)]">
+                    <Icon className="size-4" />
+                  </div>
+                  <span className="rounded-full border border-[var(--line)] bg-white/[0.06] px-2.5 py-1 text-[11px] font-medium uppercase tracking-[0.18em] text-[var(--muted-strong)]">
+                    {option.accent}
+                  </span>
+                </div>
+                <div className="mt-4 text-base font-semibold tracking-[-0.03em] text-[var(--text)]">{option.title}</div>
+                <p className="mt-2 text-sm leading-6 text-[var(--muted)]">{option.description}</p>
+              </button>
+            );
+          })}
+        </div>
+
         {selectedClips.length > 0 ? (
           <>
             <div className="mt-6 grid gap-6 lg:grid-cols-[0.82fr_1.18fr]">
               <div className="rounded-[1.25rem] border border-[var(--line)] bg-white/[0.03] px-4 py-4">
-                <div className="metric-label text-[var(--muted)]">Package structure</div>
+                <div className="metric-label text-[var(--muted)]">{activePreset.treeLabel}</div>
                 <pre className="mt-4 overflow-auto rounded-[1rem] border border-[var(--line)] bg-[var(--surface-dark)] p-4 text-xs leading-6 text-white/75">
 {packageTree}
                 </pre>
               </div>
 
               <div className="rounded-[1.25rem] border border-[var(--line)] bg-white/[0.03] px-4 py-4">
-                <div className="metric-label text-[var(--muted)]">Manifest linkage</div>
+                <div className="metric-label text-[var(--muted)]">{activePreset.listLabel}</div>
+                <p className="mt-3 text-sm leading-6 text-[var(--muted)]">
+                  {selectedPreset === "metadata-only"
+                    ? "The manifest keeps clip IDs, timings, scores, tags, and alignment metadata without re-encoding any media."
+                    : "Each selected clip keeps a deterministic file name so downstream tools can join media files back to manifest metadata by clip ID."}
+                </p>
                 <div className="mt-4 space-y-3">
-                  {selectedClips.slice(0, 4).map((clip, index) => (
-                    <div key={clip.id} className="rounded-[1rem] border border-[var(--line)] bg-white/[0.03] px-4 py-4">
-                      <div className="flex flex-wrap items-center justify-between gap-3">
-                        <div className="font-mono text-xs text-[var(--accent)]">{buildClipFileName(index + 1, clip.id)}</div>
-                        <div className="text-xs text-[var(--muted)]">{clip.id}</div>
+                  {selectedClips.slice(0, 4).map((clip, index) => {
+                    const fileName = buildClipFileName(index + 1, clip.id, selectedPreset);
+                    return (
+                      <div key={clip.id} className="rounded-[1rem] border border-[var(--line)] bg-white/[0.03] px-4 py-4">
+                        <div className="flex flex-wrap items-center justify-between gap-3">
+                          <div className="font-mono text-xs text-[var(--accent)]">{fileName ?? "manifest-only entry"}</div>
+                          <div className="text-xs text-[var(--muted)]">{clip.id}</div>
+                        </div>
+                        <p className="mt-3 text-sm font-medium text-[var(--text)]">{clip.text}</p>
+                        <div className="mt-3 flex flex-wrap gap-2">
+                          {clip.tags.slice(0, 2).map((tag) => (
+                            <span
+                              key={`${clip.id}-${tag}`}
+                              className="rounded-full border border-[var(--line)] bg-white/[0.04] px-2.5 py-1 text-xs text-[var(--muted-strong)]"
+                            >
+                              {formatTokenLabel(tag)}
+                            </span>
+                          ))}
+                        </div>
                       </div>
-                      <p className="mt-3 text-sm font-medium text-[var(--text)]">{clip.text}</p>
-                      <div className="mt-3 flex flex-wrap gap-2">
-                        {clip.tags.slice(0, 2).map((tag) => (
-                          <span
-                            key={`${clip.id}-${tag}`}
-                            className="rounded-full border border-[var(--line)] bg-white/[0.04] px-2.5 py-1 text-xs text-[var(--muted-strong)]"
-                          >
-                            {formatTokenLabel(tag)}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             </div>
@@ -134,7 +221,7 @@ export function ExportPanel({ job, exportUrl, disabled, selectedClips }: ExportP
                 disabled={disabled || isDownloadingPackage}
               >
                 {isDownloadingPackage ? <LoaderCircle className="size-4 animate-spin" /> : <FileArchive className="size-4" />}
-                {isDownloadingPackage ? "Building package" : "Download selected package"}
+                {isDownloadingPackage ? "Building package" : activePreset.buttonLabel}
               </Button>
               <a
                 href={exportUrl}
@@ -164,7 +251,7 @@ export function ExportPanel({ job, exportUrl, disabled, selectedClips }: ExportP
               <div>
                 <h3 className="text-lg font-semibold tracking-[-0.03em] text-[var(--text)]">No clips selected yet</h3>
                 <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--muted)]">
-                  Select clips from the ranked list or selected clip panel, then come back here to download a zip package with linked media files and manifest metadata.
+                  Select clips from the ranked list or selected clip panel, then come back here to choose a package preset and download the linked output bundle.
                 </p>
               </div>
             </div>
@@ -252,25 +339,59 @@ export function ExportPanel({ job, exportUrl, disabled, selectedClips }: ExportP
   );
 }
 
-function buildPackageTree(jobId: string, clips: ClipRecord[]) {
-  const previewEntries = clips.slice(0, 4).map((clip, index) => `    ${buildClipFileName(index + 1, clip.id)}`);
-  const extraCount = clips.length - previewEntries.length;
-  const lines = [
-    `clipmine-export-${jobId}/`,
-    "  manifest.json",
-    "  clips/",
-    ...previewEntries,
-  ];
+function buildPackageTree(jobId: string, clips: ClipRecord[], preset: PackageExportPreset) {
+  const rootName = buildPackageRootName(jobId, preset);
+  const folderName = getPresetFolderName(preset);
+  const previewEntries = clips
+    .slice(0, 4)
+    .map((clip, index) => buildClipFileName(index + 1, clip.id, preset))
+    .filter((value): value is string => Boolean(value))
+    .map((fileName) => `    ${fileName}`);
+  const extraCount = Math.max(0, clips.length - previewEntries.length);
+  const lines = [`${rootName}/`, "  manifest.json"];
 
-  if (extraCount > 0) {
-    lines.push(`    ... ${extraCount} more clip files`);
+  if (folderName && previewEntries.length > 0) {
+    lines.push(`  ${folderName}/`, ...previewEntries);
+  }
+
+  if (folderName && extraCount > 0) {
+    lines.push(`    ... ${extraCount} more ${preset === "audio-only" ? "audio" : "clip"} files`);
   }
 
   return lines.join("\n");
 }
 
-function buildClipFileName(ordinal: number, clipId: string) {
-  return `clip_${String(ordinal).padStart(3, "0")}__${clipId}.mp4`;
+function buildPackageRootName(jobId: string, preset: PackageExportPreset) {
+  if (preset === "audio-only") {
+    return `clipmine-export-${jobId}-audio`;
+  }
+
+  if (preset === "metadata-only") {
+    return `clipmine-export-${jobId}-metadata`;
+  }
+
+  return `clipmine-export-${jobId}`;
+}
+
+function getPresetFolderName(preset: PackageExportPreset) {
+  if (preset === "audio-only") {
+    return "audio";
+  }
+
+  if (preset === "metadata-only") {
+    return null;
+  }
+
+  return "clips";
+}
+
+function buildClipFileName(ordinal: number, clipId: string, preset: PackageExportPreset) {
+  if (preset === "metadata-only") {
+    return null;
+  }
+
+  const extension = preset === "audio-only" ? "wav" : "mp4";
+  return `clip_${String(ordinal).padStart(3, "0")}__${clipId}.${extension}`;
 }
 
 function PreviewMetric({ label, value }: { label: string; value: string }) {

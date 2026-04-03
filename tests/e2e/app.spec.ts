@@ -776,7 +776,7 @@ test("precision signals are filterable in the clips workspace", async ({ page })
 
 test("selected clips can be batched into a package export", async ({ page }) => {
   const job = createMockJob();
-  let packageRequestBody: { clipIds: string[] } | null = null;
+  let packageRequestBody: { clipIds: string[]; preset?: string } | null = null;
 
   await page.route(`**/api/jobs/${job.jobId}`, async (route) => {
     await route.fulfill({
@@ -807,12 +807,15 @@ test("selected clips can be batched into a package export", async ({ page }) => 
   await expect(page.getByRole("heading", { name: "Build a training-ready clip archive" })).toBeVisible();
   await expect(page.getByText("clip_001__clip-1.mp4", { exact: true })).toBeVisible();
   await expect(page.getByText("clip_002__clip-2.mp4", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: /Audio-only package/i }).click();
+  await expect(page.getByText("clip_001__clip-1.wav", { exact: true })).toBeVisible();
+  await expect(page.getByText("clip_002__clip-2.wav", { exact: true })).toBeVisible();
 
   const downloadPromise = page.waitForEvent("download");
-  await page.getByRole("button", { name: "Download selected package" }).click();
+  await page.getByRole("button", { name: "Download audio-only package" }).click();
   await downloadPromise;
 
-  expect(packageRequestBody).toEqual({ clipIds: ["clip-1", "clip-2"] });
+  expect(packageRequestBody).toEqual({ clipIds: ["clip-1", "clip-2"], preset: "audio-only" });
   await expect(page.getByText("Full job JSON")).toBeVisible();
 });
 

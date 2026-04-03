@@ -235,8 +235,13 @@ Avoid:
   Notes: Completed on 2026-04-03 by adding shortlist-only compare picks in the ranked clip list and swapping the detail panel into a side-by-side comparison view once two pinned clips are chosen. The comparison mode now highlights transcript, recommendation, metric, tag, and recommended-use differences while keeping playback controls in place.
   Verified: `npm run lint:web`, `npm run test:web`, `npm run test:e2e -- --grep "shortlisted clips can be compared side by side"`
 
-- [ ] Add export preset selector
+- [x] Add export preset selector
   Prompt: "Extend the export panel with presets like full AV package, audio-only package, and metadata-only package while keeping the current zip export as the default."
+  Notes: Completed on 2026-04-03 by adding preset cards to the single-job export panel, keeping the existing video package as the default, and wiring audio-only plus metadata-only downloads through the package export API with preset-aware archive previews.
+  Verified: `python3.11 -m pip install -e backend`, `npm ci`, `python3.11 -m pytest backend/tests/test_package_export.py`, `npm run build:web`, `npm run test:e2e -- --grep "selected clips can be batched into a package export"`
+
+- [ ] Add batch export preset selector
+  Prompt: "Let the batch workspace export flow choose between full AV, audio-only, and metadata-only packages so cross-job downloads match the single-workspace export presets."
 
 - [x] Add queue completion toast and summary state
   Prompt: "When a batch queue finishes, show a stronger completion summary before navigating so the user understands how many sources succeeded or failed."
@@ -307,8 +312,10 @@ Avoid:
 - [ ] Resume multipart uploads across browser refresh
   Prompt: "Persist active upload sessions strongly enough that the frontend can resume a multipart transfer after a refresh when the session is still valid."
 
-- [ ] Add audio-only export companion
+- [x] Add audio-only export companion
   Prompt: "Support an optional audio-only export path that trims `.wav` files alongside the existing mp4 package structure."
+  Notes: Completed on 2026-04-03 as part of the export preset pass by adding preset-aware single-job package exports, wav clip trimming, metadata-only manifest bundles, and source-file-optional validation for manifest-only downloads.
+  Verified: `python3.11 -m pip install -e backend`, `python3.11 -m pytest backend/tests/test_package_export.py`
 
 - [ ] Add batch export partial-failure manifest warnings
   Prompt: "If some selected jobs fail during combined export, preserve successful jobs in the archive and record the failed jobs in the manifest warnings."
@@ -387,3 +394,6 @@ Avoid:
 - 2026-04-03: Added `Add first and last ready-source jump controls in the batch workspace` as the next batch-review follow-up.
 - 2026-04-03: Completed `Add first and last ready-source jump controls in the batch workspace` after installing frontend dependencies and passing focused web-unit and Playwright verification.
 - 2026-04-03: Added `Add ready-source position badges to batch queue cards` as the next batch-review follow-up.
+- 2026-04-03: Completed `Add export preset selector` after refreshing the editable backend install, rebuilding the web app, and passing targeted package-export pytest and Playwright coverage.
+- 2026-04-03: Completed `Add audio-only export companion` within the same preset pass by shipping wav and metadata-only selected package exports.
+- 2026-04-03: Added `Add batch export preset selector` as the follow-up so batch downloads match the new single-workspace preset choices.

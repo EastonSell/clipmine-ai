@@ -45,6 +45,49 @@ def extract_audio(video_path: Path, output_path: Path) -> None:
     logger.info("media.extract_audio complete output_path=%s", output_path)
 
 
+def extract_audio_clip(video_path: Path, output_path: Path, *, start_time: float, end_time: float) -> None:
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    duration = max(0.1, end_time - start_time)
+    command = [
+        imageio_ffmpeg.get_ffmpeg_exe(),
+        "-y",
+        "-i",
+        str(video_path),
+        "-ss",
+        f"{max(0.0, start_time):.3f}",
+        "-t",
+        f"{duration:.3f}",
+        "-vn",
+        "-ac",
+        "1",
+        "-ar",
+        "16000",
+        "-sample_fmt",
+        "s16",
+        "-c:a",
+        "pcm_s16le",
+        str(output_path),
+    ]
+    logger.info(
+        "media.extract_audio_clip start video_path=%s output_path=%s start=%.3f end=%.3f",
+        video_path,
+        output_path,
+        start_time,
+        end_time,
+    )
+    logger.debug("media.extract_audio_clip command=%s", " ".join(command))
+    completed = subprocess.run(command, capture_output=True, text=True)
+    if completed.returncode != 0:
+        logger.error(
+            "media.extract_audio_clip failed video_path=%s output_path=%s stderr=%s",
+            video_path,
+            output_path,
+            completed.stderr.strip(),
+        )
+        raise MediaProcessingError(DECODE_FAILURE_MESSAGE)
+    logger.info("media.extract_audio_clip complete output_path=%s", output_path)
+
+
 def extract_video_clip(video_path: Path, output_path: Path, *, start_time: float, end_time: float) -> None:
     output_path.parent.mkdir(parents=True, exist_ok=True)
     duration = max(0.1, end_time - start_time)

@@ -24,6 +24,7 @@ from .schemas import (
     CompleteMultipartUploadRequest,
     JobStatus,
     PackageExportRequest,
+    PackageExportPreset,
     SourceVideoRecord,
     UploadInitRequest,
     UploadSessionRecord,
@@ -470,7 +471,12 @@ async def export_job_package(
     store: JobStore = Depends(get_job_store),
     artifact_store: ArtifactStore = Depends(get_artifact_store),
 ):
-    job, selected_clips = _resolve_export_selection(store, job_id, payload.clip_ids)
+    job, selected_clips = _resolve_export_selection(
+        store,
+        job_id,
+        payload.clip_ids,
+        requires_source_video=payload.preset is not PackageExportPreset.METADATA_ONLY,
+    )
 
     try:
         package_export = build_package_export(
@@ -478,9 +484,15 @@ async def export_job_package(
             selected_clips,
             store=store,
             artifact_store=artifact_store,
+            preset=payload.preset,
         )
     except (BotoCoreError, ClientError) as exc:
-        logger.exception("package.object_store_failed job_id=%s clip_count=%s", job_id, len(selected_clips))
+        logger.exception(
+            "package.object_store_failed job_id=%s clip_count=%s preset=%s",
+            job_id,
+            len(selected_clips),
+            payload.preset.value,
+        )
         raise build_http_error(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             code="object_store_unavailable",
@@ -488,7 +500,12 @@ async def export_job_package(
             retryable=True,
         ) from exc
     except Exception as exc:
-        logger.exception("package.failed job_id=%s clip_count=%s", job_id, len(selected_clips))
+        logger.exception(
+            "package.failed job_id=%s clip_count=%s preset=%s",
+            job_id,
+            len(selected_clips),
+            payload.preset.value,
+        )
         raise build_http_error(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             code="package_export_failed",
@@ -497,7 +514,13 @@ async def export_job_package(
         ) from exc
 
     background_tasks.add_task(cleanup_package_export, package_export)
-    logger.info("package.ready job_id=%s clip_count=%s archive=%s", job_id, len(selected_clips), package_export.archive_name)
+    logger.info(
+        "package.ready job_id=%s clip_count=%s preset=%s archive=%s",
+        job_id,
+        len(selected_clips),
+        payload.preset.value,
+        package_export.archive_name,
+    )
     return FileResponse(
         package_export.archive_path,
         media_type="application/zip",
@@ -623,6 +646,8 @@ def _resolve_export_selection(
     store: JobStore,
     job_id: str,
     requested_clip_ids: list[str],
+    *,
+    requires_source_video: bool = True,
 ):
     try:
         job = store.load_job(job_id)
@@ -662,7 +687,7 @@ def _resolve_export_selection(
             retryable=False,
         )
 
-    if job.source_video.storage_backend == "local" and not store.source_video_path(job).exists():
+    if requires_source_video and job.source_video.storage_backend == "local" and not store.source_video_path(job).exists():
         raise build_http_error(
             status_code=status.HTTP_404_NOT_FOUND,
             code="video_not_found",

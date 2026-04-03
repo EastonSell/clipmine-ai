@@ -2,6 +2,7 @@ import type {
   ApiErrorDetail,
   BatchPackageJobSelection,
   JobResponse,
+  PackageExportPreset,
   UploadInitResponse,
   UploadJobResponse,
   UploadMode,
@@ -215,7 +216,11 @@ export async function retryJob(jobId: string) {
   throw lastError ?? new ApiError(buildErrorDetail("request_failed", "Something went wrong.", true));
 }
 
-export async function downloadClipPackage(jobId: string, clipIds: string[]) {
+export async function downloadClipPackage(
+  jobId: string,
+  clipIds: string[],
+  preset: PackageExportPreset = "full-av"
+) {
   let lastError: ApiError | null = null;
 
   for (const baseUrl of getApiBaseUrls()) {
@@ -227,6 +232,7 @@ export async function downloadClipPackage(jobId: string, clipIds: string[]) {
         },
         body: JSON.stringify({
           clipIds,
+          preset,
         }),
       });
       return response;

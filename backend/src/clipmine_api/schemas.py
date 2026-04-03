@@ -38,6 +38,12 @@ class ProgressPhase(str, Enum):
     FAILED = "failed"
 
 
+class PackageExportPreset(str, Enum):
+    FULL_AV = "full-av"
+    AUDIO_ONLY = "audio-only"
+    METADATA_ONLY = "metadata-only"
+
+
 class SourceVideoRecord(BaseModel):
     id: str
     file_name: str
@@ -225,6 +231,7 @@ class CompleteMultipartUploadRequest(BaseModel):
 
 class PackageExportRequest(BaseModel):
     clip_ids: list[str] = Field(alias="clipIds")
+    preset: PackageExportPreset = Field(default=PackageExportPreset.FULL_AV)
 
     model_config = ConfigDict(populate_by_name=True)
 
