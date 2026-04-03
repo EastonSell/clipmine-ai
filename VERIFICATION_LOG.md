@@ -2,6 +2,28 @@
 
 Date: 2026-04-02
 
+## Saved Batch Shortcut Dismissal Pass
+
+Date: 2026-04-03
+
+- Fixed the landing-page saved batch shortcut so dismissing it removes the persisted batch session from local storage instead of only hiding the card until the next reload.
+- Kept the just-finished queue summary behavior intact so active work still offers `Queue more sources` without implicitly deleting the newest session.
+- Added Playwright coverage for dismissing a saved batch shortcut and checking that the stored batch-session record is cleared.
+
+### Checks run
+
+```bash
+npm run test:web
+npm run lint:web
+npm run test:e2e -- --grep "landing page reopens the most recent finished batch session|landing page can dismiss a saved batch shortcut without letting it reappear"
+```
+
+### Result
+
+- `21 / 21` web unit tests passed
+- frontend lint passed
+- `2 / 2` targeted Playwright landing-page batch-session tests passed
+
 ## Plan And Queue Status Pass
 
 - Added `PLAN.md` as the living implementation plan for the repository.

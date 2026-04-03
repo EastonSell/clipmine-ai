@@ -234,8 +234,13 @@ Avoid:
   Notes: Completed on 2026-04-02 by loading the newest completed batch session from local storage and surfacing a persistent reopen card in the landing upload bay when no queue is active.
   Verified: `npm run test:web`, `npm run lint:web`, `npm run build:web`
 
-- [ ] Add dismiss action for stale finished batch shortcuts
+- [x] Add dismiss action for stale finished batch shortcuts
   Prompt: "Let users clear an outdated finished batch session shortcut from the landing page so local-session clutter does not keep resurfacing old work."
+  Notes: Completed on 2026-04-03 by differentiating the saved landing shortcut from the just-finished queue summary. Saved shortcuts now remove their persisted batch session from local storage, while current queue completions keep the existing queue-more flow.
+  Verified: `npm run test:web`, `npm run lint:web`, `npm run test:e2e -- --grep "landing page reopens the most recent finished batch session|landing page can dismiss a saved batch shortcut without letting it reappear"`
+
+- [ ] Preview failed source names in the saved batch shortcut
+  Prompt: "If the latest finished batch session includes failed or cancelled uploads, list the affected source names directly in the landing shortcut so users can decide whether reopening the batch is worthwhile."
 
 - [ ] Add per-source ETA hints to the active queue card
   Prompt: "Estimate queue progress for the current source and remaining queue so large multi-file uploads feel less opaque while the active transfer is running."
@@ -305,3 +310,5 @@ Avoid:
 - 2026-04-02: Completed `Document temp-checkout git publishing workaround` after updating `README.md` and `AGENT.md`.
 - 2026-04-02: Added `Add dismiss action for stale finished batch shortcuts` before surfacing the latest finished batch session from the landing page.
 - 2026-04-02: Completed `Surface the latest finished batch session from the landing page` after adding the persisted landing shortcut and passing web test, lint, and build verification.
+- 2026-04-03: Completed `Add dismiss action for stale finished batch shortcuts` after web unit, lint, and targeted Playwright verification.
+- 2026-04-03: Added `Preview failed source names in the saved batch shortcut` as the next landing-session follow-up.

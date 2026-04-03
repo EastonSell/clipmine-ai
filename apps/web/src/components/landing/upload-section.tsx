@@ -12,7 +12,7 @@ import {
 import { useRouter } from "next/navigation";
 import { startTransition, useEffect, useMemo, useRef, useState } from "react";
 
-import { loadLatestCompletedBatchSession, saveBatchSession } from "@/lib/batch-sessions";
+import { loadLatestCompletedBatchSession, removeBatchSession, saveBatchSession } from "@/lib/batch-sessions";
 import { ApiError, createJob, getUploadMode, isRetryableApiError } from "@/lib/api";
 import { formatBytes, formatDateTime } from "@/lib/format";
 import type {
@@ -497,12 +497,19 @@ export function UploadSection() {
     });
   }
 
-  function handleQueueMoreSources(batchId: string) {
-    setCompletedBatchSummary(null);
+  function handleDismissBatchShortcut(batchId: string, source: "current" | "saved") {
     setDismissedBatchId(batchId);
     setSelectedFiles([]);
     setBatchQueue([]);
     setError(null);
+
+    if (source === "saved") {
+      removeBatchSession(batchId);
+      setLatestCompletedBatch(loadLatestCompletedBatchSession());
+      return;
+    }
+
+    setCompletedBatchSummary(null);
   }
 
   const queueSummary = isBatchMode
@@ -776,7 +783,8 @@ export function UploadSection() {
                   <BatchCompletionShortcut
                     summary={visibleBatchShortcut.summary}
                     source={visibleBatchShortcut.source}
-                    onDismiss={() => handleQueueMoreSources(visibleBatchShortcut.summary.batchId)}
+                    dismissLabel={visibleBatchShortcut.source === "saved" ? "Dismiss shortcut" : "Queue more sources"}
+                    onDismiss={() => handleDismissBatchShortcut(visibleBatchShortcut.summary.batchId, visibleBatchShortcut.source)}
                     onOpen={() => handleOpenBatchWorkspace(visibleBatchShortcut.summary.batchId)}
                   />
                 </div>
@@ -817,11 +825,13 @@ function QueueMetric({ label, value }: { label: string; value: string }) {
 }
 
 function BatchCompletionShortcut({
+  dismissLabel,
   summary,
   source,
   onDismiss,
   onOpen,
 }: {
+  dismissLabel: string;
   summary: BatchCompletionSummary;
   source: "current" | "saved";
   onDismiss: () => void;
@@ -845,7 +855,7 @@ function BatchCompletionShortcut({
         </div>
         <div className="flex flex-wrap gap-2">
           <Button type="button" variant="secondary" size="lg" onClick={onDismiss}>
-            Queue more sources
+            {dismissLabel}
           </Button>
           <Button type="button" variant="primary" size="lg" onClick={onOpen}>
             <ArrowUpRight className="size-4" />

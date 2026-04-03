@@ -152,6 +152,57 @@ test("landing page reopens the most recent finished batch session", async ({ pag
   await expect(page.getByRole("button", { name: /beta\.mp4 ready/i })).toBeVisible();
 });
 
+test("landing page can dismiss a saved batch shortcut without letting it reappear", async ({ page }) => {
+  await page.addInitScript(
+    ({ batchSessionsKey, session }) => {
+      window.localStorage.setItem(batchSessionsKey, JSON.stringify([session]));
+    },
+    {
+      batchSessionsKey,
+      session: {
+        batchId: "saved-batch-dismiss",
+        label: "2 sources queued",
+        createdAt: "2026-04-02T11:50:00.000Z",
+        updatedAt: "2026-04-02T12:12:00.000Z",
+        qualityThreshold: 84,
+        lastCompletionSummary: {
+          batchId: "saved-batch-dismiss",
+          label: "2 sources queued",
+          finishedAt: "2026-04-02T12:12:00.000Z",
+          totalSources: 2,
+          readyCount: 2,
+          failedCount: 0,
+          cancelledCount: 0,
+        },
+        items: [
+          {
+            id: "upload-1",
+            fileName: "alpha.mp4",
+            sizeBytes: 12_000_000,
+            jobId: "saved-batch-alpha",
+            status: "ready",
+            uploadPhase: "complete",
+            uploadProgress: 100,
+            error: null,
+            updatedAt: "2026-04-02T12:10:00.000Z",
+          },
+        ],
+      },
+    }
+  );
+
+  await page.goto("/");
+
+  await expect(page.getByText("Latest finished batch")).toBeVisible();
+  await page.getByRole("button", { name: "Dismiss shortcut" }).click();
+  await expect(page.getByText("Latest finished batch")).not.toBeVisible();
+  await expect(page.getByRole("heading", { name: "Reopen the last batch review session" })).not.toBeVisible();
+
+  await expect
+    .poll(async () => page.evaluate((storageKey) => window.localStorage.getItem(storageKey), batchSessionsKey))
+    .toBeNull();
+});
+
 test("uploading a valid source opens the workspace and supports shortlist persistence", async ({ page }) => {
   const job = createMockJob({ jobId: "job-ready" });
   const uploadSessionId = "session-ready";
