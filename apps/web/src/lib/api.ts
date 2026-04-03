@@ -252,6 +252,7 @@ export async function downloadBatchClipPackage(
   selections: BatchPackageJobSelection[],
   options: {
     batchLabel?: string;
+    preset?: PackageExportPreset;
     qualityThreshold?: number;
   } = {}
 ) {
@@ -267,6 +268,7 @@ export async function downloadBatchClipPackage(
         body: JSON.stringify({
           selections,
           batchLabel: options.batchLabel,
+          preset: options.preset ?? "full-av",
           qualityThreshold: options.qualityThreshold,
         }),
       });

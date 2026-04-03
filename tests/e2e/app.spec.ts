@@ -932,11 +932,16 @@ test("batch workspace groups jobs and exports thresholded clips", async ({ page 
   await expect(page.getByRole("button", { name: /beta\.mp4 ready/i })).toBeVisible();
 
   await page.locator('input[type="range"]').fill("90");
+  await page.getByRole("button", { name: /Audio-only package/i }).click();
+  await expect(page.getByText(/clipmine-batch-export-3-sources-queued-audio\//i)).toBeVisible();
+  await expect(page.getByText(/clip_001__clip-1\.wav/i)).toBeVisible();
+  await expect(page.getByText(/clip_001__job-beta-clip-1\.wav/i)).toBeVisible();
 
   const downloadPromise = page.waitForEvent("download");
-  await page.getByRole("button", { name: /Export 2 clips/i }).click();
+  await page.getByRole("button", { name: /Export 2 audio clips/i }).click();
   await downloadPromise;
 
+  expect(batchRequestBody?.preset).toBe("audio-only");
   expect(batchRequestBody?.qualityThreshold).toBe(90);
   expect(batchRequestBody?.selections).toEqual([
     { jobId: "job-alpha", clipIds: ["clip-1"] },

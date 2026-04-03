@@ -550,7 +550,12 @@ async def export_batch_package(
         )
 
     resolved_selections = [
-        _resolve_export_selection(store, selection.job_id, selection.clip_ids)
+        _resolve_export_selection(
+            store,
+            selection.job_id,
+            selection.clip_ids,
+            requires_source_video=payload.preset is not PackageExportPreset.METADATA_ONLY,
+        )
         for selection in normalized_selections
     ]
 
@@ -563,6 +568,7 @@ async def export_batch_package(
             store=store,
             artifact_store=artifact_store,
             batch_label=payload.batch_label,
+            preset=payload.preset,
             quality_threshold=payload.quality_threshold,
         )
     except (BotoCoreError, ClientError) as exc:
@@ -584,8 +590,9 @@ async def export_batch_package(
 
     background_tasks.add_task(cleanup_package_export, package_export)
     logger.info(
-        "batch_package.ready archive=%s job_count=%s clip_count=%s",
+        "batch_package.ready archive=%s preset=%s job_count=%s clip_count=%s",
         package_export.archive_name,
+        payload.preset.value,
         len(resolved_selections),
         sum(len(clips) for _, clips in resolved_selections),
     )

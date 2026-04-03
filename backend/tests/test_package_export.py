@@ -347,6 +347,176 @@ def test_batch_package_export_returns_grouped_zip(tmp_path: Path) -> None:
     assert manifest_payload["jobs"][1]["clips"][0]["relativePath"] == "jobs/job-beta/clips/clip_001__job-beta-clip-001.mp4"
 
 
+def test_batch_package_export_supports_audio_only_preset(tmp_path: Path) -> None:
+    with TestClient(app) as client:
+        settings = client.app.state.settings
+        original_storage = settings.storage_dir
+        original_model_cache = settings.model_cache_dir
+        settings.storage_dir = tmp_path / "storage"
+        settings.model_cache_dir = tmp_path / "models"
+
+        try:
+            alpha_clip = build_clip_record(job_id="job-alpha", clip_id="job-alpha-clip-001", start=0.0, end=1.1, score=93.0)
+            beta_clip = build_clip_record(job_id="job-beta", clip_id="job-beta-clip-001", start=0.1, end=1.0, score=88.0)
+
+            alpha_manifest = client.app.state.job_store.create_manifest_for_job(
+                job_id="job-alpha",
+                file_name="alpha.mp4",
+                content_type="video/mp4",
+                size_bytes=2048,
+                relative_path="jobs/job-alpha/source/alpha.mp4",
+            )
+            beta_manifest = client.app.state.job_store.create_manifest_for_job(
+                job_id="job-beta",
+                file_name="beta.mp4",
+                content_type="video/mp4",
+                size_bytes=2048,
+                relative_path="jobs/job-beta/source/beta.mp4",
+            )
+            create_sample_video(client.app.state.job_store.source_video_path(alpha_manifest))
+            create_sample_video(client.app.state.job_store.source_video_path(beta_manifest))
+            client.app.state.job_store.save_job(
+                alpha_manifest.model_copy(
+                    update={
+                        "status": JobStatus.READY,
+                        "progress_phase": ProgressPhase.READY,
+                        "clips": [alpha_clip],
+                        "summary": build_summary([alpha_clip], duration_seconds=2.0, transcript_text="Alpha transcript"),
+                        "timeline": build_timeline([alpha_clip], duration_seconds=2.0),
+                    }
+                )
+            )
+            client.app.state.job_store.save_job(
+                beta_manifest.model_copy(
+                    update={
+                        "status": JobStatus.READY,
+                        "progress_phase": ProgressPhase.READY,
+                        "clips": [beta_clip],
+                        "summary": build_summary([beta_clip], duration_seconds=2.0, transcript_text="Beta transcript"),
+                        "timeline": build_timeline([beta_clip], duration_seconds=2.0),
+                    }
+                )
+            )
+
+            response = client.post(
+                "/api/exports/batch-package",
+                json={
+                    "batchLabel": "April Batch",
+                    "preset": "audio-only",
+                    "selections": [
+                        {"jobId": "job-alpha", "clipIds": [alpha_clip.id]},
+                        {"jobId": "job-beta", "clipIds": [beta_clip.id]},
+                    ],
+                },
+            )
+        finally:
+            settings.storage_dir = original_storage
+            settings.model_cache_dir = original_model_cache
+
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "application/zip"
+    assert 'filename="clipmine-batch-export-april-batch-audio.zip"' in response.headers["content-disposition"]
+
+    archive = zipfile.ZipFile(BytesIO(response.content))
+    archive_names = set(archive.namelist())
+    alpha_audio_path = "clipmine-batch-export-april-batch-audio/jobs/job-alpha/audio/clip_001__job-alpha-clip-001.wav"
+    beta_audio_path = "clipmine-batch-export-april-batch-audio/jobs/job-beta/audio/clip_001__job-beta-clip-001.wav"
+    assert "clipmine-batch-export-april-batch-audio/manifest.json" in archive_names
+    assert alpha_audio_path in archive_names
+    assert beta_audio_path in archive_names
+    assert archive.read(alpha_audio_path)[:4] == b"RIFF"
+    assert archive.read(beta_audio_path)[:4] == b"RIFF"
+
+    manifest_payload = orjson.loads(archive.read("clipmine-batch-export-april-batch-audio/manifest.json"))
+    assert manifest_payload["preset"] == "audio-only"
+    assert manifest_payload["mediaKind"] == "audio"
+    assert manifest_payload["includesMediaFiles"] is True
+    assert manifest_payload["jobs"][0]["clips"][0]["relativePath"] == "jobs/job-alpha/audio/clip_001__job-alpha-clip-001.wav"
+    assert manifest_payload["jobs"][1]["clips"][0]["relativePath"] == "jobs/job-beta/audio/clip_001__job-beta-clip-001.wav"
+
+
+def test_batch_package_export_supports_metadata_only_preset(tmp_path: Path) -> None:
+    with TestClient(app) as client:
+        settings = client.app.state.settings
+        original_storage = settings.storage_dir
+        original_model_cache = settings.model_cache_dir
+        settings.storage_dir = tmp_path / "storage"
+        settings.model_cache_dir = tmp_path / "models"
+
+        try:
+            alpha_clip = build_clip_record(job_id="job-alpha", clip_id="job-alpha-clip-001", start=0.0, end=0.9, score=93.0)
+            beta_clip = build_clip_record(job_id="job-beta", clip_id="job-beta-clip-001", start=0.1, end=1.0, score=88.0)
+
+            alpha_manifest = client.app.state.job_store.create_manifest_for_job(
+                job_id="job-alpha",
+                file_name="alpha.mp4",
+                content_type="video/mp4",
+                size_bytes=2048,
+                relative_path="jobs/job-alpha/source/alpha.mp4",
+            )
+            beta_manifest = client.app.state.job_store.create_manifest_for_job(
+                job_id="job-beta",
+                file_name="beta.mp4",
+                content_type="video/mp4",
+                size_bytes=2048,
+                relative_path="jobs/job-beta/source/beta.mp4",
+            )
+            client.app.state.job_store.save_job(
+                alpha_manifest.model_copy(
+                    update={
+                        "status": JobStatus.READY,
+                        "progress_phase": ProgressPhase.READY,
+                        "clips": [alpha_clip],
+                        "summary": build_summary([alpha_clip], duration_seconds=1.0, transcript_text="Alpha transcript"),
+                        "timeline": build_timeline([alpha_clip], duration_seconds=1.0),
+                    }
+                )
+            )
+            client.app.state.job_store.save_job(
+                beta_manifest.model_copy(
+                    update={
+                        "status": JobStatus.READY,
+                        "progress_phase": ProgressPhase.READY,
+                        "clips": [beta_clip],
+                        "summary": build_summary([beta_clip], duration_seconds=1.0, transcript_text="Beta transcript"),
+                        "timeline": build_timeline([beta_clip], duration_seconds=1.0),
+                    }
+                )
+            )
+
+            response = client.post(
+                "/api/exports/batch-package",
+                json={
+                    "batchLabel": "April Batch",
+                    "preset": "metadata-only",
+                    "selections": [
+                        {"jobId": "job-alpha", "clipIds": [alpha_clip.id]},
+                        {"jobId": "job-beta", "clipIds": [beta_clip.id]},
+                    ],
+                },
+            )
+        finally:
+            settings.storage_dir = original_storage
+            settings.model_cache_dir = original_model_cache
+
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "application/zip"
+    assert 'filename="clipmine-batch-export-april-batch-metadata.zip"' in response.headers["content-disposition"]
+
+    archive = zipfile.ZipFile(BytesIO(response.content))
+    archive_names = set(archive.namelist())
+    assert archive_names == {"clipmine-batch-export-april-batch-metadata/manifest.json"}
+
+    manifest_payload = orjson.loads(archive.read("clipmine-batch-export-april-batch-metadata/manifest.json"))
+    assert manifest_payload["preset"] == "metadata-only"
+    assert manifest_payload["mediaKind"] == "metadata"
+    assert manifest_payload["includesMediaFiles"] is False
+    assert manifest_payload["jobs"][0]["clips"][0]["fileName"] is None
+    assert manifest_payload["jobs"][0]["clips"][0]["relativePath"] is None
+    assert manifest_payload["jobs"][1]["clips"][0]["fileName"] is None
+    assert manifest_payload["jobs"][1]["clips"][0]["relativePath"] is None
+
+
 def build_clip_record(*, job_id: str, clip_id: str, start: float, end: float, score: float) -> ClipRecord:
     return ClipRecord(
         id=clip_id,

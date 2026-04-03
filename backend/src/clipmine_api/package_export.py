@@ -163,10 +163,12 @@ def build_batch_package_export(
     store: JobStore,
     artifact_store: ArtifactStore,
     batch_label: str | None = None,
+    preset: PackageExportPreset = PackageExportPreset.FULL_AV,
     quality_threshold: float | None = None,
 ) -> PackageExportArtifact:
+    layout = PACKAGE_EXPORT_LAYOUTS[preset]
     cleanup_root = Path(tempfile.mkdtemp(prefix="clipmine-batch-export-"))
-    package_root_name = build_batch_package_root_name(batch_label)
+    package_root_name = build_batch_package_root_name(batch_label, preset)
     package_root = cleanup_root / package_root_name
     package_root.mkdir(parents=True, exist_ok=True)
     jobs_dir = package_root / "jobs"
@@ -175,6 +177,9 @@ def build_batch_package_export(
     manifest_payload = {
         "batchLabel": batch_label or "ClipMine batch export",
         "exportedAt": datetime.now(tz=UTC).isoformat(),
+        "preset": preset.value,
+        "mediaKind": layout.media_kind,
+        "includesMediaFiles": layout.includes_media_files,
         "qualityThreshold": quality_threshold,
         "jobCount": len(selections),
         "clipCount": sum(len(selection.clips) for selection in selections),
@@ -182,15 +187,20 @@ def build_batch_package_export(
     }
 
     for selection in selections:
-        source_path = _resolve_source_video_path(
-            selection.job,
-            store=store,
-            artifact_store=artifact_store,
-            cleanup_root=cleanup_root,
-        )
         job_dir = jobs_dir / selection.job.job_id
-        clips_dir = job_dir / "clips"
-        clips_dir.mkdir(parents=True, exist_ok=True)
+        job_dir.mkdir(parents=True, exist_ok=True)
+        asset_dir: Path | None = None
+        source_path: Path | None = None
+
+        if layout.includes_media_files and layout.asset_directory:
+            asset_dir = job_dir / layout.asset_directory
+            asset_dir.mkdir(parents=True, exist_ok=True)
+            source_path = _resolve_source_video_path(
+                selection.job,
+                store=store,
+                artifact_store=artifact_store,
+                cleanup_root=cleanup_root,
+            )
 
         job_manifest = {
             "jobId": selection.job.job_id,
@@ -206,10 +216,20 @@ def build_batch_package_export(
         }
 
         for ordinal, clip in enumerate(selection.clips, start=1):
-            clip_file_name = build_clip_file_name(ordinal, clip.id)
-            relative_path = f"jobs/{selection.job.job_id}/clips/{clip_file_name}"
-            output_path = clips_dir / clip_file_name
-            extract_video_clip(source_path, output_path, start_time=clip.start, end_time=clip.end)
+            clip_file_name = build_clip_file_name(ordinal, clip.id, extension=layout.asset_extension)
+            relative_path = (
+                f"jobs/{selection.job.job_id}/{layout.asset_directory}/{clip_file_name}"
+                if layout.asset_directory and clip_file_name
+                else None
+            )
+
+            if layout.includes_media_files and asset_dir and source_path and clip_file_name:
+                output_path = asset_dir / clip_file_name
+                if preset is PackageExportPreset.FULL_AV:
+                    extract_video_clip(source_path, output_path, start_time=clip.start, end_time=clip.end)
+                elif preset is PackageExportPreset.AUDIO_ONLY:
+                    extract_audio_clip(source_path, output_path, start_time=clip.start, end_time=clip.end)
+
             job_manifest["clips"].append(
                 {
                     "ordinal": ordinal,
@@ -269,9 +289,13 @@ def build_clip_file_name(ordinal: int, clip_id: str, *, extension: str | None = 
     return f"clip_{ordinal:03d}__{clip_id}{extension}"
 
 
-def build_batch_package_root_name(batch_label: str | None) -> str:
+def build_batch_package_root_name(
+    batch_label: str | None,
+    preset: PackageExportPreset = PackageExportPreset.FULL_AV,
+) -> str:
     normalized = _slugify(batch_label or "clipmine-batch")
-    return f"clipmine-batch-export-{normalized}"
+    layout = PACKAGE_EXPORT_LAYOUTS[preset]
+    return f"clipmine-batch-export-{normalized}{layout.archive_suffix}"
 
 
 def _resolve_source_video_path(

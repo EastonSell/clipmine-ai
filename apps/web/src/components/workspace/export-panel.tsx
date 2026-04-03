@@ -5,6 +5,13 @@ import { useState } from "react";
 import { AlertCircle, FileArchive, FileJson2, Film, LoaderCircle, PackageOpen, Waves } from "lucide-react";
 
 import { downloadClipPackage, isRetryableApiError, ApiError } from "@/lib/api";
+import {
+  buildJobPackageRootName,
+  buildPackageClipFileName,
+  getPackageAssetDirectory,
+  getPackageExportPresetOption,
+  PACKAGE_EXPORT_PRESET_OPTIONS,
+} from "@/lib/package-export";
 import { buttonClassName, Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -19,46 +26,6 @@ type ExportPanelProps = {
   selectedClips: ClipRecord[];
 };
 
-type ExportPresetOption = {
-  value: PackageExportPreset;
-  title: string;
-  description: string;
-  accent: string;
-  buttonLabel: string;
-  treeLabel: string;
-  listLabel: string;
-};
-
-const EXPORT_PRESET_OPTIONS: ExportPresetOption[] = [
-  {
-    value: "full-av",
-    title: "Full AV package",
-    description: "Trim selected clips into mp4 files plus a linked manifest for training and review handoff.",
-    accent: "mp4 clips + manifest",
-    buttonLabel: "Download selected package",
-    treeLabel: "Video files and manifest",
-    listLabel: "Trimmed media files",
-  },
-  {
-    value: "audio-only",
-    title: "Audio-only package",
-    description: "Export each selected clip as a mono wav segment while keeping the same manifest linkage.",
-    accent: "wav clips + manifest",
-    buttonLabel: "Download audio-only package",
-    treeLabel: "Audio clips and manifest",
-    listLabel: "Audio files and manifest",
-  },
-  {
-    value: "metadata-only",
-    title: "Metadata-only package",
-    description: "Keep the selected clip manifest without bundling media files when downstream tooling already has source access.",
-    accent: "manifest only",
-    buttonLabel: "Download metadata-only package",
-    treeLabel: "Manifest only",
-    listLabel: "Manifest-only clip entries",
-  },
-];
-
 export function ExportPanel({ job, exportUrl, disabled, selectedClips }: ExportPanelProps) {
   const [selectedPreset, setSelectedPreset] = useState<PackageExportPreset>("full-av");
   const [isDownloadingPackage, setIsDownloadingPackage] = useState(false);
@@ -72,7 +39,7 @@ export function ExportPanel({ job, exportUrl, disabled, selectedClips }: ExportP
     { shortlist: 0, review: 0, discard: 0 }
   );
   const selectedDuration = selectedClips.reduce((total, clip) => total + clip.duration, 0);
-  const activePreset = EXPORT_PRESET_OPTIONS.find((option) => option.value === selectedPreset) ?? EXPORT_PRESET_OPTIONS[0];
+  const activePreset = getPackageExportPresetOption(selectedPreset);
   const packageTree = buildPackageTree(job.jobId, selectedClips, selectedPreset);
 
   async function handleDownloadPackage() {
@@ -134,7 +101,7 @@ export function ExportPanel({ job, exportUrl, disabled, selectedClips }: ExportP
         </div>
 
         <div className="mt-6 grid gap-3 xl:grid-cols-3">
-          {EXPORT_PRESET_OPTIONS.map((option) => {
+          {PACKAGE_EXPORT_PRESET_OPTIONS.map((option) => {
             const isActive = option.value === selectedPreset;
             const Icon = option.value === "full-av" ? Film : option.value === "audio-only" ? Waves : FileJson2;
 
@@ -188,7 +155,7 @@ export function ExportPanel({ job, exportUrl, disabled, selectedClips }: ExportP
                 </p>
                 <div className="mt-4 space-y-3">
                   {selectedClips.slice(0, 4).map((clip, index) => {
-                    const fileName = buildClipFileName(index + 1, clip.id, selectedPreset);
+                    const fileName = buildPackageClipFileName(index + 1, clip.id, selectedPreset);
                     return (
                       <div key={clip.id} className="rounded-[1rem] border border-[var(--line)] bg-white/[0.03] px-4 py-4">
                         <div className="flex flex-wrap items-center justify-between gap-3">
@@ -340,11 +307,11 @@ export function ExportPanel({ job, exportUrl, disabled, selectedClips }: ExportP
 }
 
 function buildPackageTree(jobId: string, clips: ClipRecord[], preset: PackageExportPreset) {
-  const rootName = buildPackageRootName(jobId, preset);
-  const folderName = getPresetFolderName(preset);
+  const rootName = buildJobPackageRootName(jobId, preset);
+  const folderName = getPackageAssetDirectory(preset);
   const previewEntries = clips
     .slice(0, 4)
-    .map((clip, index) => buildClipFileName(index + 1, clip.id, preset))
+    .map((clip, index) => buildPackageClipFileName(index + 1, clip.id, preset))
     .filter((value): value is string => Boolean(value))
     .map((fileName) => `    ${fileName}`);
   const extraCount = Math.max(0, clips.length - previewEntries.length);
@@ -359,39 +326,6 @@ function buildPackageTree(jobId: string, clips: ClipRecord[], preset: PackageExp
   }
 
   return lines.join("\n");
-}
-
-function buildPackageRootName(jobId: string, preset: PackageExportPreset) {
-  if (preset === "audio-only") {
-    return `clipmine-export-${jobId}-audio`;
-  }
-
-  if (preset === "metadata-only") {
-    return `clipmine-export-${jobId}-metadata`;
-  }
-
-  return `clipmine-export-${jobId}`;
-}
-
-function getPresetFolderName(preset: PackageExportPreset) {
-  if (preset === "audio-only") {
-    return "audio";
-  }
-
-  if (preset === "metadata-only") {
-    return null;
-  }
-
-  return "clips";
-}
-
-function buildClipFileName(ordinal: number, clipId: string, preset: PackageExportPreset) {
-  if (preset === "metadata-only") {
-    return null;
-  }
-
-  const extension = preset === "audio-only" ? "wav" : "mp4";
-  return `clip_${String(ordinal).padStart(3, "0")}__${clipId}.${extension}`;
 }
 
 function PreviewMetric({ label, value }: { label: string; value: string }) {

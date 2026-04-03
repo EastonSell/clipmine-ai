@@ -1,5 +1,30 @@
 # Verification Log
 
+## Batch Export Preset Selector Pass
+
+Date: 2026-04-03
+
+- Extended the batch workspace export controls to match the single-job preset flow, with explicit full AV, audio-only, and metadata-only choices plus a preset-aware archive preview.
+- Moved the shared preset labels and file-name helpers into a frontend utility so the single-workspace and batch export UIs describe the same archive shapes.
+- Updated the batch export API payload and backend archive builder so combined exports now honor the selected preset, including metadata-only exports that no longer require local source video files.
+- This checkout started without frontend dependencies installed, so `npm ci` was required before the frontend build and Playwright checks could run. The backend verification also required refreshing the editable install with `python3.11 -m pip install -e backend`.
+
+### Checks run
+
+```bash
+npm ci
+python3.11 -m pip install -e backend
+npm run build:web
+python3.11 -m pytest backend/tests/test_package_export.py -k 'batch_package_export'
+npm run test:e2e -- --grep "batch workspace groups jobs and exports thresholded clips"
+```
+
+### Result
+
+- frontend production build passed
+- `3 / 3` targeted backend batch package-export tests passed
+- `1 / 1` targeted Playwright batch export tests passed
+
 Date: 2026-04-02
 
 ## Batch Ready Source Jump Controls Pass

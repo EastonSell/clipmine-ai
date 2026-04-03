@@ -245,6 +245,7 @@ class BatchPackageSelection(BaseModel):
 
 class BatchPackageExportRequest(BaseModel):
     batch_label: str | None = Field(default=None, alias="batchLabel")
+    preset: PackageExportPreset = Field(default=PackageExportPreset.FULL_AV)
     quality_threshold: float | None = Field(default=None, alias="qualityThreshold")
     selections: list[BatchPackageSelection]
 

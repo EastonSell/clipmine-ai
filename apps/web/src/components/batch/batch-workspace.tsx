@@ -1,7 +1,19 @@
 "use client";
 
 import Link from "next/link";
-import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Download, ExternalLink, RefreshCcw, SlidersHorizontal } from "lucide-react";
+import {
+  ChevronLeft,
+  ChevronRight,
+  ChevronsLeft,
+  ChevronsRight,
+  Download,
+  ExternalLink,
+  FileJson2,
+  Film,
+  RefreshCcw,
+  SlidersHorizontal,
+  Waves,
+} from "lucide-react";
 import { startTransition, useEffect, useMemo, useRef, useState } from "react";
 import useSWR from "swr";
 
@@ -26,10 +38,17 @@ import {
   hasBatchIssues,
   isBatchIssueItem,
 } from "@/lib/batch-focus";
+import {
+  buildBatchPackageRootName,
+  buildPackageClipFileName,
+  getPackageAssetDirectory,
+  getPackageExportPresetOption,
+  PACKAGE_EXPORT_PRESET_OPTIONS,
+} from "@/lib/package-export";
 import { createJob, downloadBatchClipPackage, getJob, retryJob, ApiError, isRetryableApiError } from "@/lib/api";
 import { loadBatchSession, saveBatchSession } from "@/lib/batch-sessions";
 import { formatSeconds, formatSignedScore } from "@/lib/format";
-import type { BatchSessionRecord, BatchUploadItemRecord, ClipRecord, JobResponse } from "@/lib/types";
+import type { BatchPackageJobSelection, BatchSessionRecord, BatchUploadItemRecord, ClipRecord, JobResponse, PackageExportPreset } from "@/lib/types";
 
 type BatchWorkspaceProps = {
   batchId: string;
@@ -54,6 +73,7 @@ export function BatchWorkspace({
   const [activeJobId, setActiveJobId] = useState<string | null>(null);
   const [issuesOnly, setIssuesOnly] = useState(prioritizeIssues && initialIssuesOnly);
   const [qualityThreshold, setQualityThreshold] = useState(84);
+  const [selectedPreset, setSelectedPreset] = useState<PackageExportPreset>("full-av");
   const [downloadError, setDownloadError] = useState<ApiError | null>(null);
   const [isDownloading, setIsDownloading] = useState(false);
   const [retryingItemIds, setRetryingItemIds] = useState<string[]>([]);
@@ -297,6 +317,7 @@ export function BatchWorkspace({
     () => aggregateClips.reduce((total, entry) => total + entry.clip.duration, 0),
     [aggregateClips]
   );
+  const activePreset = getPackageExportPresetOption(selectedPreset);
   const readyCount = session?.items.filter((item) => item.status === "ready").length ?? 0;
   const failedCount = session?.items.filter((item) => item.status === "failed").length ?? 0;
   const processingCount = session?.items.filter((item) => item.status === "processing").length ?? 0;
@@ -313,6 +334,10 @@ export function BatchWorkspace({
       }))
       .filter((selection) => selection.clipIds.length > 0);
   }, [jobs, qualityThreshold]);
+  const batchPackageTree = useMemo(
+    () => buildBatchPackageTree(session?.label || batchId, aggregateSelections, selectedPreset),
+    [aggregateSelections, batchId, selectedPreset, session?.label]
+  );
 
   async function handleRetryBatchItem(item: BatchUploadItemRecord) {
     if (retryingItemIdSet.has(item.id)) {
@@ -419,6 +444,7 @@ export function BatchWorkspace({
     try {
       const response = await downloadBatchClipPackage(aggregateSelections, {
         batchLabel: session.label || batchId,
+        preset: selectedPreset,
         qualityThreshold,
       });
       const objectUrl = URL.createObjectURL(response.blob);
@@ -508,7 +534,7 @@ export function BatchWorkspace({
           action={
             <Button variant="primary" onClick={() => void handleDownloadCombinedPackage()} disabled={aggregateSelections.length === 0 || isDownloading}>
               {isDownloading ? <RefreshCcw className="size-4 animate-spin" /> : <Download className="size-4" />}
-              {aggregateSelections.length > 0 ? `Export ${aggregateClips.length} clips` : "No eligible clips"}
+              {aggregateSelections.length > 0 ? getBatchExportActionLabel(aggregateClips.length, selectedPreset) : "No eligible clips"}
             </Button>
           }
         />
@@ -546,7 +572,7 @@ export function BatchWorkspace({
             <SectionHeader
               eyebrow="Cross-job export"
               title="Top clips across the batch"
-              description="Set a score floor, review the total eligible duration, then export one combined package."
+              description="Set a score floor, choose a package preset, then export one combined archive that stays aligned with the single-workspace presets."
             />
 
             <div className="mt-6 space-y-4">
@@ -573,14 +599,52 @@ export function BatchWorkspace({
                 <OverviewMetric label="Total duration" value={formatSeconds(aggregateDuration)} />
               </div>
 
+              <div className="grid gap-3 xl:grid-cols-3">
+                {PACKAGE_EXPORT_PRESET_OPTIONS.map((option) => {
+                  const isActive = option.value === selectedPreset;
+                  const Icon = option.value === "full-av" ? Film : option.value === "audio-only" ? Waves : FileJson2;
+
+                  return (
+                    <button
+                      key={option.value}
+                      type="button"
+                      aria-pressed={isActive}
+                      onClick={() => {
+                        setSelectedPreset(option.value);
+                        setDownloadError(null);
+                      }}
+                      className={[
+                        "rounded-[1.2rem] border px-4 py-4 text-left transition",
+                        isActive
+                          ? "border-[var(--accent)] bg-[var(--accent-soft)] shadow-[var(--shadow-soft)]"
+                          : "border-[var(--line)] bg-white/[0.03] hover:border-[var(--line-strong)] hover:bg-white/[0.05]",
+                      ].join(" ")}
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex size-10 items-center justify-center rounded-[1rem] border border-[var(--line)] bg-white/[0.04] text-[var(--accent)]">
+                          <Icon className="size-4" />
+                        </div>
+                        <span className="rounded-full border border-[var(--line)] bg-white/[0.06] px-2.5 py-1 text-[11px] font-medium uppercase tracking-[0.18em] text-[var(--muted-strong)]">
+                          {option.accent}
+                        </span>
+                      </div>
+                      <div className="mt-4 text-base font-semibold tracking-[-0.03em] text-[var(--text)]">{option.title}</div>
+                      <p className="mt-2 text-sm leading-6 text-[var(--muted)]">{option.description}</p>
+                    </button>
+                  );
+                })}
+              </div>
+
               <div className="rounded-[1rem] border border-[var(--line)] bg-white/[0.03] px-4 py-4">
-                <div className="metric-label text-[var(--muted)]">Package layout</div>
+                <div className="metric-label text-[var(--muted)]">{activePreset.treeLabel}</div>
                 <pre className="mt-3 overflow-auto rounded-[0.9rem] border border-[var(--line)] bg-[var(--surface-dark)] p-4 text-xs leading-6 text-white/75">
-{`clipmine-batch-export-${batchId}/
-  manifest.json
-  jobs/
-    <jobId>/clips/clip_001__<clipId>.mp4`}
+{batchPackageTree}
                 </pre>
+                <p className="mt-3 text-sm leading-6 text-[var(--muted)]">
+                  {selectedPreset === "metadata-only"
+                    ? "The batch manifest keeps each clip grouped under its original job without re-encoding any media."
+                    : "Each selected clip keeps a stable file name inside its job folder so cross-job downloads still map cleanly back to the source workspace."}
+                </p>
               </div>
             </div>
           </Card>
@@ -945,4 +1009,56 @@ function OverviewMetric({ label, value }: { label: string; value: string }) {
       <div className="mt-2 text-2xl font-semibold tracking-[-0.04em] text-[var(--text)]">{value}</div>
     </div>
   );
+}
+
+function getBatchExportActionLabel(clipCount: number, preset: PackageExportPreset) {
+  if (preset === "audio-only") {
+    return `Export ${clipCount} audio ${clipCount === 1 ? "clip" : "clips"}`;
+  }
+
+  if (preset === "metadata-only") {
+    return `Export ${clipCount} manifest ${clipCount === 1 ? "entry" : "entries"}`;
+  }
+
+  return `Export ${clipCount} clips`;
+}
+
+function buildBatchPackageTree(
+  batchLabel: string,
+  selections: BatchPackageJobSelection[],
+  preset: PackageExportPreset
+) {
+  const rootName = buildBatchPackageRootName(batchLabel, preset);
+  const assetDirectory = getPackageAssetDirectory(preset);
+  const lines = [`${rootName}/`, "  manifest.json"];
+
+  if (!assetDirectory || selections.length === 0) {
+    return lines.join("\n");
+  }
+
+  lines.push("  jobs/");
+
+  selections.slice(0, 3).forEach((selection) => {
+    lines.push(`    ${selection.jobId}/`, `      ${assetDirectory}/`);
+    selection.clipIds
+      .slice(0, 2)
+      .forEach((clipId, index) => {
+        const fileName = buildPackageClipFileName(index + 1, clipId, preset);
+        if (fileName) {
+          lines.push(`        ${fileName}`);
+        }
+      });
+
+    const extraCount = Math.max(0, selection.clipIds.length - 2);
+    if (extraCount > 0) {
+      lines.push(`        ... ${extraCount} more ${preset === "audio-only" ? "audio" : "clip"} files`);
+    }
+  });
+
+  const extraJobs = Math.max(0, selections.length - 3);
+  if (extraJobs > 0) {
+    lines.push(`    ... ${extraJobs} more ${extraJobs === 1 ? "job" : "jobs"}`);
+  }
+
+  return lines.join("\n");
 }

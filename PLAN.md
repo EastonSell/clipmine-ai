@@ -240,8 +240,13 @@ Avoid:
   Notes: Completed on 2026-04-03 by adding preset cards to the single-job export panel, keeping the existing video package as the default, and wiring audio-only plus metadata-only downloads through the package export API with preset-aware archive previews.
   Verified: `python3.11 -m pip install -e backend`, `npm ci`, `python3.11 -m pytest backend/tests/test_package_export.py`, `npm run build:web`, `npm run test:e2e -- --grep "selected clips can be batched into a package export"`
 
-- [ ] Add batch export preset selector
+- [x] Add batch export preset selector
   Prompt: "Let the batch workspace export flow choose between full AV, audio-only, and metadata-only packages so cross-job downloads match the single-workspace export presets."
+  Notes: Completed on 2026-04-03 by reusing the preset model from the single-workspace export flow, adding preset cards and preview layout updates in the batch workspace, and wiring preset-aware combined batch exports through the frontend API and backend archive builder.
+  Verified: `npm ci`, `python3.11 -m pip install -e backend`, `npm run build:web`, `python3.11 -m pytest backend/tests/test_package_export.py -k 'batch_package_export'`, `npm run test:e2e -- --grep "batch workspace groups jobs and exports thresholded clips"`
+
+- [ ] Persist batch export preset choice per batch session
+  Prompt: "Remember the last preset chosen in the batch workspace so refreshes and reopened saved sessions keep the same export mode instead of snapping back to full AV."
 
 - [x] Add queue completion toast and summary state
   Prompt: "When a batch queue finishes, show a stronger completion summary before navigating so the user understands how many sources succeeded or failed."
@@ -397,3 +402,5 @@ Avoid:
 - 2026-04-03: Completed `Add export preset selector` after refreshing the editable backend install, rebuilding the web app, and passing targeted package-export pytest and Playwright coverage.
 - 2026-04-03: Completed `Add audio-only export companion` within the same preset pass by shipping wav and metadata-only selected package exports.
 - 2026-04-03: Added `Add batch export preset selector` as the follow-up so batch downloads match the new single-workspace preset choices.
+- 2026-04-03: Completed `Add batch export preset selector` after installing frontend dependencies, refreshing the editable backend install, and passing targeted build, batch package-export pytest, and Playwright verification.
+- 2026-04-03: Added `Persist batch export preset choice per batch session` as the next aggregate-export follow-up.
