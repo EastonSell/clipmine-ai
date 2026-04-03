@@ -1,5 +1,27 @@
 # Verification Log
 
+## Batch Export Partial-Failure Manifest Warning Pass
+
+Date: 2026-04-03
+
+- Changed the batch package builder so per-job media packaging failures no longer abort the entire combined archive once another selected job has already exported successfully.
+- Added manifest-level warning entries plus requested, successful, and failed job counts so skipped jobs are visible directly in the downloaded batch export metadata.
+- Relaxed the batch export route's local source-file precheck so missing media is handled inside the builder, which lets the archive keep successful jobs while warning on skipped ones.
+
+### Checks run
+
+```bash
+PYTHONPATH=backend/src python3.11 -m pytest backend/tests/test_package_export.py
+```
+
+### Result
+
+- `9 / 9` targeted backend package export tests passed
+- combined batch exports now keep successful jobs when another selected job's media is missing or unreadable
+- batch export manifests now record skipped-job warnings and requested-versus-exported job counts
+- the mixed-success regression path is covered by a backend test that omits one selected job's source file
+
+
 ## Object-Storage Playback Verification Pass
 
 Date: 2026-04-03

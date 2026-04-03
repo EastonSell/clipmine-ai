@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import re
 import shutil
 import tempfile
@@ -14,6 +15,8 @@ from .artifact_store import ArtifactStore
 from .media import extract_audio_clip, extract_video_clip
 from .schemas import ClipRecord, JobManifest, PackageExportPreset
 from .storage import JobStore
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True, slots=True)
@@ -181,77 +184,106 @@ def build_batch_package_export(
         "mediaKind": layout.media_kind,
         "includesMediaFiles": layout.includes_media_files,
         "qualityThreshold": quality_threshold,
-        "jobCount": len(selections),
-        "clipCount": sum(len(selection.clips) for selection in selections),
+        "requestedJobCount": len(selections),
+        "jobCount": 0,
+        "clipCount": 0,
+        "failedJobCount": 0,
+        "warningCount": 0,
+        "warnings": [],
         "jobs": [],
     }
+    first_error: Exception | None = None
 
     for selection in selections:
         job_dir = jobs_dir / selection.job.job_id
-        job_dir.mkdir(parents=True, exist_ok=True)
-        asset_dir: Path | None = None
-        source_path: Path | None = None
 
-        if layout.includes_media_files and layout.asset_directory:
-            asset_dir = job_dir / layout.asset_directory
-            asset_dir.mkdir(parents=True, exist_ok=True)
-            source_path = _resolve_source_video_path(
-                selection.job,
-                store=store,
-                artifact_store=artifact_store,
-                cleanup_root=cleanup_root,
+        try:
+            job_dir.mkdir(parents=True, exist_ok=True)
+            asset_dir: Path | None = None
+            source_path: Path | None = None
+
+            if layout.includes_media_files and layout.asset_directory:
+                asset_dir = job_dir / layout.asset_directory
+                asset_dir.mkdir(parents=True, exist_ok=True)
+                source_path = _resolve_source_video_path(
+                    selection.job,
+                    store=store,
+                    artifact_store=artifact_store,
+                    cleanup_root=cleanup_root,
+                )
+
+            job_manifest = {
+                "jobId": selection.job.job_id,
+                "sourceVideo": {
+                    "id": selection.job.source_video.id,
+                    "file_name": selection.job.source_video.file_name,
+                    "content_type": selection.job.source_video.content_type,
+                    "size_bytes": selection.job.source_video.size_bytes,
+                    "duration_seconds": selection.job.source_video.duration_seconds,
+                },
+                "clipCount": len(selection.clips),
+                "clips": [],
+            }
+
+            for ordinal, clip in enumerate(selection.clips, start=1):
+                clip_file_name = build_clip_file_name(ordinal, clip.id, extension=layout.asset_extension)
+                relative_path = (
+                    f"jobs/{selection.job.job_id}/{layout.asset_directory}/{clip_file_name}"
+                    if layout.asset_directory and clip_file_name
+                    else None
+                )
+
+                if layout.includes_media_files and asset_dir and source_path and clip_file_name:
+                    output_path = asset_dir / clip_file_name
+                    if preset is PackageExportPreset.FULL_AV:
+                        extract_video_clip(source_path, output_path, start_time=clip.start, end_time=clip.end)
+                    elif preset is PackageExportPreset.AUDIO_ONLY:
+                        extract_audio_clip(source_path, output_path, start_time=clip.start, end_time=clip.end)
+
+                job_manifest["clips"].append(
+                    {
+                        "ordinal": ordinal,
+                        "clipId": clip.id,
+                        "fileName": clip_file_name,
+                        "relativePath": relative_path,
+                        "text": clip.text,
+                        "start": clip.start,
+                        "end": clip.end,
+                        "duration": clip.duration,
+                        "score": clip.score,
+                        "quality_label": clip.quality_label,
+                        "selection_recommendation": clip.selection_recommendation,
+                        "tags": clip.tags,
+                        "quality_penalties": clip.quality_penalties,
+                        "candidate_metrics": clip.candidate_metrics.model_dump(mode="json"),
+                        "quality_breakdown": clip.quality_breakdown.model_dump(mode="json"),
+                        "word_alignments": [alignment.model_dump(mode="json") for alignment in clip.word_alignments],
+                    }
+                )
+
+            manifest_payload["jobs"].append(job_manifest)
+            manifest_payload["jobCount"] += 1
+            manifest_payload["clipCount"] += len(selection.clips)
+        except Exception as exc:
+            first_error = first_error or exc
+            shutil.rmtree(job_dir, ignore_errors=True)
+            warning_payload = _build_batch_export_warning(selection.job, exc)
+            manifest_payload["warnings"].append(warning_payload)
+            logger.warning(
+                "batch_package.job_skipped job_id=%s preset=%s detail=%s",
+                selection.job.job_id,
+                preset.value,
+                warning_payload["detail"],
             )
 
-        job_manifest = {
-            "jobId": selection.job.job_id,
-            "sourceVideo": {
-                "id": selection.job.source_video.id,
-                "file_name": selection.job.source_video.file_name,
-                "content_type": selection.job.source_video.content_type,
-                "size_bytes": selection.job.source_video.size_bytes,
-                "duration_seconds": selection.job.source_video.duration_seconds,
-            },
-            "clipCount": len(selection.clips),
-            "clips": [],
-        }
+    manifest_payload["failedJobCount"] = len(manifest_payload["warnings"])
+    manifest_payload["warningCount"] = len(manifest_payload["warnings"])
 
-        for ordinal, clip in enumerate(selection.clips, start=1):
-            clip_file_name = build_clip_file_name(ordinal, clip.id, extension=layout.asset_extension)
-            relative_path = (
-                f"jobs/{selection.job.job_id}/{layout.asset_directory}/{clip_file_name}"
-                if layout.asset_directory and clip_file_name
-                else None
-            )
-
-            if layout.includes_media_files and asset_dir and source_path and clip_file_name:
-                output_path = asset_dir / clip_file_name
-                if preset is PackageExportPreset.FULL_AV:
-                    extract_video_clip(source_path, output_path, start_time=clip.start, end_time=clip.end)
-                elif preset is PackageExportPreset.AUDIO_ONLY:
-                    extract_audio_clip(source_path, output_path, start_time=clip.start, end_time=clip.end)
-
-            job_manifest["clips"].append(
-                {
-                    "ordinal": ordinal,
-                    "clipId": clip.id,
-                    "fileName": clip_file_name,
-                    "relativePath": relative_path,
-                    "text": clip.text,
-                    "start": clip.start,
-                    "end": clip.end,
-                    "duration": clip.duration,
-                    "score": clip.score,
-                    "quality_label": clip.quality_label,
-                    "selection_recommendation": clip.selection_recommendation,
-                    "tags": clip.tags,
-                    "quality_penalties": clip.quality_penalties,
-                    "candidate_metrics": clip.candidate_metrics.model_dump(mode="json"),
-                    "quality_breakdown": clip.quality_breakdown.model_dump(mode="json"),
-                    "word_alignments": [alignment.model_dump(mode="json") for alignment in clip.word_alignments],
-                }
-            )
-
-        manifest_payload["jobs"].append(job_manifest)
+    if not manifest_payload["jobs"]:
+        shutil.rmtree(cleanup_root, ignore_errors=True)
+        if first_error is not None:
+            raise first_error
+        raise RuntimeError("The batch clip package could not be built.")
 
     manifest_path = package_root / "manifest.json"
     manifest_path.write_bytes(orjson.dumps(manifest_payload, option=orjson.OPT_INDENT_2))
@@ -306,12 +338,30 @@ def _resolve_source_video_path(
     cleanup_root: Path,
 ) -> Path:
     if job.source_video.storage_backend == "local":
-        return store.source_video_path(job)
+        source_path = store.source_video_path(job)
+        if not source_path.exists():
+            raise FileNotFoundError(f"Source video not found for job {job.job_id}.")
+        return source_path
 
     suffix = Path(job.source_video.file_name).suffix.lower() or ".mp4"
     destination = cleanup_root / f"source-cache-{job.job_id}{suffix}"
     artifact_store.download_source_video(job.source_video, destination)
     return destination
+
+
+def _build_batch_export_warning(job: JobManifest, exc: Exception) -> dict[str, str]:
+    return {
+        "code": "job_export_failed",
+        "jobId": job.job_id,
+        "fileName": job.source_video.file_name,
+        "message": "This job was skipped because its media could not be packaged.",
+        "detail": _format_batch_export_warning_detail(exc),
+    }
+
+
+def _format_batch_export_warning_detail(exc: Exception) -> str:
+    detail = str(exc).strip()
+    return detail or exc.__class__.__name__
 
 
 def _slugify(value: str) -> str:

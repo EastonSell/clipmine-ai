@@ -176,6 +176,8 @@ Avoid:
 
 - [x] Node printed `NO_COLOR` / `FORCE_COLOR` warnings during Playwright startup even though the suite passed.
   Notes: Fixed on 2026-04-02 by unsetting both env vars at the repo script boundary for Playwright and README asset generation.
+- [x] Combined batch export aborted the full archive when one selected job's media was missing or unreadable.
+  Notes: Fixed on 2026-04-03 by letting batch package exports skip failed jobs, keep successful jobs in the archive, and record skipped-job details in manifest warnings.
 - [ ] The workspace-local `.git` directory in the main repo root is not trustworthy for normal commit workflows, so publish still uses the temp-checkout workaround.
 
 ## Needs Testing
@@ -463,6 +465,9 @@ Avoid:
   Notes: Completed on 2026-04-03 by adding a saved-session `Resume ready review` action on the landing shortcut, routing that CTA through the existing ready-only batch URL state, and seeding the reopened batch workspace with the first ready job so reviewers land directly in clip review without losing the existing full-workspace or issue-triage reopen path.
   Verified: `npm ci`, `npm run test:web -- --run src/lib/batch-focus.test.ts`, `npm run test:e2e -- --grep "landing page reopens the most recent finished batch session|saved batch shortcuts can resume ready review directly"`
 
+- [ ] Surface skipped-job batch export warnings in the workspace
+  Prompt: "When a combined batch export omits one or more jobs, show a download warning summary in the batch workspace so reviewers know which sources were skipped without opening the manifest by hand."
+
 ## Backend Tasks
 
 - [ ] Resume multipart uploads across browser refresh
@@ -473,8 +478,10 @@ Avoid:
   Notes: Completed on 2026-04-03 as part of the export preset pass by adding preset-aware single-job package exports, wav clip trimming, metadata-only manifest bundles, and source-file-optional validation for manifest-only downloads.
   Verified: `python3.11 -m pip install -e backend`, `python3.11 -m pytest backend/tests/test_package_export.py`
 
-- [ ] Add batch export partial-failure manifest warnings
+- [x] Add batch export partial-failure manifest warnings
   Prompt: "If some selected jobs fail during combined export, preserve successful jobs in the archive and record the failed jobs in the manifest warnings."
+  Notes: Completed on 2026-04-03 by allowing the combined batch package builder to skip per-job media packaging failures, keeping successful jobs in the archive, and recording requested, successful, and failed job counts alongside skipped-job warning entries in the batch manifest. The batch export API now defers source-media presence checks to the builder so missing local media degrades into a manifest warning instead of aborting the whole archive.
+  Verified: `PYTHONPATH=backend/src python3.11 -m pytest backend/tests/test_package_export.py`
 
 - [x] Add object-storage playback verification endpoint
   Prompt: "Expose a lightweight diagnostic path or health detail that confirms remote source playback reads are working end to end."

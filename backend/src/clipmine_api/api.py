@@ -646,7 +646,7 @@ async def export_batch_package(
             store,
             selection.job_id,
             selection.clip_ids,
-            requires_source_video=payload.preset is not PackageExportPreset.METADATA_ONLY,
+            requires_source_video=False,
         )
         for selection in normalized_selections
     ]
