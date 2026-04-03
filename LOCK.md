@@ -1,3 +1,0 @@
-run_id: 676D3A20-D34D-4BBC-8F7B-7EA8986DC174
-timestamp: 2026-04-03T07:08:03Z
-ttl_minutes: 30
