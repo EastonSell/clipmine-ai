@@ -476,8 +476,13 @@ Avoid:
   Notes: Completed on 2026-04-02 by unsetting both `FORCE_COLOR` and `NO_COLOR` in the repo-level Playwright scripts and preview server command.
   Verified: `npm run test:e2e`
 
-- [ ] Add a smoke assertion for the finished batch summary action row
+- [x] Add a smoke assertion for the finished batch summary action row
   Prompt: "Ensure the completed queue state always renders the open-workspace and queue-more actions together so the landing page never strands the user after a finished batch."
+  Notes: Completed on 2026-04-03 by extending the finished queue Playwright scenario so the landing page now asserts `Queue more sources` and `Open batch workspace` are visible together before the flow leaves the completion summary.
+  Verified: `npm ci`, `npm run test:e2e -- --grep "landing page completes a batch queue and then opens the workspace on demand"`
+
+- [ ] Add browser coverage for queue-more reset from the finished batch summary
+  Prompt: "Prove the queue-more action returns the landing uploader to a fresh batch-queue state after a completed queue without leaving the finished summary stuck on screen."
 
 - [ ] Add a console-warning guard around the browser smoke runner
   Prompt: "Teach the browser smoke path to fail or flag when known startup warnings reappear so regressions like duplicate keys or color-env conflicts are caught immediately."
@@ -538,6 +543,8 @@ Avoid:
 - 2026-04-03: Completed `Persist saved-batch triage scope in the URL` after installing frontend dependencies and passing focused web-unit and Playwright verification.
 - 2026-04-03: Added `Persist selected batch source in the URL` as the next batch-workspace deep-link follow-up.
 - 2026-04-03: Completed `Persist selected batch source in the URL` after focused web-unit and Playwright verification.
+- 2026-04-03: Completed `Add a smoke assertion for the finished batch summary action row` after restoring frontend dependencies and passing the targeted queue-completion Playwright scenario.
+- 2026-04-03: Added `Add browser coverage for queue-more reset from the finished batch summary` as the next landing-queue follow-up.
 - 2026-04-03: Added `Add previous and next source navigation in the batch workspace` as the next batch-review follow-up.
 - 2026-04-03: Completed `Add previous and next source navigation in the batch workspace` after installing frontend dependencies and passing focused web-unit and Playwright verification.
 - 2026-04-03: Added `Add keyboard shortcuts for ready-source navigation in the batch workspace` as the next batch-review follow-up.

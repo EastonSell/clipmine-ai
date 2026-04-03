@@ -1654,3 +1654,25 @@ npm run test:e2e -- --grep "batch workspace groups jobs and exports thresholded 
 - `npm ci`: completed successfully to restore frontend dependencies after the sync reset removed them from this worktree
 - `npm run lint:web -- --file src/components/batch/batch-workspace.tsx`: passed
 - `npm run test:e2e -- --grep "batch workspace groups jobs and exports thresholded clips"`: 1 / 1 test passed
+
+## Finished Batch Summary Action Row Smoke Pass
+
+- Extended the landing-page queue completion Playwright scenario so it now proves both completion actions are visible together before the flow opens the batch workspace.
+- Kept the coverage inside the existing queue-completion smoke test instead of adding a second overlapping browser scenario.
+- The first verification attempts were blocked until frontend dependencies were restored in this synced checkout.
+
+## Finished Batch Summary Action Row Checks Run
+
+```bash
+npm run test:e2e -- --grep "landing page completes a batch queue and then opens the workspace on demand"
+env -u FORCE_COLOR -u NO_COLOR PLAYWRIGHT_BROWSERS_PATH=/tmp/clipmine-playwright-browsers npx playwright test --grep "landing page completes a batch queue and then opens the workspace on demand"
+npm ci
+npm run test:e2e -- --grep "landing page completes a batch queue and then opens the workspace on demand"
+```
+
+## Finished Batch Summary Action Row Results
+
+- First `npm run test:e2e -- --grep "landing page completes a batch queue and then opens the workspace on demand"`: blocked before `npm ci` because the synced checkout had no project Playwright dependencies installed yet
+- `env -u FORCE_COLOR -u NO_COLOR PLAYWRIGHT_BROWSERS_PATH=/tmp/clipmine-playwright-browsers npx playwright test --grep "landing page completes a batch queue and then opens the workspace on demand"`: blocked before `npm ci` because `@playwright/test` was not installed in the synced checkout
+- `npm ci`: completed successfully
+- Final `npm run test:e2e -- --grep "landing page completes a batch queue and then opens the workspace on demand"`: 1 / 1 test passed

@@ -1977,6 +1977,8 @@ test("landing page completes a batch queue and then opens the workspace on deman
   await expect(page.getByRole("heading", { name: "Batch review session is ready" })).toBeVisible();
   await expect(page.getByText("2 of 2 sources reached the workspace stage.")).toBeVisible();
   await expect(page.getByText("Workspace ready")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Queue more sources" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Open batch workspace" })).toBeVisible();
 
   await page.getByRole("button", { name: "Open batch workspace" }).click();
   await page.waitForURL("**/batches/*");
