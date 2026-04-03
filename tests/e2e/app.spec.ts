@@ -938,11 +938,13 @@ test("batch workspace groups jobs and exports thresholded clips", async ({ page 
   await expect(page.getByRole("button", { name: /Broad 72\+ 4 eligible clips/i })).toBeVisible();
   await expect(page.locator('[data-testid^="aggregate-source-summary-"]').first()).toContainText("alpha.mp4");
   await expect(page.getByTestId("aggregate-source-summary-job-alpha")).toContainText("alpha.mp4");
+  await expect(page.getByTestId("aggregate-source-summary-job-alpha")).toContainText("1st by contribution");
   await expect(page.getByTestId("aggregate-source-summary-job-alpha")).toContainText("1 eligible clip");
   await expect(page.getByTestId("aggregate-source-summary-job-alpha")).toContainText("0:02 eligible duration");
   await expect(page.getByTestId("aggregate-source-summary-job-alpha")).toContainText("50% of eligible duration");
   await expect(page.getByRole("progressbar", { name: "alpha.mp4 contribution to eligible duration" })).toHaveAttribute("aria-valuenow", "50");
   await expect(page.getByTestId("aggregate-source-summary-job-beta")).toContainText("beta.mp4");
+  await expect(page.getByTestId("aggregate-source-summary-job-beta")).toContainText("2nd by contribution");
   await expect(page.getByTestId("aggregate-source-summary-job-beta")).toContainText("1 eligible clip");
   await expect(page.getByTestId("aggregate-source-summary-job-beta")).toContainText("0:02 eligible duration");
   await expect(page.getByTestId("aggregate-source-summary-job-beta")).toContainText("50% of eligible duration");
@@ -960,6 +962,8 @@ test("batch workspace groups jobs and exports thresholded clips", async ({ page 
   await expect(page.getByRole("button", { name: /Strict 92\+ 1 eligible clip/i })).toHaveAttribute("aria-pressed", "true");
   await expect(page.locator('[data-testid^="aggregate-source-summary-"]').first()).toContainText("beta.mp4");
   await expect(page.locator('[data-testid^="aggregate-source-summary-"]').nth(1)).toContainText("alpha.mp4");
+  await expect(page.getByTestId("aggregate-source-summary-job-beta")).toContainText("1st by contribution");
+  await expect(page.getByTestId("aggregate-source-summary-job-alpha")).toContainText("2nd by contribution");
   await expect(page.getByTestId("aggregate-source-summary-job-alpha")).toContainText("0 eligible clips");
   await expect(page.getByTestId("aggregate-source-summary-job-alpha")).toContainText("0:00 eligible duration");
   await expect(page.getByTestId("aggregate-source-summary-job-alpha")).toContainText("0% of eligible duration");
@@ -974,11 +978,13 @@ test("batch workspace groups jobs and exports thresholded clips", async ({ page 
   await expect(page.getByText("72/100")).toBeVisible();
   await expect(page.getByRole("button", { name: /Broad 72\+ 4 eligible clips/i })).toHaveAttribute("aria-pressed", "true");
   await expect(page.locator('[data-testid^="aggregate-source-summary-"]').first()).toContainText("alpha.mp4");
+  await expect(page.getByTestId("aggregate-source-summary-job-alpha")).toContainText("1st by contribution");
   await expect(page.getByTestId("aggregate-source-summary-job-alpha")).toContainText("2 eligible clips");
   await expect(page.getByTestId("aggregate-source-summary-job-alpha")).toContainText("0:04 eligible duration");
   await expect(page.getByTestId("aggregate-source-summary-job-alpha")).toContainText("50% of eligible duration");
   await expect(page.getByRole("progressbar", { name: "alpha.mp4 contribution to eligible duration" })).toHaveAttribute("aria-valuenow", "50");
   await expect(page.getByTestId("aggregate-source-summary-job-beta")).toContainText("2 eligible clips");
+  await expect(page.getByTestId("aggregate-source-summary-job-beta")).toContainText("2nd by contribution");
   await expect(page.getByTestId("aggregate-source-summary-job-beta")).toContainText("0:04 eligible duration");
   await expect(page.getByTestId("aggregate-source-summary-job-beta")).toContainText("50% of eligible duration");
   await expect(page.getByRole("progressbar", { name: "beta.mp4 contribution to eligible duration" })).toHaveAttribute("aria-valuenow", "50");

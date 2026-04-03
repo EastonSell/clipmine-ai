@@ -69,6 +69,24 @@ type AggregateClip = {
   clip: ClipRecord;
 };
 
+function formatContributionRank(value: number) {
+  const remainderHundred = value % 100;
+  if (remainderHundred >= 11 && remainderHundred <= 13) {
+    return `${value}th`;
+  }
+
+  switch (value % 10) {
+    case 1:
+      return `${value}st`;
+    case 2:
+      return `${value}nd`;
+    case 3:
+      return `${value}rd`;
+    default:
+      return `${value}th`;
+  }
+}
+
 export function BatchWorkspace({
   batchId,
   prioritizeIssues = false,
@@ -754,10 +772,11 @@ export function BatchWorkspace({
                 </div>
                 {readySourceEligibleClipSummaries.length > 0 ? (
                   <div className="mt-4 grid gap-2">
-                    {readySourceEligibleClipSummaries.map((entry) => {
+                    {readySourceEligibleClipSummaries.map((entry, index) => {
                       const isActiveSource = entry.jobId === activeJobId;
                       const eligibleDurationShare =
                         totalReadySourceEligibleDuration > 0 ? entry.eligibleDuration / totalReadySourceEligibleDuration : 0;
+                      const contributionRankLabel = `${formatContributionRank(index + 1)} by contribution`;
 
                       return (
                         <div
@@ -771,7 +790,15 @@ export function BatchWorkspace({
                           ].join(" ")}
                         >
                           <div className="min-w-0 flex-1">
-                            <div className="truncate text-sm font-semibold text-[var(--text)]">{entry.fileName}</div>
+                            <div className="flex flex-wrap items-center gap-2">
+                              <div className="truncate text-sm font-semibold text-[var(--text)]">{entry.fileName}</div>
+                              <Badge
+                                tone={index === 0 ? "accent" : "neutral"}
+                                className="shrink-0 px-2.5 py-1 text-[11px] uppercase tracking-[0.08em]"
+                              >
+                                {contributionRankLabel}
+                              </Badge>
+                            </div>
                             <div className="mt-1 text-xs text-[var(--muted)]">
                               {entry.eligibleClipCount > 0 ? "Included in the current export selection." : "Below the current threshold."}
                             </div>

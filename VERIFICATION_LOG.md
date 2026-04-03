@@ -1290,3 +1290,23 @@ npm run test:e2e -- --grep "batch workspace navigates ready sources from the sel
 - `npm ci`: completed successfully
 - `npm run test:web -- --run src/lib/batch-focus.test.ts`: 14 / 14 tests passed
 - `npm run test:e2e -- --grep "batch workspace navigates ready sources from the selected panel"`: 1 / 1 test passed
+
+## Aggregate Contribution Rank Pass
+
+- Added ordinal contribution-rank badges to the ready-source aggregate export summary so the current top contributors are visible before reviewers parse the duration details.
+- Kept the badge text derived from the existing ready-source contribution sort, so rank updates automatically when threshold changes reshuffle duration or clip-count contribution.
+- Extended the existing batch export Playwright scenario to assert the rank labels in balanced, strict, and broad threshold states.
+
+## Aggregate Contribution Rank Checks Run
+
+```bash
+npm ci
+npm run lint:web -- --file src/components/batch/batch-workspace.tsx
+npm run test:e2e -- --grep "batch workspace groups jobs and exports thresholded clips"
+```
+
+## Aggregate Contribution Rank Results
+
+- `npm ci`: completed successfully to restore frontend dependencies after the sync reset removed them from this worktree
+- `npm run lint:web -- --file src/components/batch/batch-workspace.tsx`: passed
+- `npm run test:e2e -- --grep "batch workspace groups jobs and exports thresholded clips"`: 1 / 1 test passed
