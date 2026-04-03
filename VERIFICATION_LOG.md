@@ -2,6 +2,29 @@
 
 Date: 2026-04-02
 
+## Batch Selected Source URL Pass
+
+Date: 2026-04-03
+
+- Added a normalized `job` query param for batch workspace URLs so the selected source stays shareable and survives refreshes.
+- Updated the batch page loader to read the selected job from search params and seed the client workspace with that source when it is still valid.
+- Synced the batch workspace URL whenever triage scope or selected source changes, while still falling back cleanly when the requested job is missing.
+- Extended the focused batch URL unit coverage and added Playwright coverage that selects a different source, rewrites the URL, and confirms the same source reopens after reload.
+- This checkout again started without frontend dependencies installed, so `npm ci` was required before the targeted verification commands could run.
+
+### Checks run
+
+```bash
+npm ci
+npm run test:web -- --run src/lib/batch-focus.test.ts
+npm run test:e2e -- --grep='saved batch workspaces reopen with failed sources surfaced first|saved batch triage can switch back from issue-only queue to all sources|batch workspace persists the selected source in the URL'
+```
+
+### Result
+
+- `7 / 7` targeted web unit tests passed
+- `3 / 3` targeted Playwright batch-workspace tests passed
+
 ## Saved Batch Triage URL Scope Pass
 
 Date: 2026-04-03

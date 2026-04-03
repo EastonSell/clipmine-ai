@@ -6,6 +6,7 @@ import {
   getPreferredBatchJobId,
   hasBatchIssues,
   isBatchIssueItem,
+  parseBatchSelectedJobId,
   parseBatchTriageState,
 } from "./batch-focus";
 import type { BatchUploadItemRecord } from "./types";
@@ -67,10 +68,18 @@ describe("batch-focus", () => {
         {
           prioritizeIssues: true,
           issuesOnly: false,
+          selectedJobId: "job-alpha",
         },
         "#batch-queue"
       )
-    ).toBe("/batches/saved-batch-failures?focus=issues&scope=all#batch-queue");
+    ).toBe("/batches/saved-batch-failures?focus=issues&scope=all&job=job-alpha#batch-queue");
+  });
+
+  it("normalizes the selected batch job id from search params", () => {
+    expect(parseBatchSelectedJobId("job-alpha")).toBe("job-alpha");
+    expect(parseBatchSelectedJobId("   job-beta   ")).toBe("job-beta");
+    expect(parseBatchSelectedJobId("")).toBeNull();
+    expect(parseBatchSelectedJobId(undefined)).toBeNull();
   });
 
   it("pins failed and cancelled sources to the front when issue focus is enabled", () => {

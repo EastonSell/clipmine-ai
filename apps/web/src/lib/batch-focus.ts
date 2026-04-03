@@ -5,6 +5,11 @@ export type BatchTriageState = {
   issuesOnly: boolean;
 };
 
+export function parseBatchSelectedJobId(jobId: string | null | undefined) {
+  const normalizedJobId = jobId?.trim();
+  return normalizedJobId ? normalizedJobId : null;
+}
+
 export function parseBatchTriageState(focus: string | null | undefined, scope: string | null | undefined): BatchTriageState {
   const prioritizeIssues = focus === "issues";
   return {
@@ -15,7 +20,11 @@ export function parseBatchTriageState(focus: string | null | undefined, scope: s
 
 export function getBatchWorkspaceHref(
   batchId: string,
-  { prioritizeIssues, issuesOnly = prioritizeIssues }: BatchTriageState,
+  {
+    prioritizeIssues,
+    issuesOnly = prioritizeIssues,
+    selectedJobId = null,
+  }: BatchTriageState & { selectedJobId?: string | null },
   hash = ""
 ) {
   const searchParams = new URLSearchParams();
@@ -26,6 +35,10 @@ export function getBatchWorkspaceHref(
     if (!issuesOnly) {
       searchParams.set("scope", "all");
     }
+  }
+
+  if (selectedJobId) {
+    searchParams.set("job", selectedJobId);
   }
 
   const search = searchParams.toString();

@@ -27,6 +27,7 @@ type BatchWorkspaceProps = {
   batchId: string;
   prioritizeIssues?: boolean;
   initialIssuesOnly?: boolean;
+  initialActiveJobId?: string | null;
 };
 
 type AggregateClip = {
@@ -39,6 +40,7 @@ export function BatchWorkspace({
   batchId,
   prioritizeIssues = false,
   initialIssuesOnly = prioritizeIssues,
+  initialActiveJobId = null,
 }: BatchWorkspaceProps) {
   const [session, setSession] = useState<BatchSessionRecord | null>(null);
   const [activeJobId, setActiveJobId] = useState<string | null>(null);
@@ -53,12 +55,16 @@ export function BatchWorkspace({
     const nextSession = loadBatchSession(batchId);
     const nextIssuesOnly = prioritizeIssues && initialIssuesOnly && hasBatchIssues(nextSession?.items ?? []);
     const nextQueueItems = getOrderedBatchItems(nextSession?.items ?? [], prioritizeIssues, nextIssuesOnly);
+    const nextActiveJobId =
+      initialActiveJobId && nextQueueItems.some((item) => item.jobId === initialActiveJobId)
+        ? initialActiveJobId
+        : getPreferredBatchJobId(nextQueueItems, false);
     setSession(nextSession);
     sessionRef.current = nextSession;
     setIssuesOnly(nextIssuesOnly);
     setQualityThreshold(nextSession?.qualityThreshold ?? 84);
-    setActiveJobId(getPreferredBatchJobId(nextQueueItems, false));
-  }, [batchId, initialIssuesOnly, prioritizeIssues]);
+    setActiveJobId(nextActiveJobId);
+  }, [batchId, initialActiveJobId, initialIssuesOnly, prioritizeIssues]);
 
   useEffect(() => {
     sessionRef.current = session;
@@ -124,24 +130,28 @@ export function BatchWorkspace({
 
   function setBatchTriageScope(nextIssuesOnly: boolean) {
     setIssuesOnly(nextIssuesOnly);
+  }
 
-    if (!prioritizeIssues || typeof window === "undefined") {
+  useEffect(() => {
+    if (typeof window === "undefined") {
       return;
     }
 
-    window.history.replaceState(
-      window.history.state,
-      "",
-      getBatchWorkspaceHref(
-        batchId,
-        {
-          prioritizeIssues: true,
-          issuesOnly: nextIssuesOnly,
-        },
-        window.location.hash
-      )
+    const currentHref = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+    const nextHref = getBatchWorkspaceHref(
+      batchId,
+      {
+        prioritizeIssues,
+        issuesOnly,
+        selectedJobId: activeJobId,
+      },
+      window.location.hash
     );
-  }
+
+    if (currentHref !== nextHref) {
+      window.history.replaceState(window.history.state, "", nextHref);
+    }
+  }, [activeJobId, batchId, issuesOnly, prioritizeIssues]);
 
   useEffect(() => {
     if (!session) {

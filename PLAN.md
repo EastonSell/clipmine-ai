@@ -271,14 +271,19 @@ Avoid:
   Notes: Completed on 2026-04-03 by centralizing saved-batch triage URL parsing/building, preserving the full-queue triage state with `scope=all`, and updating the workspace toggle in place so refreshes keep the same scope without resetting the current batch session.
   Verified: `npm ci`, `npm run test:web -- --run src/lib/batch-focus.test.ts`, `npm run test:e2e -- --grep='saved batch workspaces reopen with failed sources surfaced first|saved batch triage can switch back from issue-only queue to all sources'`
 
-- [ ] Persist selected batch source in the URL
+- [x] Persist selected batch source in the URL
   Prompt: "Keep the batch workspace URL aligned with the currently selected source so refreshes and shared links reopen the same source detail panel instead of defaulting back to the first available job."
+  Notes: Completed on 2026-04-03 by adding a `job` query param to the batch workspace URL, honoring that param on the batch page load, and rewriting the URL whenever the selected source changes or falls back to the first valid job.
+  Verified: `npm ci`, `npm run test:web -- --run src/lib/batch-focus.test.ts`, `npm run test:e2e -- --grep='saved batch workspaces reopen with failed sources surfaced first|saved batch triage can switch back from issue-only queue to all sources|batch workspace persists the selected source in the URL'`
 
 - [ ] Add per-source ETA hints to the active queue card
   Prompt: "Estimate queue progress for the current source and remaining queue so large multi-file uploads feel less opaque while the active transfer is running."
 
 - [ ] Preserve failed-upload retry readiness across reloads
   Prompt: "Persist enough local source reference data that a failed upload in the batch workspace can still be retried after a refresh or reopened saved batch, instead of only within the original tab lifetime."
+
+- [ ] Add previous and next source navigation in the batch workspace
+  Prompt: "Let reviewers move between ready sources from the selected-source panel so comparing adjacent uploads does not require jumping back to the queue list each time."
 
 ## Backend Tasks
 
@@ -357,3 +362,5 @@ Avoid:
 - 2026-04-03: Added `Persist saved-batch triage scope in the URL` as the next queue-triage follow-up.
 - 2026-04-03: Completed `Persist saved-batch triage scope in the URL` after installing frontend dependencies and passing focused web-unit and Playwright verification.
 - 2026-04-03: Added `Persist selected batch source in the URL` as the next batch-workspace deep-link follow-up.
+- 2026-04-03: Completed `Persist selected batch source in the URL` after focused web-unit and Playwright verification.
+- 2026-04-03: Added `Add previous and next source navigation in the batch workspace` as the next batch-review follow-up.

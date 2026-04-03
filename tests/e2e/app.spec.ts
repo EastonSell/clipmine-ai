@@ -456,10 +456,10 @@ test("saved batch triage can switch back from issue-only queue to all sources", 
 
   const attentionBanner = page.getByTestId("batch-queue-attention-banner");
   await attentionBanner.getByRole("button", { name: "All sources" }).click();
-  await expect(page).toHaveURL(/\/batches\/saved-batch-failures\?focus=issues&scope=all(?:#batch-queue)?$/);
+  await expect(page).toHaveURL(/\/batches\/saved-batch-failures\?focus=issues&scope=all(?:&job=saved-batch-alpha)?(?:#batch-queue)?$/);
 
   await page.reload();
-  await expect(page).toHaveURL(/\/batches\/saved-batch-failures\?focus=issues&scope=all(?:#batch-queue)?$/);
+  await expect(page).toHaveURL(/\/batches\/saved-batch-failures\?focus=issues&scope=all(?:&job=saved-batch-alpha)?(?:#batch-queue)?$/);
 
   const queueItems = page.getByTestId("batch-queue-item");
   await expect(attentionBanner.getByRole("button", { name: "All sources" })).toHaveAttribute("aria-pressed", "true");
@@ -901,6 +901,96 @@ test("batch workspace groups jobs and exports thresholded clips", async ({ page 
     { jobId: "job-alpha", clipIds: ["clip-1"] },
     { jobId: "job-beta", clipIds: ["job-beta-clip-1"] },
   ]);
+});
+
+test("batch workspace persists the selected source in the URL", async ({ page }) => {
+  const jobAlpha = createMockJob({
+    jobId: "job-alpha",
+    sourceVideo: {
+      id: "video-alpha",
+      file_name: "alpha.mp4",
+      content_type: "video/mp4",
+      size_bytes: 12_000_000,
+      duration_seconds: 164,
+      url: "/api/jobs/job-alpha/video",
+    },
+  });
+  const jobBeta = createMockJob({
+    jobId: "job-beta",
+    sourceVideo: {
+      id: "video-beta",
+      file_name: "beta.mp4",
+      content_type: "video/mp4",
+      size_bytes: 14_000_000,
+      duration_seconds: 201,
+      url: "/api/jobs/job-beta/video",
+    },
+  });
+
+  await page.addInitScript(
+    ({ batchSessionsKey, session }) => {
+      window.localStorage.setItem(batchSessionsKey, JSON.stringify([session]));
+    },
+    {
+      batchSessionsKey,
+      session: {
+        batchId: "demo-batch",
+        label: "2 sources queued",
+        createdAt: "2026-04-02T12:00:00.000Z",
+        updatedAt: "2026-04-02T12:10:00.000Z",
+        qualityThreshold: 84,
+        items: [
+          {
+            id: "upload-1",
+            fileName: "alpha.mp4",
+            sizeBytes: 12_000_000,
+            jobId: "job-alpha",
+            status: "ready",
+            uploadPhase: "complete",
+            uploadProgress: 100,
+            error: null,
+            updatedAt: "2026-04-02T12:10:00.000Z",
+          },
+          {
+            id: "upload-2",
+            fileName: "beta.mp4",
+            sizeBytes: 14_000_000,
+            jobId: "job-beta",
+            status: "ready",
+            uploadPhase: "complete",
+            uploadProgress: 100,
+            error: null,
+            updatedAt: "2026-04-02T12:11:00.000Z",
+          },
+        ],
+      },
+    }
+  );
+
+  await page.route("**/api/jobs/job-alpha", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(jobAlpha),
+    });
+  });
+  await page.route("**/api/jobs/job-beta", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(jobBeta),
+    });
+  });
+
+  await page.goto("/batches/demo-batch");
+
+  await page.getByRole("button", { name: /beta\.mp4 ready/i }).click();
+  await expect(page).toHaveURL(/\/batches\/demo-batch\?job=job-beta$/);
+  await expect(page.getByRole("heading", { name: "beta.mp4" })).toBeVisible();
+
+  await page.reload();
+  await expect(page).toHaveURL(/\/batches\/demo-batch\?job=job-beta$/);
+  await expect(page.getByRole("heading", { name: "beta.mp4" })).toBeVisible();
 });
 
 test("batch workspace retries a failed source without returning home", async ({ page }) => {
