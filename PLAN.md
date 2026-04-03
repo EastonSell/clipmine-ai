@@ -381,8 +381,10 @@ Avoid:
   Notes: Completed on 2026-04-03 by persisting queued batch source files into an IndexedDB-backed browser cache with an in-memory fallback, hydrating saved-batch retry availability from that cache on workspace load, and reusing the persisted source on retry after a full page reload.
   Verified: `npm ci`, `npm run build:web`, `npm run test:e2e -- --grep "saved batch workspace retries a failed source after reload"`
 
-- [ ] Warn when browser source persistence is unavailable for failed batch retries
+- [x] Warn when browser source persistence is unavailable for failed batch retries
   Prompt: "Surface when the browser cannot keep retry source data across reloads so reviewers know a failed source may need to be re-queued from home."
+  Notes: Completed on 2026-04-03 by detecting when the batch source-file cache falls back to tab-only memory, surfacing a queue-level warning for affected failed uploads, and adding per-item copy so reviewers know they must retry in the current tab or re-queue from home after a refresh.
+  Verified: `npm ci`, `env -u FORCE_COLOR -u NO_COLOR PLAYWRIGHT_BROWSERS_PATH=/tmp/clipmine-playwright-browsers npx playwright test --grep "saved batch workspace retries a failed source after reload|batch workspace warns when retry source persistence is unavailable"`
 
 - [x] Add previous and next source navigation in the batch workspace
   Prompt: "Let reviewers move between ready sources from the selected-source panel so comparing adjacent uploads does not require jumping back to the queue list each time."
@@ -523,6 +525,7 @@ Avoid:
 - 2026-04-03: Added `Show eligible clip counts inside batch threshold presets` as the next aggregate-export UX follow-up.
 - 2026-04-03: Completed `Preserve failed-upload retry readiness across reloads` after adding IndexedDB-backed browser source persistence, rebuilding the web app, and passing the saved-batch retry Playwright coverage.
 - 2026-04-03: Added `Warn when browser source persistence is unavailable for failed batch retries` as the next retry-reliability follow-up.
+- 2026-04-03: Completed `Warn when browser source persistence is unavailable for failed batch retries` after surfacing tab-only retry cache warnings and passing the focused saved-batch retry Playwright coverage.
 - 2026-04-03: Completed `Show per-job eligible clip totals in the batch aggregate export summary` after installing frontend dependencies and passing focused lint plus Playwright verification.
 - 2026-04-03: Added `Add source-jump actions to the aggregate export summary` as the next aggregate-review follow-up.
 - 2026-04-03: Completed `Show eligible duration totals in the aggregate export summary` after installing frontend dependencies and passing focused Playwright batch export verification.

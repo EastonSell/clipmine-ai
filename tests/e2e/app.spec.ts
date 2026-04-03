@@ -1747,6 +1747,122 @@ test("saved batch workspace retries a failed source after reload", async ({ page
   await expect(page.getByRole("button", { name: "Retry alpha.mp4" })).toHaveCount(0);
 });
 
+test("batch workspace warns when retry source persistence is unavailable", async ({ page }) => {
+  const beta = createMockJob({
+    jobId: "job-beta",
+    sourceVideo: {
+      id: "video-beta",
+      file_name: "beta.mp4",
+      content_type: "video/mp4",
+      size_bytes: 11_000_000,
+      duration_seconds: 155,
+      url: "/api/jobs/job-beta/video",
+    },
+  });
+  let initCallCount = 0;
+  const uploadSession = {
+    uploadSessionId: "session-beta-success",
+    jobId: "job-beta",
+    fileName: "beta.mp4",
+    uploadPartUrl: buildMultipartPartUrl("session-beta-success", 1),
+  };
+
+  await page.addInitScript(() => {
+    Object.defineProperty(window, "indexedDB", {
+      configurable: true,
+      value: undefined,
+    });
+  });
+
+  await page.route("**/api/uploads/init", async (route) => {
+    if (initCallCount === 0) {
+      initCallCount += 1;
+      await route.fulfill({
+        status: 400,
+        contentType: "application/json",
+        body: JSON.stringify({
+          detail: {
+            code: "invalid_request",
+            message: "Upload init failed.",
+            retryable: false,
+          },
+        }),
+      });
+      return;
+    }
+
+    initCallCount += 1;
+    await route.fulfill({
+      status: 201,
+      contentType: "application/json",
+      body: JSON.stringify({
+        uploadSessionId: uploadSession.uploadSessionId,
+        jobId: uploadSession.jobId,
+        fileName: uploadSession.fileName,
+        partSizeBytes: 16 * 1024 * 1024,
+        expiresAt: "2026-04-02T12:30:00.000Z",
+        parts: [{ partNumber: 1, url: uploadSession.uploadPartUrl }],
+      }),
+    });
+  });
+  await page.route(uploadSession.uploadPartUrl, async (route) => {
+    await route.fulfill({
+      status: 200,
+      headers: {
+        ETag: `"etag-${uploadSession.uploadSessionId}"`,
+      },
+      body: "",
+    });
+  });
+  await page.route("**/api/uploads/session-beta-success/complete", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        jobId: "job-beta",
+        status: "queued",
+        fileName: "beta.mp4",
+      }),
+    });
+  });
+  await page.route("**/api/jobs/job-beta", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(beta),
+    });
+  });
+
+  await page.goto("/");
+  await page.locator('input[type="file"]').setInputFiles([
+    {
+      name: "alpha.mp4",
+      mimeType: "video/mp4",
+      buffer: Buffer.from("alpha"),
+    },
+    {
+      name: "beta.mp4",
+      mimeType: "video/mp4",
+      buffer: Buffer.from("beta"),
+    },
+  ]);
+  await page.getByRole("button", { name: "Queue 2 videos" }).click();
+
+  await expect(page.getByRole("heading", { name: "Batch review session is ready" })).toBeVisible();
+  await expect(page.getByText("1 of 2 sources reached the workspace stage.")).toBeVisible();
+
+  await page.getByRole("button", { name: "Open batch workspace" }).click();
+  await page.waitForURL("**/batches/*");
+
+  await expect(page.getByRole("button", { name: "Retry alpha.mp4" })).toBeVisible();
+  await expect(page.getByTestId("batch-retry-persistence-warning")).toContainText(
+    "cannot keep retry source files across reloads"
+  );
+  await expect(page.getByTestId("batch-queue-item").filter({ hasText: "alpha.mp4" })).toContainText(
+    "cached only in the current tab"
+  );
+});
+
 test("landing page completes a batch queue and then opens the workspace on demand", async ({ page }) => {
   const alpha = createMockJob({
     jobId: "queued-alpha",

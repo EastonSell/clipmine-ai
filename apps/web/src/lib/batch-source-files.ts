@@ -3,6 +3,11 @@ const DATABASE_NAME = "clipmine-batch-source-files";
 const DATABASE_VERSION = 1;
 const STORE_NAME = "sources";
 
+export type BatchSourceFilePersistenceStatus = {
+  supportsReloadPersistence: boolean;
+  warning: string | null;
+};
+
 type BatchSourceFileRecord = {
   key: string;
   batchId: string;
@@ -57,6 +62,30 @@ async function openBatchSourceDatabase() {
     request.addEventListener("success", () => resolve(request.result));
     request.addEventListener("error", () => resolve(null));
   });
+}
+
+export async function getBatchSourceFilePersistenceStatus(): Promise<BatchSourceFilePersistenceStatus> {
+  const indexedDb = getBrowserIndexedDb();
+  if (!indexedDb) {
+    return {
+      supportsReloadPersistence: false,
+      warning: "This browser cannot keep retry source files across reloads. Retry failed uploads in this tab, or re-queue them from home after a refresh.",
+    };
+  }
+
+  const database = await openBatchSourceDatabase();
+  if (!database) {
+    return {
+      supportsReloadPersistence: false,
+      warning: "This browser blocked local retry source storage, so failed uploads may need to be re-queued from home after a refresh.",
+    };
+  }
+
+  database.close();
+  return {
+    supportsReloadPersistence: true,
+    warning: null,
+  };
 }
 
 function toStoredFile(record: BatchSourceFileRecord) {

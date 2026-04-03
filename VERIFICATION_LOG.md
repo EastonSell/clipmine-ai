@@ -1,5 +1,26 @@
 # Verification Log
 
+## Batch Retry Persistence Warning Pass
+
+Date: 2026-04-03
+
+- Added an explicit batch source-cache persistence probe so the UI can tell when retry source files are only being held in memory for the current tab instead of durable browser storage.
+- Surfaced a queue-level warning plus per-item copy in the batch workspace whenever a failed upload is retryable now but would need to be re-queued from home after a refresh.
+- Extended the existing saved-batch retry Playwright coverage with a no-IndexedDB scenario so the warning path is exercised alongside the durable retry path.
+- This synced checkout started without frontend dependencies installed, so `npm ci` was required before the targeted browser checks could run.
+
+### Checks run
+
+```bash
+npm ci
+env -u FORCE_COLOR -u NO_COLOR PLAYWRIGHT_BROWSERS_PATH=/tmp/clipmine-playwright-browsers npx playwright test --grep "saved batch workspace retries a failed source after reload|batch workspace warns when retry source persistence is unavailable"
+```
+
+### Result
+
+- `2 / 2` targeted Playwright batch retry tests passed
+- failed uploads now warn when retry source persistence is limited to the current tab, while the reload-safe retry path still works when durable browser storage is available
+
 ## Saved Batch Ready-Review Shortcut Pass
 
 Date: 2026-04-03

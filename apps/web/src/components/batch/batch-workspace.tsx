@@ -28,7 +28,12 @@ import { PageContainer } from "@/components/ui/page-container";
 import { ProgressBar } from "@/components/ui/progress-bar";
 import { SectionHeader } from "@/components/ui/section-header";
 import { TopBar } from "@/components/ui/top-bar";
-import { listBatchSourceFileItemIds, loadBatchSourceFile, removeBatchSourceFile } from "@/lib/batch-source-files";
+import {
+  getBatchSourceFilePersistenceStatus,
+  listBatchSourceFileItemIds,
+  loadBatchSourceFile,
+  removeBatchSourceFile,
+} from "@/lib/batch-source-files";
 import {
   BATCH_QUALITY_THRESHOLD_PRESETS,
   DEFAULT_BATCH_QUALITY_THRESHOLD,
@@ -117,6 +122,7 @@ export function BatchWorkspace({
   const [isDownloading, setIsDownloading] = useState(false);
   const [retryingItemIds, setRetryingItemIds] = useState<string[]>([]);
   const [cachedSourceFileItemIds, setCachedSourceFileItemIds] = useState<string[]>([]);
+  const [retrySourcePersistenceWarning, setRetrySourcePersistenceWarning] = useState<string | null>(null);
   const sessionRef = useRef<BatchSessionRecord | null>(null);
   const queueSectionRef = useRef<HTMLElement | null>(null);
 
@@ -158,6 +164,23 @@ export function BatchWorkspace({
       cancelled = true;
     };
   }, [batchId, session?.items]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadRetrySourcePersistenceWarning() {
+      const status = await getBatchSourceFilePersistenceStatus();
+      if (!cancelled) {
+        setRetrySourcePersistenceWarning(status.warning);
+      }
+    }
+
+    void loadRetrySourcePersistenceWarning();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const jobIds = useMemo(
     () => Array.from(new Set((session?.items ?? []).map((item) => item.jobId).filter((value): value is string => Boolean(value)))),
@@ -207,6 +230,12 @@ export function BatchWorkspace({
   const readyCount = useMemo(
     () => (session?.items ?? []).filter(isReadyBatchItem).length,
     [session?.items]
+  );
+  const hasTabOnlyRetrySources = useMemo(
+    () =>
+      Boolean(retrySourcePersistenceWarning) &&
+      queueItems.some((item) => item.status === "failed" && !item.jobId && cachedSourceFileItemIdSet.has(item.id)),
+    [cachedSourceFileItemIdSet, queueItems, retrySourcePersistenceWarning]
   );
 
   function commitSession(nextSession: BatchSessionRecord) {
@@ -1130,6 +1159,17 @@ export function BatchWorkspace({
             ) : null}
 
             <div className="mt-6 space-y-3">
+              {hasTabOnlyRetrySources ? (
+                <div
+                  data-testid="batch-retry-persistence-warning"
+                  className="rounded-[1rem] border border-[var(--line-strong)] bg-white/[0.05] px-4 py-4"
+                >
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Badge tone="neutral">Tab-only retry cache</Badge>
+                    <p className="text-sm text-[var(--text)]">{retrySourcePersistenceWarning}</p>
+                  </div>
+                </div>
+              ) : null}
               {queueItems.map((item) => {
                 const job = item.jobId ? jobsById.get(item.jobId) ?? null : null;
                 const active = item.jobId && item.jobId === selectedJob?.jobId;
@@ -1207,6 +1247,11 @@ export function BatchWorkspace({
                       </div>
                     </div>
                     <ProgressBar value={progressValue} className="mt-4" />
+                    {item.status === "failed" && !item.jobId && hasCachedSourceFile && retrySourcePersistenceWarning ? (
+                      <p className="mt-3 text-xs leading-5 text-[var(--muted)]">
+                        This retry source is cached only in the current tab. If you refresh or reopen the workspace, re-queue it from home.
+                      </p>
+                    ) : null}
                     {item.status === "failed" && !item.jobId && !hasCachedSourceFile ? (
                       <p className="mt-3 text-xs leading-5 text-[var(--muted)]">
                         The original source is no longer cached in this browser, so this retry has to start from home.
