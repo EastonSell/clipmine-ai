@@ -1,5 +1,28 @@
 # Verification Log
 
+## Batch Aggregate Source Jump Pass
+
+Date: 2026-04-03
+
+- Added a focused inspect action to each ready-source row in the aggregate export summary so reviewers can jump directly into that source from the export card before downloading.
+- Kept the action wired to the existing selected-source state instead of navigating away, and highlighted the currently selected source inside the summary so the export view stays oriented after each jump.
+- Extended the existing batch export Playwright scenario so it proves the summary actions can switch the selected source to both `beta.mp4` and back to `alpha.mp4` before the threshold and export assertions continue.
+- This checkout started without frontend dependencies installed, so `npm ci` was required before the repo-local lint and Playwright commands could run.
+
+### Checks run
+
+```bash
+npm ci
+npm run lint:web -- --file src/components/batch/batch-workspace.tsx
+npm run test:e2e -- --grep "batch workspace groups jobs and exports thresholded clips"
+```
+
+### Result
+
+- targeted frontend lint passed
+- `1 / 1` targeted Playwright batch export tests passed
+- reviewers can now jump from the aggregate export summary into the corresponding batch source before downloading
+
 ## Saved Batch Retry Persistence Pass
 
 Date: 2026-04-03

@@ -275,8 +275,13 @@ Avoid:
   Notes: Completed on 2026-04-03 by adding a ready-source contribution summary beneath the aggregate export metrics, surfacing zero-count sources when the current threshold excludes them, and keeping the per-source totals synced with threshold changes before download.
   Verified: `npm ci`, `npm run lint:web`, `env -u FORCE_COLOR -u NO_COLOR PLAYWRIGHT_BROWSERS_PATH=/tmp/clipmine-playwright-browsers npx playwright test --grep "batch workspace groups jobs and exports thresholded clips"`
 
-- [ ] Add source-jump actions to the aggregate export summary
+- [x] Add source-jump actions to the aggregate export summary
   Prompt: "Let reviewers open a source directly from the ready-source aggregate export summary so they can inspect why it does or does not contribute clips before downloading."
+  Notes: Completed on 2026-04-03 by adding per-source inspect actions to the ready-source export summary, syncing those actions with the selected batch source panel, and highlighting the currently selected source directly inside the aggregate export card.
+  Verified: `npm ci`, `npm run lint:web -- --file src/components/batch/batch-workspace.tsx`, `npm run test:e2e -- --grep "batch workspace groups jobs and exports thresholded clips"`
+
+- [ ] Show eligible duration totals in the aggregate export summary
+  Prompt: "Add per-source eligible clip duration totals beside the clip counts in the ready-source aggregate export summary so reviewers can compare likely download value before exporting."
 
 - [x] Add queue completion toast and summary state
   Prompt: "When a batch queue finishes, show a stronger completion summary before navigating so the user understands how many sources succeeded or failed."

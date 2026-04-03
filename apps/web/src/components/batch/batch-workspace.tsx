@@ -86,6 +86,7 @@ export function BatchWorkspace({
   const [retryingItemIds, setRetryingItemIds] = useState<string[]>([]);
   const [cachedSourceFileItemIds, setCachedSourceFileItemIds] = useState<string[]>([]);
   const sessionRef = useRef<BatchSessionRecord | null>(null);
+  const queueSectionRef = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
     const nextSession = loadBatchSession(batchId);
@@ -201,6 +202,14 @@ export function BatchWorkspace({
       setActiveJobId(jobId);
     });
   }, []);
+
+  const inspectBatchJobFromExportSummary = useCallback(
+    (jobId: string) => {
+      selectBatchJob(jobId);
+      queueSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    },
+    [selectBatchJob]
+  );
 
   useEffect(() => {
     if (typeof window === "undefined") {
@@ -718,23 +727,43 @@ export function BatchWorkspace({
                 </div>
                 {readySourceEligibleClipSummaries.length > 0 ? (
                   <div className="mt-4 grid gap-2">
-                    {readySourceEligibleClipSummaries.map((entry) => (
-                      <div
-                        key={entry.jobId}
-                        data-testid={`aggregate-source-summary-${entry.jobId}`}
-                        className="flex flex-wrap items-center justify-between gap-3 rounded-[0.95rem] border border-[var(--line)] bg-[var(--surface-dark)]/35 px-3 py-3"
-                      >
-                        <div className="min-w-0 flex-1">
-                          <div className="truncate text-sm font-semibold text-[var(--text)]">{entry.fileName}</div>
-                          <div className="mt-1 text-xs text-[var(--muted)]">
-                            {entry.eligibleClipCount > 0 ? "Included in the current export selection." : "Below the current threshold."}
+                    {readySourceEligibleClipSummaries.map((entry) => {
+                      const isActiveSource = entry.jobId === activeJobId;
+
+                      return (
+                        <div
+                          key={entry.jobId}
+                          data-testid={`aggregate-source-summary-${entry.jobId}`}
+                          className={[
+                            "flex flex-wrap items-center justify-between gap-3 rounded-[0.95rem] border px-3 py-3 transition",
+                            isActiveSource
+                              ? "border-[var(--accent-strong)] bg-[var(--accent-soft)]"
+                              : "border-[var(--line)] bg-[var(--surface-dark)]/35",
+                          ].join(" ")}
+                        >
+                          <div className="min-w-0 flex-1">
+                            <div className="truncate text-sm font-semibold text-[var(--text)]">{entry.fileName}</div>
+                            <div className="mt-1 text-xs text-[var(--muted)]">
+                              {entry.eligibleClipCount > 0 ? "Included in the current export selection." : "Below the current threshold."}
+                            </div>
+                          </div>
+                          <div className="flex flex-wrap items-center justify-end gap-2">
+                            <span className="rounded-full border border-[var(--line)] bg-white/[0.05] px-2.5 py-1 text-xs font-medium text-[var(--muted-strong)]">
+                              {entry.eligibleClipCount} eligible {entry.eligibleClipCount === 1 ? "clip" : "clips"}
+                            </span>
+                            <Button
+                              size="sm"
+                              variant={isActiveSource ? "primary" : "secondary"}
+                              onClick={() => inspectBatchJobFromExportSummary(entry.jobId)}
+                              aria-label={`Inspect ${entry.fileName}`}
+                              aria-pressed={isActiveSource}
+                            >
+                              Inspect source
+                            </Button>
                           </div>
                         </div>
-                        <span className="rounded-full border border-[var(--line)] bg-white/[0.05] px-2.5 py-1 text-xs font-medium text-[var(--muted-strong)]">
-                          {entry.eligibleClipCount} eligible {entry.eligibleClipCount === 1 ? "clip" : "clips"}
-                        </span>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 ) : null}
               </div>
@@ -790,7 +819,7 @@ export function BatchWorkspace({
           </Card>
         </section>
 
-        <section id="batch-queue" className="grid gap-6 lg:grid-cols-[0.82fr_1.18fr]">
+        <section id="batch-queue" ref={queueSectionRef} className="grid gap-6 lg:grid-cols-[0.82fr_1.18fr]">
           <Card>
             <SectionHeader
               eyebrow="Queued jobs"

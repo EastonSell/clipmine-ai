@@ -940,6 +940,12 @@ test("batch workspace groups jobs and exports thresholded clips", async ({ page 
   await expect(page.getByTestId("aggregate-source-summary-job-alpha")).toContainText("1 eligible clip");
   await expect(page.getByTestId("aggregate-source-summary-job-beta")).toContainText("beta.mp4");
   await expect(page.getByTestId("aggregate-source-summary-job-beta")).toContainText("1 eligible clip");
+  await page.getByTestId("aggregate-source-summary-job-beta").getByRole("button", { name: "Inspect beta.mp4" }).click();
+  await expect(page).toHaveURL(/\/batches\/demo-batch\?job=job-beta$/);
+  await expect(page.getByRole("heading", { name: "beta.mp4" })).toBeVisible();
+  await page.getByTestId("aggregate-source-summary-job-alpha").getByRole("button", { name: "Inspect alpha.mp4" }).click();
+  await expect(page).toHaveURL(/\/batches\/demo-batch\?job=job-alpha$/);
+  await expect(page.getByRole("heading", { name: "alpha.mp4" })).toBeVisible();
 
   await page.getByRole("button", { name: /Strict 92\+ 1 eligible clip/i }).click();
   await expect(page).toHaveURL(/\/batches\/demo-batch\?job=job-alpha&threshold=92$/);
