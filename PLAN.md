@@ -373,8 +373,13 @@ Avoid:
   Notes: Completed on 2026-04-03 by adding upload-intake ETA estimation for the active source and remaining queue, warming the estimate from live progress when bytes are in flight and falling back to completed-source timings when the next source is only validating.
   Verified: `npm ci`, `npm run test:web -- --run src/lib/batch-upload-eta.test.ts`, `cd apps/web && npx eslint src/components/landing/upload-section.tsx src/lib/batch-upload-eta.ts src/lib/batch-upload-eta.test.ts --max-warnings=0`
 
-- [ ] Add transfer-basis labels to batch ETA hints
+- [x] Add transfer-basis labels to batch ETA hints
   Prompt: "Show whether each queue ETA is coming from live throughput or previously completed uploads so reviewers know how much confidence to put in the estimate."
+  Notes: Completed on 2026-04-03 by extending the batch ETA helper to return per-card estimate basis metadata, surfacing live-vs-history labels in the landing queue timing hints, and calling out the mixed case where the active source uses live transfer data while later queued sources still rely on completed-upload history.
+  Verified: `npm ci`, `npm run test:web -- --run src/lib/batch-upload-eta.test.ts`, `cd apps/web && npx eslint src/components/landing/upload-section.tsx src/lib/batch-upload-eta.ts src/lib/batch-upload-eta.test.ts --max-warnings=0`, `npm run build:web`
+
+- [ ] Show completed-source sample counts beside history-based batch ETA hints
+  Prompt: "When a batch ETA falls back to completed-upload history, show how many completed sources contributed to that estimate so reviewers can judge whether the timing signal is still thin or stable."
 
 - [x] Preserve failed-upload retry readiness across reloads
   Prompt: "Persist enough local source reference data that a failed upload in the batch workspace can still be retried after a refresh or reopened saved batch, instead of only within the original tab lifetime."

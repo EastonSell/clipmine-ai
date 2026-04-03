@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { estimateBatchUploadEta, formatUploadEta } from "./batch-upload-eta";
+import { estimateBatchUploadEta, formatUploadEta, formatUploadEtaBasis } from "./batch-upload-eta";
 import type { BatchUploadItemRecord } from "./types";
 
 function createItem(
@@ -54,7 +54,9 @@ describe("batch-upload-eta", () => {
       })
     ).toEqual({
       currentSourceSeconds: 10,
+      currentSourceBasis: "live",
       queueSeconds: 30,
+      queueBasis: "live",
     });
   });
 
@@ -102,7 +104,59 @@ describe("batch-upload-eta", () => {
       })
     ).toEqual({
       currentSourceSeconds: 30,
+      currentSourceBasis: "history",
       queueSeconds: 40,
+      queueBasis: "history",
+    });
+  });
+
+  it("marks the queue ETA as mixed when the active source is live but later sources use completed uploads", () => {
+    const items = [
+      createItem({
+        id: "source-1",
+        fileName: "alpha.mp4",
+        status: "processing",
+        uploadPhase: "complete",
+        uploadProgress: 100,
+      }),
+      createItem({
+        id: "source-2",
+        fileName: "beta.mp4",
+        status: "uploading",
+        uploadPhase: "transferring",
+        uploadProgress: 50,
+      }),
+      createItem({
+        id: "source-3",
+        fileName: "gamma.mp4",
+        sizeBytes: 50 * 1024 * 1024,
+        status: "queued",
+      }),
+    ];
+
+    expect(
+      estimateBatchUploadEta({
+        items,
+        activeItemId: "source-2",
+        uploadPhase: "transferring",
+        uploadStats: {
+          loaded: 50 * 1024 * 1024,
+          total: 100 * 1024 * 1024,
+          percentage: 50,
+        },
+        nowMs: 30_000,
+        sourceStartedAtByItemId: {
+          "source-2": 20_000,
+        },
+        completedSourceDurationsMsByItemId: {
+          "source-1": 40_000,
+        },
+      })
+    ).toEqual({
+      currentSourceSeconds: 10,
+      currentSourceBasis: "live",
+      queueSeconds: 30,
+      queueBasis: "mixed",
     });
   });
 
@@ -139,12 +193,18 @@ describe("batch-upload-eta", () => {
       })
     ).toEqual({
       currentSourceSeconds: null,
+      currentSourceBasis: null,
       queueSeconds: null,
+      queueBasis: null,
     });
   });
 
   it("formats ETA labels for the queue card", () => {
     expect(formatUploadEta(125)).toBe("~2:05");
     expect(formatUploadEta(null)).toBe("Estimating");
+    expect(formatUploadEtaBasis("live")).toBe("Live transfer rate");
+    expect(formatUploadEtaBasis("history")).toBe("Completed upload history");
+    expect(formatUploadEtaBasis("mixed")).toBe("Live + completed uploads");
+    expect(formatUploadEtaBasis(null)).toBeNull();
   });
 });

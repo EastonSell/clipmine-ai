@@ -17,8 +17,12 @@ type BatchUploadEtaOptions = {
 
 export type BatchUploadEtaEstimate = {
   currentSourceSeconds: number | null;
+  currentSourceBasis: BatchUploadEtaBasis | null;
   queueSeconds: number | null;
+  queueBasis: BatchUploadEtaBasis | null;
 };
+
+export type BatchUploadEtaBasis = "live" | "history" | "mixed";
 
 export function estimateBatchUploadEta({
   items,
@@ -32,7 +36,9 @@ export function estimateBatchUploadEta({
   if (!activeItemId) {
     return {
       currentSourceSeconds: null,
+      currentSourceBasis: null,
       queueSeconds: null,
+      queueBasis: null,
     };
   }
 
@@ -40,7 +46,9 @@ export function estimateBatchUploadEta({
   if (activeIndex < 0) {
     return {
       currentSourceSeconds: null,
+      currentSourceBasis: null,
       queueSeconds: null,
+      queueBasis: null,
     };
   }
 
@@ -53,16 +61,20 @@ export function estimateBatchUploadEta({
     nowMs,
     sourceStartedAtByItemId,
   });
-  const msPerByte = historicalMsPerByte ?? liveMsPerByte;
+  const queueMsPerByte = historicalMsPerByte ?? liveMsPerByte;
+  const remainingQueueBasis = historicalMsPerByte !== null ? "history" : liveMsPerByte !== null ? "live" : null;
 
   let currentSourceMs: number | null = null;
+  let currentSourceBasis: BatchUploadEtaBasis | null = null;
   if (activeItem.status === "uploading") {
     if (liveMsPerByte !== null && uploadStats) {
       const activeTotalBytes = uploadStats.total > 0 ? uploadStats.total : activeItem.sizeBytes;
       const remainingBytes = Math.max(0, activeTotalBytes - uploadStats.loaded);
       currentSourceMs = remainingBytes * liveMsPerByte;
-    } else if (msPerByte !== null && activeItem.sizeBytes > 0) {
-      currentSourceMs = activeItem.sizeBytes * msPerByte;
+      currentSourceBasis = "live";
+    } else if (queueMsPerByte !== null && activeItem.sizeBytes > 0) {
+      currentSourceMs = activeItem.sizeBytes * queueMsPerByte;
+      currentSourceBasis = remainingQueueBasis;
     }
   }
 
@@ -70,15 +82,21 @@ export function estimateBatchUploadEta({
     .slice(activeIndex + 1)
     .filter((item) => item.status === "queued")
     .reduce((total, item) => total + item.sizeBytes, 0);
-  const remainingQueueMs = msPerByte !== null ? queuedBytes * msPerByte : null;
+  const remainingQueueMs = queueMsPerByte !== null ? queuedBytes * queueMsPerByte : null;
   const queueMs =
     currentSourceMs !== null
       ? currentSourceMs + (remainingQueueMs ?? 0)
       : remainingQueueMs;
+  const queueBasis = combineEtaBasis(
+    currentSourceMs !== null ? currentSourceBasis : null,
+    remainingQueueMs !== null ? remainingQueueBasis : null
+  );
 
   return {
     currentSourceSeconds: toRoundedSeconds(currentSourceMs),
+    currentSourceBasis,
     queueSeconds: toRoundedSeconds(queueMs),
+    queueBasis,
   };
 }
 
@@ -88,6 +106,22 @@ export function formatUploadEta(seconds: number | null) {
   }
 
   return `~${formatSeconds(Math.max(1, Math.ceil(seconds)))}`;
+}
+
+export function formatUploadEtaBasis(basis: BatchUploadEtaBasis | null) {
+  if (basis === "live") {
+    return "Live transfer rate";
+  }
+
+  if (basis === "history") {
+    return "Completed upload history";
+  }
+
+  if (basis === "mixed") {
+    return "Live + completed uploads";
+  }
+
+  return null;
 }
 
 function getHistoricalMsPerByte(
@@ -161,4 +195,23 @@ function toRoundedSeconds(valueMs: number | null) {
   }
 
   return Math.max(1, Math.ceil(valueMs / 1000));
+}
+
+function combineEtaBasis(
+  currentBasis: BatchUploadEtaBasis | null,
+  remainingBasis: BatchUploadEtaBasis | null
+): BatchUploadEtaBasis | null {
+  if (!currentBasis) {
+    return remainingBasis;
+  }
+
+  if (!remainingBasis) {
+    return currentBasis;
+  }
+
+  if (currentBasis === remainingBasis) {
+    return currentBasis;
+  }
+
+  return "mixed";
 }

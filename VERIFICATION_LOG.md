@@ -1,5 +1,29 @@
 # Verification Log
 
+## Batch ETA Basis Labels Pass
+
+Date: 2026-04-03
+
+- Extended the batch ETA model so the landing queue card now knows whether each timing hint is derived from live transfer throughput, completed-upload history, or a mixed basis across the current source and the remaining queue.
+- Surfaced that basis directly under both ETA values in the landing upload panel, while keeping the existing intake-only disclaimer and the estimating fallback when no signal exists yet.
+- Added focused unit coverage for live-only, history-only, mixed, and no-signal ETA cases, then validated the touched files with scoped ESLint and a full Next.js production build.
+- This synced checkout started without frontend dependencies installed, so `npm ci` was required after the first focused `vitest` attempt failed with `sh: vitest: command not found`.
+
+### Checks run
+
+```bash
+npm ci
+npm run test:web -- --run src/lib/batch-upload-eta.test.ts
+cd apps/web && npx eslint src/components/landing/upload-section.tsx src/lib/batch-upload-eta.ts src/lib/batch-upload-eta.test.ts --max-warnings=0
+npm run build:web
+```
+
+### Result
+
+- `5 / 5` focused `batch-upload-eta` unit tests passed
+- targeted frontend lint passed for the touched landing ETA files
+- Next.js production build passed
+- batch ETA hints now expose whether each estimate is coming from live throughput, completed uploads, or both
 ## Batch Retry Persistence Warning Pass
 
 Date: 2026-04-03

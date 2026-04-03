@@ -12,7 +12,7 @@ import {
 import { useRouter } from "next/navigation";
 import { startTransition, useEffect, useMemo, useRef, useState } from "react";
 
-import { estimateBatchUploadEta, formatUploadEta } from "@/lib/batch-upload-eta";
+import { estimateBatchUploadEta, formatUploadEta, formatUploadEtaBasis } from "@/lib/batch-upload-eta";
 import { loadLatestCompletedBatchSession, removeBatchSession, saveBatchSession } from "@/lib/batch-sessions";
 import { clearBatchSourceFiles, removeBatchSourceFile, saveBatchSourceFile } from "@/lib/batch-source-files";
 import { ApiError, createJob, getUploadMode, isRetryableApiError } from "@/lib/api";
@@ -808,8 +808,16 @@ export function UploadSection() {
                                 {activeQueueItem?.status === "uploading" ? (
                                   <>
                                     <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                                      <QueueTimingHint label="This source ETA" value={formatUploadEta(batchUploadEta.currentSourceSeconds)} />
-                                      <QueueTimingHint label="Queue intake ETA" value={formatUploadEta(batchUploadEta.queueSeconds)} />
+                                      <QueueTimingHint
+                                        label="This source ETA"
+                                        value={formatUploadEta(batchUploadEta.currentSourceSeconds)}
+                                        basis={formatUploadEtaBasis(batchUploadEta.currentSourceBasis)}
+                                      />
+                                      <QueueTimingHint
+                                        label="Queue intake ETA"
+                                        value={formatUploadEta(batchUploadEta.queueSeconds)}
+                                        basis={formatUploadEtaBasis(batchUploadEta.queueBasis)}
+                                      />
                                     </div>
                                     <p className="mt-3 text-xs leading-5 text-[var(--muted)]">
                                       These estimates cover upload intake only. Backend processing keeps running after each source is handed off.
@@ -940,11 +948,12 @@ function QueueMetric({ label, value }: { label: string; value: string }) {
   );
 }
 
-function QueueTimingHint({ label, value }: { label: string; value: string }) {
+function QueueTimingHint({ label, value, basis }: { label: string; value: string; basis: string | null }) {
   return (
     <div className="rounded-[1rem] border border-[var(--line)] bg-white/[0.03] px-4 py-3">
       <div className="metric-label text-[var(--muted)]">{label}</div>
       <div className="mt-2 text-base font-semibold tracking-[-0.03em] text-[var(--text)]">{value}</div>
+      <div className="mt-1 text-xs text-[var(--muted)]">{basis ?? "Waiting for enough upload signal"}</div>
     </div>
   );
 }
