@@ -4,6 +4,7 @@ import {
   getBatchWorkspaceHref,
   getOrderedBatchItems,
   getPreferredBatchJobId,
+  getReadyBatchJobNavigation,
   hasBatchIssues,
   isBatchIssueItem,
   parseBatchSelectedJobId,
@@ -131,6 +132,29 @@ describe("batch-focus", () => {
 
     expect(getPreferredBatchJobId(items, true)).toBe("job-broken");
     expect(getPreferredBatchJobId(items, false)).toBe("job-alpha");
+  });
+
+  it("returns previous and next ready jobs from the current visible queue order", () => {
+    const items = [
+      createItem({ id: "ready-1", fileName: "alpha.mp4", status: "ready", jobId: "job-alpha" }),
+      createItem({ id: "failed-1", fileName: "broken-intro.mov", status: "failed", error: "Upload failed." }),
+      createItem({ id: "ready-2", fileName: "beta.mp4", status: "ready", jobId: "job-beta" }),
+      createItem({ id: "processing-1", fileName: "gamma.mp4", status: "processing", jobId: "job-gamma" }),
+      createItem({ id: "ready-3", fileName: "delta.mp4", status: "ready", jobId: "job-delta" }),
+    ];
+
+    expect(getReadyBatchJobNavigation(items, "job-beta")).toEqual({
+      jobIds: ["job-alpha", "job-beta", "job-delta"],
+      currentIndex: 1,
+      previousJobId: "job-alpha",
+      nextJobId: "job-delta",
+    });
+    expect(getReadyBatchJobNavigation(items, "job-gamma")).toEqual({
+      jobIds: ["job-alpha", "job-beta", "job-delta"],
+      currentIndex: -1,
+      previousJobId: null,
+      nextJobId: null,
+    });
   });
 
   it("detects whether a saved batch has issue items", () => {

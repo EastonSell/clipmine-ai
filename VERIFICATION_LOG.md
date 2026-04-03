@@ -2,6 +2,28 @@
 
 Date: 2026-04-02
 
+## Batch Ready Source Navigation Pass
+
+Date: 2026-04-03
+
+- Added a ready-job navigation helper that derives previous and next targets from the current visible batch queue while skipping failed, cancelled, and still-processing sources.
+- Added previous and next controls directly in the selected-source panel so reviewers can step through ready uploads without returning to the queue list, while keeping the batch `job` query param synchronized.
+- Added focused unit coverage for ready-job adjacency plus Playwright coverage that skips a failed queue item, walks forward and backward through ready jobs, and verifies the selected-source URL updates each time.
+- This checkout started without frontend dependencies installed, so `npm ci` was required before the targeted verification commands could run.
+
+### Checks run
+
+```bash
+npm ci
+npm run test:web -- --run src/lib/batch-focus.test.ts
+npm run test:e2e -- --grep='batch workspace persists the selected source in the URL|batch workspace navigates ready sources from the selected panel'
+```
+
+### Result
+
+- `8 / 8` targeted web unit tests passed
+- `2 / 2` targeted Playwright batch-navigation tests passed
+
 ## Batch Selected Source URL Pass
 
 Date: 2026-04-03

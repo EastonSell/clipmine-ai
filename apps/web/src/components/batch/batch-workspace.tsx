@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { Download, ExternalLink, RefreshCcw, SlidersHorizontal } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { ChevronLeft, ChevronRight, Download, ExternalLink, RefreshCcw, SlidersHorizontal } from "lucide-react";
+import { startTransition, useEffect, useMemo, useRef, useState } from "react";
 import useSWR from "swr";
 
 import { AppShell } from "@/components/ui/app-shell";
@@ -17,7 +17,14 @@ import { ProgressBar } from "@/components/ui/progress-bar";
 import { SectionHeader } from "@/components/ui/section-header";
 import { TopBar } from "@/components/ui/top-bar";
 import { loadBatchSourceFile, removeBatchSourceFile } from "@/lib/batch-source-files";
-import { getBatchWorkspaceHref, getOrderedBatchItems, getPreferredBatchJobId, hasBatchIssues, isBatchIssueItem } from "@/lib/batch-focus";
+import {
+  getBatchWorkspaceHref,
+  getOrderedBatchItems,
+  getPreferredBatchJobId,
+  getReadyBatchJobNavigation,
+  hasBatchIssues,
+  isBatchIssueItem,
+} from "@/lib/batch-focus";
 import { createJob, downloadBatchClipPackage, getJob, retryJob, ApiError, isRetryableApiError } from "@/lib/api";
 import { loadBatchSession, saveBatchSession } from "@/lib/batch-sessions";
 import { formatSeconds, formatSignedScore } from "@/lib/format";
@@ -97,6 +104,10 @@ export function BatchWorkspace({
     () => getOrderedBatchItems(session?.items ?? [], prioritizeIssues, issuesOnly),
     [issuesOnly, prioritizeIssues, session?.items]
   );
+  const selectedQueueItem = useMemo(
+    () => (activeJobId ? queueItems.find((item) => item.jobId === activeJobId) ?? null : null),
+    [activeJobId, queueItems]
+  );
   const queueItemOrdinals = useMemo(
     () => new Map((session?.items ?? []).map((item, index) => [item.id, index + 1])),
     [session?.items]
@@ -130,6 +141,12 @@ export function BatchWorkspace({
 
   function setBatchTriageScope(nextIssuesOnly: boolean) {
     setIssuesOnly(nextIssuesOnly);
+  }
+
+  function selectBatchJob(jobId: string) {
+    startTransition(() => {
+      setActiveJobId(jobId);
+    });
   }
 
   useEffect(() => {
@@ -214,6 +231,10 @@ export function BatchWorkspace({
   const selectedJob =
     (activeJobId ? jobs.find((job) => job.jobId === activeJobId) : null) ??
     null;
+  const readyJobNavigation = useMemo(
+    () => getReadyBatchJobNavigation(queueItems, selectedQueueItem?.status === "ready" ? selectedQueueItem.jobId : null),
+    [queueItems, selectedQueueItem?.jobId, selectedQueueItem?.status]
+  );
 
   const aggregateClips = useMemo<AggregateClip[]>(() => {
     return jobs
@@ -267,7 +288,7 @@ export function BatchWorkspace({
           updatedAt: new Date().toISOString(),
         }));
         await retryJob(item.jobId);
-        setActiveJobId(item.jobId);
+        selectBatchJob(item.jobId);
         await mutate();
         return;
       }
@@ -323,7 +344,7 @@ export function BatchWorkspace({
         error: null,
         updatedAt: new Date().toISOString(),
       }));
-      setActiveJobId(job.jobId);
+      selectBatchJob(job.jobId);
     } catch (retryFailure) {
       const apiError =
         retryFailure instanceof ApiError
@@ -595,7 +616,7 @@ export function BatchWorkspace({
                     <div className="flex flex-wrap items-start justify-between gap-3">
                       <button
                         type="button"
-                        onClick={() => item.jobId && setActiveJobId(item.jobId)}
+                        onClick={() => item.jobId && selectBatchJob(item.jobId)}
                         disabled={!item.jobId}
                         className="min-w-0 flex-1 text-left"
                       >
@@ -655,6 +676,41 @@ export function BatchWorkspace({
                   <OverviewMetric label="Clips" value={String(selectedJob.summary?.clip_count ?? selectedJob.clips.length)} />
                   <OverviewMetric label="Top score" value={formatSignedScore(selectedJob.summary?.top_score ?? 0)} />
                 </div>
+
+                {readyJobNavigation.currentIndex >= 0 && readyJobNavigation.jobIds.length > 1 ? (
+                  <div className="mt-6 rounded-[1rem] border border-[var(--line)] bg-white/[0.03] px-4 py-4">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <div>
+                        <div className="metric-label text-[var(--muted)]">Ready source navigation</div>
+                        <p className="mt-2 text-sm text-[var(--muted)]">
+                          Source {readyJobNavigation.currentIndex + 1} of {readyJobNavigation.jobIds.length} ready workspaces in the current queue order.
+                        </p>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          onClick={() => readyJobNavigation.previousJobId && selectBatchJob(readyJobNavigation.previousJobId)}
+                          disabled={!readyJobNavigation.previousJobId}
+                          aria-label="Previous ready source"
+                        >
+                          <ChevronLeft className="size-4" />
+                          Previous source
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          onClick={() => readyJobNavigation.nextJobId && selectBatchJob(readyJobNavigation.nextJobId)}
+                          disabled={!readyJobNavigation.nextJobId}
+                          aria-label="Next ready source"
+                        >
+                          Next source
+                          <ChevronRight className="size-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                ) : null}
 
                 <div className="mt-6 flex flex-wrap gap-3">
                   <Link

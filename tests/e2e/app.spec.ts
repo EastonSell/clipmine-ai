@@ -1031,6 +1031,153 @@ test("batch workspace persists the selected source in the URL", async ({ page })
   await expect(page.getByRole("heading", { name: "beta.mp4" })).toBeVisible();
 });
 
+test("batch workspace navigates ready sources from the selected panel", async ({ page }) => {
+  const jobAlpha = createMockJob({
+    jobId: "job-alpha",
+    sourceVideo: {
+      id: "video-alpha",
+      file_name: "alpha.mp4",
+      content_type: "video/mp4",
+      size_bytes: 12_000_000,
+      duration_seconds: 164,
+      url: "/api/jobs/job-alpha/video",
+    },
+  });
+  const jobBeta = createMockJob({
+    jobId: "job-beta",
+    sourceVideo: {
+      id: "video-beta",
+      file_name: "beta.mp4",
+      content_type: "video/mp4",
+      size_bytes: 14_000_000,
+      duration_seconds: 201,
+      url: "/api/jobs/job-beta/video",
+    },
+  });
+  const jobGamma = createMockJob({
+    jobId: "job-gamma",
+    sourceVideo: {
+      id: "video-gamma",
+      file_name: "gamma.mp4",
+      content_type: "video/mp4",
+      size_bytes: 16_000_000,
+      duration_seconds: 188,
+      url: "/api/jobs/job-gamma/video",
+    },
+  });
+
+  await page.addInitScript(
+    ({ batchSessionsKey, session }) => {
+      window.localStorage.setItem(batchSessionsKey, JSON.stringify([session]));
+    },
+    {
+      batchSessionsKey,
+      session: {
+        batchId: "demo-batch-navigation",
+        label: "4 sources queued",
+        createdAt: "2026-04-02T12:00:00.000Z",
+        updatedAt: "2026-04-02T12:10:00.000Z",
+        qualityThreshold: 84,
+        items: [
+          {
+            id: "upload-1",
+            fileName: "alpha.mp4",
+            sizeBytes: 12_000_000,
+            jobId: "job-alpha",
+            status: "ready",
+            uploadPhase: "complete",
+            uploadProgress: 100,
+            error: null,
+            updatedAt: "2026-04-02T12:10:00.000Z",
+          },
+          {
+            id: "upload-2",
+            fileName: "broken-intro.mov",
+            sizeBytes: 10_500_000,
+            jobId: null,
+            status: "failed",
+            uploadPhase: "queued",
+            uploadProgress: 34,
+            error: "Upload failed.",
+            updatedAt: "2026-04-02T12:11:00.000Z",
+          },
+          {
+            id: "upload-3",
+            fileName: "beta.mp4",
+            sizeBytes: 14_000_000,
+            jobId: "job-beta",
+            status: "ready",
+            uploadPhase: "complete",
+            uploadProgress: 100,
+            error: null,
+            updatedAt: "2026-04-02T12:12:00.000Z",
+          },
+          {
+            id: "upload-4",
+            fileName: "gamma.mp4",
+            sizeBytes: 16_000_000,
+            jobId: "job-gamma",
+            status: "ready",
+            uploadPhase: "complete",
+            uploadProgress: 100,
+            error: null,
+            updatedAt: "2026-04-02T12:13:00.000Z",
+          },
+        ],
+      },
+    }
+  );
+
+  await page.route("**/api/jobs/job-alpha", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(jobAlpha),
+    });
+  });
+  await page.route("**/api/jobs/job-beta", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(jobBeta),
+    });
+  });
+  await page.route("**/api/jobs/job-gamma", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(jobGamma),
+    });
+  });
+
+  await page.goto("/batches/demo-batch-navigation");
+
+  const previousSourceButton = page.getByRole("button", { name: "Previous ready source" });
+  const nextSourceButton = page.getByRole("button", { name: "Next ready source" });
+
+  await expect(page.getByRole("heading", { name: "alpha.mp4" })).toBeVisible();
+  await expect(page.getByText("Source 1 of 3 ready workspaces in the current queue order.")).toBeVisible();
+  await expect(previousSourceButton).toBeDisabled();
+  await expect(nextSourceButton).toBeEnabled();
+
+  await nextSourceButton.click();
+  await expect(page).toHaveURL(/\/batches\/demo-batch-navigation\?job=job-beta$/);
+  await expect(page.getByRole("heading", { name: "beta.mp4" })).toBeVisible();
+  await expect(page.getByText("Source 2 of 3 ready workspaces in the current queue order.")).toBeVisible();
+  await expect(previousSourceButton).toBeEnabled();
+  await expect(nextSourceButton).toBeEnabled();
+
+  await nextSourceButton.click();
+  await expect(page).toHaveURL(/\/batches\/demo-batch-navigation\?job=job-gamma$/);
+  await expect(page.getByRole("heading", { name: "gamma.mp4" })).toBeVisible();
+  await expect(page.getByText("Source 3 of 3 ready workspaces in the current queue order.")).toBeVisible();
+  await expect(nextSourceButton).toBeDisabled();
+
+  await previousSourceButton.click();
+  await expect(page).toHaveURL(/\/batches\/demo-batch-navigation\?job=job-beta$/);
+  await expect(page.getByRole("heading", { name: "beta.mp4" })).toBeVisible();
+});
+
 test("batch workspace retries a failed source without returning home", async ({ page }) => {
   const beta = createMockJob({
     jobId: "job-beta",

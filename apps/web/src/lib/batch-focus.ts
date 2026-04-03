@@ -92,6 +92,21 @@ export function getPreferredBatchJobId(
   return getOrderedBatchItems(items, prioritizeIssues).find((item) => item.jobId)?.jobId ?? null;
 }
 
+export function getReadyBatchJobNavigation(
+  items: BatchUploadItemRecord[],
+  activeJobId: string | null
+) {
+  const jobIds = items.flatMap((item) => (item.status === "ready" && item.jobId ? [item.jobId] : []));
+  const currentIndex = activeJobId ? jobIds.indexOf(activeJobId) : -1;
+
+  return {
+    jobIds,
+    currentIndex,
+    previousJobId: currentIndex > 0 ? jobIds[currentIndex - 1] : null,
+    nextJobId: currentIndex >= 0 && currentIndex < jobIds.length - 1 ? jobIds[currentIndex + 1] : null,
+  };
+}
+
 export function hasBatchIssues(items: BatchUploadItemRecord[]) {
   return items.some(isBatchIssueItem);
 }
