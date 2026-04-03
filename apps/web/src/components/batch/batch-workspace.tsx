@@ -52,6 +52,11 @@ import {
   hasBatchIssues,
   isBatchIssueItem,
   isReadyBatchItem,
+  parseBatchQualityThreshold,
+  parseBatchReadyOnlyScope,
+  parseBatchSelectedJobId,
+  parseBatchSelectedPreset,
+  parseBatchTriageState,
 } from "@/lib/batch-focus";
 import {
   buildBatchPackageRootName,
@@ -143,19 +148,47 @@ export function BatchWorkspace({
 
   useEffect(() => {
     const nextSession = loadBatchSession(batchId);
-    const nextIssuesOnly = prioritizeIssues && initialIssuesOnly && hasBatchIssues(nextSession?.items ?? []);
-    const nextReadyOnly = !nextIssuesOnly && initialReadyOnly && (nextSession?.items ?? []).some(isReadyBatchItem);
+    const currentSearchParams =
+      typeof window === "undefined" ? null : new URLSearchParams(window.location.search);
+    const currentTriageState = currentSearchParams
+      ? parseBatchTriageState(currentSearchParams.get("focus"), currentSearchParams.get("scope"))
+      : {
+          prioritizeIssues,
+          issuesOnly: prioritizeIssues && initialIssuesOnly,
+        };
+    const currentReadyOnly = currentSearchParams
+      ? parseBatchReadyOnlyScope(currentSearchParams.get("queue"))
+      : initialReadyOnly;
+    const currentActiveJobId = currentSearchParams
+      ? parseBatchSelectedJobId(currentSearchParams.get("job"))
+      : initialActiveJobId;
+    const currentSelectedPreset = currentSearchParams
+      ? parseBatchSelectedPreset(currentSearchParams.get("preset"))
+      : initialSelectedPreset;
+    const currentQualityThreshold = currentSearchParams
+      ? parseBatchQualityThreshold(currentSearchParams.get("threshold"))
+      : initialQualityThreshold;
+    const nextIssuesOnly = currentTriageState.prioritizeIssues && currentTriageState.issuesOnly && hasBatchIssues(nextSession?.items ?? []);
+    const nextReadyOnly = !nextIssuesOnly && currentReadyOnly && (nextSession?.items ?? []).some(isReadyBatchItem);
     const nextQueueItems = getOrderedBatchItems(nextSession?.items ?? [], prioritizeIssues, nextIssuesOnly, nextReadyOnly);
+    const hasViewOverrideMismatch =
+      Boolean(nextSession) &&
+      (
+        (currentSelectedPreset !== null && currentSelectedPreset !== (nextSession?.batchExportPreset ?? "full-av")) ||
+        (currentQualityThreshold !== null && currentQualityThreshold !== nextSession?.qualityThreshold)
+      );
     const nextActiveJobId =
-      initialActiveJobId && nextQueueItems.some((item) => item.jobId === initialActiveJobId)
-        ? initialActiveJobId
+      currentActiveJobId &&
+      !hasViewOverrideMismatch &&
+      nextQueueItems.some((item) => item.jobId === currentActiveJobId)
+        ? currentActiveJobId
         : getPreferredBatchJobId(nextQueueItems, false);
     setSession(nextSession);
     sessionRef.current = nextSession;
     setIssuesOnly(nextIssuesOnly);
     setReadyOnly(nextReadyOnly);
-    setQualityThreshold(initialQualityThreshold ?? nextSession?.qualityThreshold ?? DEFAULT_BATCH_QUALITY_THRESHOLD);
-    setSelectedPreset(initialSelectedPreset ?? nextSession?.batchExportPreset ?? "full-av");
+    setQualityThreshold(currentQualityThreshold ?? nextSession?.qualityThreshold ?? DEFAULT_BATCH_QUALITY_THRESHOLD);
+    setSelectedPreset(currentSelectedPreset ?? nextSession?.batchExportPreset ?? "full-av");
     setActiveJobId(nextActiveJobId);
   }, [batchId, initialActiveJobId, initialIssuesOnly, initialQualityThreshold, initialReadyOnly, initialSelectedPreset, prioritizeIssues]);
 
@@ -384,6 +417,10 @@ export function BatchWorkspace({
   }, [jobsById, qualityThreshold, retryingItemIdSet, selectedPreset, session]);
 
   useEffect(() => {
+    if (!session) {
+      return;
+    }
+
     if (queueItems.length === 0) {
       if (activeJobId !== null) {
         setActiveJobId(null);
@@ -396,7 +433,7 @@ export function BatchWorkspace({
     }
 
     setActiveJobId(getPreferredBatchJobId(queueItems, false));
-  }, [activeJobId, queueItems]);
+  }, [activeJobId, queueItems, session]);
 
   useEffect(() => {
     if (!session) {
