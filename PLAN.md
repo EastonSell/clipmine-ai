@@ -33,8 +33,8 @@
       - If `run_id` does not match the value just created → exit immediately with no changes
 - Do not modify `PLAN.md`, add tasks, or perform product work before the lock commit is pushed and the post-push `run_id` verification succeeds
 - Select the highest-impact unfinished task
-- Complete ONLY 1–2 tasks per run
-- Add EXACTLY 1 new task per run
+- Complete ONLY 1–2 tasks per run unless the task-regeneration fallback is triggered
+- Add EXACTLY 1 new task per run unless the task-regeneration fallback is triggered
 - Prefer improving existing systems over adding new ones
 - Avoid duplicate, vague, or low-value tasks
 
@@ -49,11 +49,13 @@
 8. Immediately run `git fetch origin` and `git reset --hard origin/main`
 9. Re-read `LOCK.md`
 10. If the `run_id` does not match, exit immediately with no changes
-11. Only after the verified lock matches, add exactly 1 task and select the highest priority unfinished task
+11. Only after the verified lock matches:
+   - If the task-regeneration fallback is triggered, add EXACTLY 5 new high-level tasks aligned with this plan, then stop
+   - Otherwise, add exactly 1 task and select the highest priority unfinished task
 12. Implement minimal, clean solution
 13. Run tests if applicable
 14. Update:
-   - PLAN.md (mark completed + add 1 task)
+   - PLAN.md (mark completed + add 1 task during a normal run, or add EXACTLY 5 new high-level tasks and stop if the fallback was triggered)
    - VERIFICATION_LOG.md
 15. Commit product changes with a clear message
 16. Push to main
@@ -75,6 +77,14 @@
 - If exiting because a fresh lock exists → do nothing except exit
 - Do NOT fabricate work
 - Do NOT loop indefinitely inside a single run
+
+## Task Regeneration Fallback
+
+- If all existing tasks in this plan are checked off, and no new novel ideas were found for tasks or improvements, and no testing is needed, and no bug fixing is needed, then trigger the fallback.
+- When the fallback is triggered, create and add EXACTLY 5 NEW high-level tasks that align with the current project goals, prioritization strategy, and roadmap in this plan.
+- Those EXACTLY 5 NEW tasks must be meaningfully distinct, non-duplicate, and broad enough to guide future iterations.
+- When the fallback is triggered, creating and adding those EXACTLY 5 NEW high-level tasks is THE ONLY task to do in that run.
+- After adding those EXACTLY 5 NEW high-level tasks, stop the run. Do not do any other implementation, testing, bug fixing, refactoring, documentation, or task creation in that same run.
 
 ## Lock File Format
 
@@ -120,7 +130,7 @@ Avoid:
 
 ## Working Rules
 
-1. Add at least one new task on every read of this plan.
+1. Add at least one new task on every read of this plan, unless the task-regeneration fallback is triggered, in which case add EXACTLY 5 new high-level tasks.
 2. Mark completed tasks with the date and the commands used to verify them.
 3. Add every bug found to `Bugs found`.
 4. Add every unverified edge case to `Needs testing`.
