@@ -172,8 +172,13 @@ Avoid:
   Notes: Added on 2026-04-02 and completed in the same pass. The landing page now stops on a finished-state summary with success / failure counts and a direct button into the batch workspace.
   Verified: `npm run test:web`, `npm run lint:web`, `npm run build:web`, `npm run test:e2e`
 
-- [ ] Surface the latest finished batch session from the landing page
+- [x] Surface the latest finished batch session from the landing page
   Prompt: "Add a compact landing shortcut for the most recently completed batch session so users can reopen it without re-queueing the same sources."
+  Notes: Completed on 2026-04-02 by loading the newest completed batch session from local storage and surfacing a persistent reopen card in the landing upload bay when no queue is active.
+  Verified: `npm run test:web`, `npm run lint:web`, `npm run build:web`
+
+- [ ] Add dismiss action for stale finished batch shortcuts
+  Prompt: "Let users clear an outdated finished batch session shortcut from the landing page so local-session clutter does not keep resurfacing old work."
 
 - [ ] Add per-source ETA hints to the active queue card
   Prompt: "Estimate queue progress for the current source and remaining queue so large multi-file uploads feel less opaque while the active transfer is running."
@@ -241,3 +246,5 @@ Avoid:
 - 2026-04-02: Added `Add a console-warning guard around the browser smoke runner` as the next testing follow-up.
 - 2026-04-02: Added `Document README asset workflow churn on main` before writing down the git publishing workaround.
 - 2026-04-02: Completed `Document temp-checkout git publishing workaround` after updating `README.md` and `AGENT.md`.
+- 2026-04-02: Added `Add dismiss action for stale finished batch shortcuts` before surfacing the latest finished batch session from the landing page.
+- 2026-04-02: Completed `Surface the latest finished batch session from the landing page` after adding the persisted landing shortcut and passing web test, lint, and build verification.

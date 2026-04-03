@@ -2,6 +2,29 @@
 
 Date: 2026-04-02
 
+## Latest Finished Batch Session Shortcut Pass
+
+- Added a persistent landing-page shortcut for the most recently completed batch session using the existing browser-stored batch session history.
+- Introduced a `loadLatestCompletedBatchSession` helper so the landing UI can reopen the newest reusable batch workspace without re-queueing sources.
+- Updated the upload bay messaging to mention the saved batch session when the page is idle and no new queue is active.
+- Added coverage for:
+  - returning the newest completed batch session
+  - ignoring completion summaries that cannot reopen any workspace
+
+### Checks run
+
+```bash
+npm run test:web
+npm run lint:web
+npm run build:web
+```
+
+### Result
+
+- `22 / 22` web unit tests passed
+- frontend lint passed
+- frontend production build passed
+
 ## Plan And Queue Status Pass
 
 - Added `PLAN.md` as the living implementation plan for the repository.
