@@ -310,8 +310,13 @@ Avoid:
   Notes: Completed on 2026-04-03 by adding a temporary contributors-only toggle to the batch aggregate export summary, hiding zero-clip ready sources from the summary rows while the toggle is active, and surfacing explanatory copy when below-threshold sources are being filtered out.
   Verified: `npm ci`, `npm run lint:web -- --file src/components/batch/batch-workspace.tsx`, `npm run test:e2e -- --grep "batch workspace groups jobs and exports thresholded clips"`
 
-- [ ] Add a broader-threshold recovery action when the aggregate export summary is empty
+- [x] Add a broader-threshold recovery action when the aggregate export summary is empty
   Prompt: "When the current batch threshold leaves no contributing ready sources, offer a one-click way to jump to the next broader preset so reviewers can recover from an empty export summary without dragging the slider."
+  Notes: Completed on 2026-04-03 by collapsing the ready-source aggregate summary into an empty recovery state when no ready sources contribute at the current threshold, surfacing a one-click jump to the next broader preset, and previewing how many eligible clips that broader preset will reopen before the reviewer clicks.
+  Verified: `npm ci`, `npm run test:web -- --run src/lib/batch-focus.test.ts`, `npm run test:e2e -- --grep "batch workspace groups jobs and exports thresholded clips"`
+
+- [ ] Preview which ready sources return after a broader-threshold recovery jump
+  Prompt: "When the empty aggregate export summary suggests a broader preset, preview the ready source names that would contribute again at that suggested threshold so reviewers understand the recovery before clicking."
 
 - [x] Add queue completion toast and summary state
   Prompt: "When a batch queue finishes, show a stronger completion summary before navigating so the user understands how many sources succeeded or failed."
@@ -506,3 +511,5 @@ Avoid:
 - 2026-04-03: Added `Add contribution rank badges to the aggregate export summary` as the next aggregate-export scanability follow-up.
 - 2026-04-03: Completed `Add contribution rank badges to the aggregate export summary` after reinstalling frontend dependencies, passing focused lint, and rerunning the targeted batch export Playwright flow.
 - 2026-04-03: Added `Add a contributors-only toggle to the aggregate export summary` as the next aggregate-export focus follow-up.
+- 2026-04-03: Completed `Add a broader-threshold recovery action when the aggregate export summary is empty` after reinstalling frontend dependencies, passing focused batch-threshold unit coverage, and rerunning the targeted batch export Playwright flow.
+- 2026-04-03: Added `Preview which ready sources return after a broader-threshold recovery jump` as the next aggregate-export recovery follow-up.

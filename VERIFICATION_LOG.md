@@ -1,5 +1,28 @@
 # Verification Log
 
+## Batch Aggregate Threshold Recovery Pass
+
+Date: 2026-04-03
+
+- Collapsed the ready-source aggregate summary into an explicit empty state whenever the current threshold leaves every ready source with zero eligible clips, instead of rendering a list of all-zero rows.
+- Added a one-click recovery action that jumps to the next broader shared threshold preset and previews how many eligible clips that broader preset will restore before the reviewer clicks.
+- Added focused unit coverage for the broader-preset helper and extended the existing batch export Playwright scenario so it proves the empty-state recovery jump from `100+` back to `Strict 92+`.
+- This checkout started without frontend dependencies installed, so `npm ci` was required before the targeted verification commands could run.
+
+### Checks run
+
+```bash
+npm ci
+npm run test:web -- --run src/lib/batch-focus.test.ts
+npm run test:e2e -- --grep "batch workspace groups jobs and exports thresholded clips"
+```
+
+### Result
+
+- `15 / 15` focused `batch-focus` unit tests passed
+- `1 / 1` targeted Playwright batch export tests passed
+- empty aggregate export states now offer a direct broader-threshold recovery path
+
 ## Batch Aggregate Contributors-Only Toggle Pass
 
 Date: 2026-04-03

@@ -33,6 +33,7 @@ import {
   BATCH_QUALITY_THRESHOLD_PRESETS,
   DEFAULT_BATCH_QUALITY_THRESHOLD,
   getBatchEligibleClipCount,
+  getNextBroaderBatchQualityThresholdPreset,
   getBatchWorkspaceHref,
   getOrderedBatchItems,
   getPreferredBatchJobId,
@@ -450,6 +451,10 @@ export function BatchWorkspace({
   );
   const activeThresholdPreset =
     BATCH_QUALITY_THRESHOLD_PRESETS.find((preset) => preset.value === qualityThreshold) ?? null;
+  const nextBroaderThresholdPreset = getNextBroaderBatchQualityThresholdPreset(qualityThreshold);
+  const nextBroaderPresetEligibleClipCount = nextBroaderThresholdPreset
+    ? presetEligibleClipCounts.get(nextBroaderThresholdPreset.value) ?? 0
+    : 0;
   const activePreset = getPackageExportPresetOption(selectedPreset);
   const readyCount = session?.items.filter((item) => item.status === "ready").length ?? 0;
   const failedCount = session?.items.filter((item) => item.status === "failed").length ?? 0;
@@ -798,7 +803,7 @@ export function BatchWorkspace({
                     </Button>
                   ) : null}
                 </div>
-                {visibleReadySourceEligibleClipSummaries.length > 0 ? (
+                {contributingReadySourceCount > 0 && visibleReadySourceEligibleClipSummaries.length > 0 ? (
                   <div className="mt-4 grid gap-2">
                     {visibleReadySourceEligibleClipSummaries.map((entry, index) => {
                       const isActiveSource = entry.jobId === activeJobId;
@@ -865,8 +870,26 @@ export function BatchWorkspace({
                     })}
                   </div>
                 ) : readySourceEligibleClipSummaries.length > 0 ? (
-                  <div className="mt-4 rounded-[0.95rem] border border-dashed border-[var(--line)] bg-[var(--surface-dark)]/25 px-4 py-4 text-sm text-[var(--muted)]">
-                    No ready sources contribute clips at {qualityThreshold}+ right now.
+                  <div className="mt-4 rounded-[0.95rem] border border-dashed border-[var(--line)] bg-[var(--surface-dark)]/25 px-4 py-4">
+                    <p className="text-sm text-[var(--muted)]">
+                      No ready sources contribute clips at {qualityThreshold}+ right now.
+                    </p>
+                    {nextBroaderThresholdPreset ? (
+                      <div className="mt-3 flex flex-wrap items-center gap-3">
+                        <p className="text-xs leading-5 text-[var(--muted)]">
+                          {nextBroaderPresetEligibleClipCount > 0
+                            ? `${nextBroaderThresholdPreset.label} ${nextBroaderThresholdPreset.value}+ reopens ${nextBroaderPresetEligibleClipCount} eligible ${nextBroaderPresetEligibleClipCount === 1 ? "clip" : "clips"} without dragging the slider.`
+                            : `Jump to ${nextBroaderThresholdPreset.label} ${nextBroaderThresholdPreset.value}+ to keep broadening the export floor.`}
+                        </p>
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          onClick={() => updateQualityThreshold(nextBroaderThresholdPreset.value)}
+                        >
+                          Try {nextBroaderThresholdPreset.label} {nextBroaderThresholdPreset.value}+
+                        </Button>
+                      </div>
+                    ) : null}
                   </div>
                 ) : null}
               </div>

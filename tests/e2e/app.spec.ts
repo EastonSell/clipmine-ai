@@ -1001,6 +1001,16 @@ test("batch workspace groups jobs and exports thresholded clips", async ({ page 
   await expect(page.getByTestId("aggregate-source-summary-job-beta")).toContainText("50% of eligible duration");
   await expect(page.getByRole("progressbar", { name: "beta.mp4 contribution to eligible duration" })).toHaveAttribute("aria-valuenow", "50");
 
+  await page.locator('input[type="range"]').fill("100");
+  await expect(page).toHaveURL(/\/batches\/demo-batch\?job=job-alpha&threshold=100$/);
+  await expect(page.getByText("100/100")).toBeVisible();
+  await expect(page.locator('[data-testid^="aggregate-source-summary-"]')).toHaveCount(0);
+  await expect(page.getByText("No ready sources contribute clips at 100+ right now.")).toBeVisible();
+  await expect(page.getByText("Strict 92+ reopens 1 eligible clip without dragging the slider.")).toBeVisible();
+  await page.getByRole("button", { name: "Try Strict 92+" }).click();
+  await expect(page).toHaveURL(/\/batches\/demo-batch\?job=job-alpha&threshold=92$/);
+  await expect(page.getByTestId("aggregate-source-summary-job-beta")).toBeVisible();
+
   await page.locator('input[type="range"]').fill("90");
   await page.getByRole("button", { name: /Audio-only package/i }).click();
   await expect(page).toHaveURL(/\/batches\/demo-batch\?job=job-alpha&preset=audio-only&threshold=90$/);

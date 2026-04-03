@@ -4,6 +4,7 @@ import {
   BATCH_QUALITY_THRESHOLD_PRESETS,
   DEFAULT_BATCH_QUALITY_THRESHOLD,
   getBatchEligibleClipCount,
+  getNextBroaderBatchQualityThresholdPreset,
   getBatchWorkspaceHref,
   getOrderedBatchItems,
   getPreferredBatchJobId,
@@ -84,6 +85,26 @@ describe("batch-focus", () => {
         72
       )
     ).toBe(4);
+  });
+
+  it("finds the next broader shared batch threshold preset", () => {
+    expect(getNextBroaderBatchQualityThresholdPreset(100)).toMatchObject({
+      label: "Strict",
+      value: 92,
+    });
+    expect(getNextBroaderBatchQualityThresholdPreset(92)).toMatchObject({
+      label: "Balanced",
+      value: DEFAULT_BATCH_QUALITY_THRESHOLD,
+    });
+    expect(getNextBroaderBatchQualityThresholdPreset(90)).toMatchObject({
+      label: "Balanced",
+      value: DEFAULT_BATCH_QUALITY_THRESHOLD,
+    });
+    expect(getNextBroaderBatchQualityThresholdPreset(DEFAULT_BATCH_QUALITY_THRESHOLD)).toMatchObject({
+      label: "Broad",
+      value: 72,
+    });
+    expect(getNextBroaderBatchQualityThresholdPreset(72)).toBeNull();
   });
 
   it("parses the saved batch triage state from search params", () => {

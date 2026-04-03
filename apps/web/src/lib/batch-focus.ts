@@ -41,6 +41,12 @@ export const BATCH_QUALITY_THRESHOLD_PRESETS: BatchQualityThresholdPreset[] = [
   },
 ];
 
+export function getNextBroaderBatchQualityThresholdPreset(threshold: number) {
+  return [...BATCH_QUALITY_THRESHOLD_PRESETS]
+    .sort((left, right) => right.value - left.value)
+    .find((preset) => preset.value < threshold) ?? null;
+}
+
 export function parseBatchSelectedJobId(jobId: string | null | undefined) {
   const normalizedJobId = jobId?.trim();
   return normalizedJobId ? normalizedJobId : null;
