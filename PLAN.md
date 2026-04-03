@@ -409,8 +409,10 @@ Avoid:
   Notes: Completed on 2026-04-03 by adding a dedicated `queue=ready` search param to the batch workspace URL helpers, hydrating the ready-only toggle from the App Router page on load, and preserving that queue focus through reloads without dropping the selected ready job.
   Verified: `npm ci`, `npm run test:web -- --run src/lib/batch-focus.test.ts`, `npm run test:e2e -- --grep "batch workspace can collapse the queue to ready sources only"`
 
-- [ ] Add ready-review reopen action to saved batch shortcuts
+- [x] Add ready-review reopen action to saved batch shortcuts
   Prompt: "When a saved batch session already has ready workspaces, let the landing shortcut reopen it directly in ready-only mode so reviewers can skip the full queue and resume clip review immediately."
+  Notes: Completed on 2026-04-03 by adding a saved-session `Resume ready review` action on the landing shortcut, routing that CTA through the existing ready-only batch URL state, and seeding the reopened batch workspace with the first ready job so reviewers land directly in clip review without losing the existing full-workspace or issue-triage reopen path.
+  Verified: `npm ci`, `npm run test:web -- --run src/lib/batch-focus.test.ts`, `npm run test:e2e -- --grep "landing page reopens the most recent finished batch session|saved batch shortcuts can resume ready review directly"`
 
 ## Backend Tasks
 
@@ -534,3 +536,4 @@ Avoid:
 - 2026-04-03: Added `Persist ready-only batch queue scope in the URL` as the next batch-review deep-link follow-up.
 - 2026-04-03: Completed `Persist ready-only batch queue scope in the URL` after reinstalling frontend dependencies in the worktree and passing focused web-unit plus reload-aware Playwright verification.
 - 2026-04-03: Added `Add ready-review reopen action to saved batch shortcuts` as the next batch-review resume follow-up.
+- 2026-04-03: Completed `Add ready-review reopen action to saved batch shortcuts` after reinstalling frontend dependencies, passing focused batch-focus unit coverage, and rerunning the saved-batch landing Playwright reopen scenarios.

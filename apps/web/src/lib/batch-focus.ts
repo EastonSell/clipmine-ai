@@ -200,6 +200,10 @@ export function getPreferredBatchJobId(
   return getOrderedBatchItems(items, prioritizeIssues).find((item) => item.jobId)?.jobId ?? null;
 }
 
+export function getPreferredReadyBatchJobId(items: BatchUploadItemRecord[]) {
+  return getOrderedBatchItems(items, false, false, true).find((item) => item.jobId)?.jobId ?? null;
+}
+
 export function getReadyBatchJobNavigation(
   items: BatchUploadItemRecord[],
   activeJobId: string | null

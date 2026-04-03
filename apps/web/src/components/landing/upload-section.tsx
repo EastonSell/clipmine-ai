@@ -16,7 +16,7 @@ import { estimateBatchUploadEta, formatUploadEta } from "@/lib/batch-upload-eta"
 import { loadLatestCompletedBatchSession, removeBatchSession, saveBatchSession } from "@/lib/batch-sessions";
 import { clearBatchSourceFiles, removeBatchSourceFile, saveBatchSourceFile } from "@/lib/batch-source-files";
 import { ApiError, createJob, getUploadMode, isRetryableApiError } from "@/lib/api";
-import { getBatchWorkspaceHref, hasBatchIssues } from "@/lib/batch-focus";
+import { getBatchWorkspaceHref, getPreferredReadyBatchJobId, hasBatchIssues } from "@/lib/batch-focus";
 import { formatBytes, formatDateTime } from "@/lib/format";
 import type {
   BatchCompletionSummary,
@@ -247,6 +247,8 @@ export function UploadSection() {
     latestCompletedBatch && latestCompletedBatch.batchId !== dismissedBatchId
       ? latestCompletedBatch.lastCompletionSummary ?? null
       : null;
+  const savedBatchHasIssues = hasBatchIssues(latestCompletedBatch?.items ?? []);
+  const savedBatchReadyJobId = getPreferredReadyBatchJobId(latestCompletedBatch?.items ?? []);
   const savedBatchIssueSourceNames = latestCompletedBatch ? getBatchIssueSourceNames(latestCompletedBatch.items) : [];
   const visibleBatchShortcut =
     completedBatchSummary && completedBatchSummary.batchId !== dismissedBatchId
@@ -254,14 +256,18 @@ export function UploadSection() {
           source: "current" as const,
           summary: completedBatchSummary,
           issueSourceNames: getBatchIssueSourceNames(batchQueue),
+          readyReviewJobId: null,
         }
       : !isUploading && selectedFiles.length === 0 && batchQueue.length === 0 && savedBatchSummary
         ? {
             source: "saved" as const,
             summary: savedBatchSummary,
             issueSourceNames: savedBatchIssueSourceNames,
+            readyReviewJobId: savedBatchReadyJobId,
           }
         : null;
+  const visibleBatchShortcutReadyReviewJobId =
+    visibleBatchShortcut?.source === "saved" ? visibleBatchShortcut.readyReviewJobId : null;
 
   useEffect(() => {
     setLatestCompletedBatch(loadLatestCompletedBatchSession());
@@ -566,6 +572,23 @@ export function UploadSection() {
     });
   }
 
+  function handleOpenReadyReview(batchId: string, selectedJobId: string) {
+    startTransition(() => {
+      router.push(
+        getBatchWorkspaceHref(
+          batchId,
+          {
+            prioritizeIssues: false,
+            issuesOnly: false,
+            readyOnly: true,
+            selectedJobId,
+          },
+          "#batch-queue"
+        )
+      );
+    });
+  }
+
   function handleDismissBatchShortcut(batchId: string, source: "current" | "saved") {
     setDismissedBatchId(batchId);
     setSelectedFiles([]);
@@ -865,13 +888,19 @@ export function UploadSection() {
                     summary={visibleBatchShortcut.summary}
                     source={visibleBatchShortcut.source}
                     issueSourceNames={visibleBatchShortcut.issueSourceNames}
+                    readyReviewJobId={visibleBatchShortcutReadyReviewJobId}
                     dismissLabel={visibleBatchShortcut.source === "saved" ? "Dismiss shortcut" : "Queue more sources"}
                     onDismiss={() => handleDismissBatchShortcut(visibleBatchShortcut.summary.batchId, visibleBatchShortcut.source)}
                     onOpen={() =>
                       handleOpenBatchWorkspace(
                         visibleBatchShortcut.summary.batchId,
-                        visibleBatchShortcut.source === "saved" && hasBatchIssues(latestCompletedBatch?.items ?? [])
+                        visibleBatchShortcut.source === "saved" && savedBatchHasIssues
                       )
+                    }
+                    onOpenReadyReview={
+                      visibleBatchShortcut.source === "saved" && visibleBatchShortcutReadyReviewJobId
+                        ? () => handleOpenReadyReview(visibleBatchShortcut.summary.batchId, visibleBatchShortcutReadyReviewJobId)
+                        : null
                     }
                   />
                 </div>
@@ -923,17 +952,21 @@ function QueueTimingHint({ label, value }: { label: string; value: string }) {
 function BatchCompletionShortcut({
   dismissLabel,
   issueSourceNames,
+  readyReviewJobId,
   summary,
   source,
   onDismiss,
   onOpen,
+  onOpenReadyReview,
 }: {
   dismissLabel: string;
   issueSourceNames: string[];
+  readyReviewJobId: string | null;
   summary: BatchCompletionSummary;
   source: "current" | "saved";
   onDismiss: () => void;
   onOpen: () => void;
+  onOpenReadyReview: (() => void) | null;
 }) {
   const visibleIssueSourceNames = issueSourceNames.slice(0, MAX_BATCH_SHORTCUT_ISSUE_NAMES);
   const hiddenIssueSourceCount = Math.max(0, issueSourceNames.length - visibleIssueSourceNames.length);
@@ -975,7 +1008,18 @@ function BatchCompletionShortcut({
           <Button type="button" variant="secondary" size="lg" onClick={onDismiss}>
             {dismissLabel}
           </Button>
-          <Button type="button" variant="primary" size="lg" onClick={onOpen}>
+          {source === "saved" && readyReviewJobId && onOpenReadyReview ? (
+            <Button type="button" variant="primary" size="lg" onClick={onOpenReadyReview}>
+              <ArrowUpRight className="size-4" />
+              Resume ready review
+            </Button>
+          ) : null}
+          <Button
+            type="button"
+            variant={source === "saved" && readyReviewJobId ? "secondary" : "primary"}
+            size="lg"
+            onClick={onOpen}
+          >
             <ArrowUpRight className="size-4" />
             Open batch workspace
           </Button>

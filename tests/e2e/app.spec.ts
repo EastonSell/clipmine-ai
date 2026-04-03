@@ -152,6 +152,108 @@ test("landing page reopens the most recent finished batch session", async ({ pag
   await expect(page.getByRole("button", { name: /beta\.mp4 ready/i })).toBeVisible();
 });
 
+test("saved batch shortcuts can resume ready review directly", async ({ page }) => {
+  const alpha = createMockJob({
+    jobId: "saved-batch-alpha",
+    sourceVideo: {
+      id: "saved-video-alpha",
+      file_name: "alpha.mp4",
+      content_type: "video/mp4",
+      size_bytes: 12_000_000,
+      duration_seconds: 164,
+      url: "/api/jobs/saved-batch-alpha/video",
+    },
+  });
+  const beta = createMockJob({
+    jobId: "saved-batch-beta",
+    sourceVideo: {
+      id: "saved-video-beta",
+      file_name: "beta.mp4",
+      content_type: "video/mp4",
+      size_bytes: 10_500_000,
+      duration_seconds: 141,
+      url: "/api/jobs/saved-batch-beta/video",
+    },
+  });
+
+  await page.addInitScript(
+    ({ batchSessionsKey, session }) => {
+      window.localStorage.setItem(batchSessionsKey, JSON.stringify([session]));
+    },
+    {
+      batchSessionsKey,
+      session: {
+        batchId: "saved-batch-ready-review",
+        label: "2 sources queued",
+        createdAt: "2026-04-02T11:50:00.000Z",
+        updatedAt: "2026-04-02T12:12:00.000Z",
+        qualityThreshold: 84,
+        lastCompletionSummary: {
+          batchId: "saved-batch-ready-review",
+          label: "2 sources queued",
+          finishedAt: "2026-04-02T12:12:00.000Z",
+          totalSources: 2,
+          readyCount: 2,
+          failedCount: 0,
+          cancelledCount: 0,
+        },
+        items: [
+          {
+            id: "upload-1",
+            fileName: "alpha.mp4",
+            sizeBytes: 12_000_000,
+            jobId: "saved-batch-alpha",
+            status: "ready",
+            uploadPhase: "complete",
+            uploadProgress: 100,
+            error: null,
+            updatedAt: "2026-04-02T12:10:00.000Z",
+          },
+          {
+            id: "upload-2",
+            fileName: "beta.mp4",
+            sizeBytes: 10_500_000,
+            jobId: "saved-batch-beta",
+            status: "ready",
+            uploadPhase: "complete",
+            uploadProgress: 100,
+            error: null,
+            updatedAt: "2026-04-02T12:12:00.000Z",
+          },
+        ],
+      },
+    }
+  );
+
+  await page.route("**/api/jobs/saved-batch-alpha", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(alpha),
+    });
+  });
+  await page.route("**/api/jobs/saved-batch-beta", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(beta),
+    });
+  });
+
+  await page.goto("/");
+
+  await expect(page.getByRole("button", { name: "Resume ready review" })).toBeVisible();
+
+  await page.getByRole("button", { name: "Resume ready review" }).click();
+
+  await page.waitForURL("**/batches/saved-batch-ready-review?queue=ready&job=saved-batch-alpha#batch-queue");
+  await expect(page.getByRole("button", { name: "Ready only" })).toHaveAttribute("aria-pressed", "true");
+  await expect(page.getByRole("heading", { name: "alpha.mp4" })).toBeVisible();
+  await expect(page.getByTestId("batch-queue-item")).toHaveCount(2);
+  await expect(page.getByTestId("batch-queue-item").nth(0)).toContainText("alpha.mp4");
+  await expect(page.getByTestId("batch-queue-item").nth(1)).toContainText("beta.mp4");
+});
+
 test("landing page can dismiss a saved batch shortcut without letting it reappear", async ({ page }) => {
   await page.addInitScript(
     ({ batchSessionsKey, session }) => {

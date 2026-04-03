@@ -8,6 +8,7 @@ import {
   getBatchWorkspaceHref,
   getOrderedBatchItems,
   getPreferredBatchJobId,
+  getPreferredReadyBatchJobId,
   getReadyBatchItemPositions,
   getReadyBatchJobNavigation,
   getReadyBatchJobShortcutDirection,
@@ -270,6 +271,22 @@ describe("batch-focus", () => {
 
     expect(getPreferredBatchJobId(items, true)).toBe("job-broken");
     expect(getPreferredBatchJobId(items, false)).toBe("job-alpha");
+  });
+
+  it("prefers the first ready job when reopening ready review", () => {
+    const items = [
+      createItem({ id: "failed-1", fileName: "broken-intro.mov", status: "failed", error: "Upload failed." }),
+      createItem({ id: "ready-1", fileName: "alpha.mp4", status: "ready", jobId: "job-alpha" }),
+      createItem({ id: "processing-1", fileName: "gamma.mp4", status: "processing", jobId: "job-gamma" }),
+      createItem({ id: "ready-2", fileName: "delta.mp4", status: "ready", jobId: "job-delta" }),
+    ];
+
+    expect(getPreferredReadyBatchJobId(items)).toBe("job-alpha");
+    expect(
+      getPreferredReadyBatchJobId([
+        createItem({ id: "processing-1", fileName: "gamma.mp4", status: "processing", jobId: "job-gamma" }),
+      ])
+    ).toBeNull();
   });
 
   it("returns previous and next ready jobs from the current visible queue order", () => {

@@ -1,5 +1,28 @@
 # Verification Log
 
+## Saved Batch Ready-Review Shortcut Pass
+
+Date: 2026-04-03
+
+- Added a dedicated `Resume ready review` action to the saved batch landing shortcut whenever the stored session already has ready workspaces.
+- Routed that shortcut through the existing ready-only batch URL state and seeded it with the first ready job so the reopened session lands directly in review mode instead of the full mixed queue.
+- Kept the existing `Open batch workspace` path intact, which preserves the prior issue-triage reopen behavior for saved sessions that still need attention.
+- This synced checkout started without frontend dependencies installed, so `npm ci` was required after the first focused `vitest` attempt failed with `sh: vitest: command not found`.
+
+### Checks run
+
+```bash
+npm ci
+npm run test:web -- --run src/lib/batch-focus.test.ts
+npm run test:e2e -- --grep "landing page reopens the most recent finished batch session|saved batch shortcuts can resume ready review directly"
+```
+
+### Result
+
+- `18 / 18` focused `batch-focus` unit tests passed
+- `2 / 2` targeted Playwright saved-batch reopen tests passed
+- saved batch shortcuts can now reopen directly into ready-only review without regressing the existing full-workspace reopen path
+
 ## Ready-Only Batch Queue URL Pass
 
 Date: 2026-04-03
