@@ -4,6 +4,7 @@ import {
   BATCH_QUALITY_THRESHOLD_PRESETS,
   DEFAULT_BATCH_QUALITY_THRESHOLD,
   getBatchEligibleClipCount,
+  getBatchInspectState,
   getBatchRecoveryTopSource,
   getNextBroaderBatchQualityThresholdPreset,
   getBatchWorkspaceHref,
@@ -193,6 +194,44 @@ describe("batch-focus", () => {
         "#batch-queue"
       )
     ).toBe("/batches/saved-batch-failures?focus=issues&scope=all&queue=ready&job=job-alpha&preset=audio-only&threshold=90#batch-queue");
+  });
+
+  it("drops filters only when an inspect action targets a hidden source", () => {
+    const items = [
+      createItem({ id: "ready-1", fileName: "alpha.mp4", status: "ready", jobId: "job-alpha" }),
+      createItem({ id: "failed-1", fileName: "broken-intro.mov", status: "failed", jobId: "job-broken", error: "Upload failed." }),
+      createItem({ id: "processing-1", fileName: "gamma.mp4", status: "processing", jobId: "job-gamma" }),
+    ];
+
+    expect(
+      getBatchInspectState(items, "job-alpha", {
+        issuesOnly: true,
+        readyOnly: false,
+      })
+    ).toEqual({
+      issuesOnly: false,
+      readyOnly: false,
+    });
+
+    expect(
+      getBatchInspectState(items, "job-broken", {
+        issuesOnly: false,
+        readyOnly: true,
+      })
+    ).toEqual({
+      issuesOnly: false,
+      readyOnly: false,
+    });
+
+    expect(
+      getBatchInspectState(items, "job-alpha", {
+        issuesOnly: false,
+        readyOnly: true,
+      })
+    ).toEqual({
+      issuesOnly: false,
+      readyOnly: true,
+    });
   });
 
   it("normalizes the selected batch job id from search params", () => {

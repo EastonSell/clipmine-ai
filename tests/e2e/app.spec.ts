@@ -1051,6 +1051,27 @@ test("batch workspace groups jobs and exports thresholded clips", async ({ page 
     ]
   );
   let batchRequestBody: Record<string, unknown> | null = null;
+  const batchWarningSummary = {
+    preset: "audio-only",
+    qualityThreshold: 90,
+    requestedJobCount: 2,
+    exportedJobCount: 1,
+    failedJobCount: 1,
+    warnings: [
+      {
+        code: "job_export_failed",
+        jobId: "job-beta",
+        fileName: "beta.mp4",
+        message: "This job was skipped because its media could not be packaged.",
+        detail: "Source video not found for job job-beta.",
+      },
+    ],
+  };
+  const encodedBatchWarningSummary = Buffer.from(JSON.stringify(batchWarningSummary), "utf-8")
+    .toString("base64")
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=+$/g, "");
 
   await page.addInitScript(
     ({ batchSessionsKey, session }) => {
@@ -1116,6 +1137,7 @@ test("batch workspace groups jobs and exports thresholded clips", async ({ page 
       headers: {
         "Content-Type": "application/zip",
         "Content-Disposition": 'attachment; filename="clipmine-batch-export-demo.zip"',
+        "X-ClipMine-Batch-Export-Summary": encodedBatchWarningSummary,
       },
       body: Buffer.from("PK\x03\x04"),
     });
@@ -1258,6 +1280,14 @@ test("batch workspace groups jobs and exports thresholded clips", async ({ page 
   const downloadPromise = page.waitForEvent("download");
   await page.getByRole("button", { name: /Export 2 audio clips/i }).click();
   await downloadPromise;
+  await expect(page.getByTestId("batch-export-warning-summary")).toContainText("Latest combined export skipped 1 source");
+  await expect(page.getByTestId("batch-export-warning-summary")).toContainText("beta.mp4");
+  const skippedWarningInspectButton = page.getByRole("button", { name: "Inspect skipped source beta.mp4" });
+  await expect(skippedWarningInspectButton).toHaveAttribute("aria-pressed", "false");
+  await skippedWarningInspectButton.click();
+  await expect(page).toHaveURL(/\/batches\/demo-batch\?job=job-beta&preset=audio-only&threshold=90$/);
+  await expect(page.getByRole("heading", { name: "beta.mp4" })).toBeVisible();
+  await expect(skippedWarningInspectButton).toHaveAttribute("aria-pressed", "true");
 
   expect(batchRequestBody?.preset).toBe("audio-only");
   expect(batchRequestBody?.qualityThreshold).toBe(90);

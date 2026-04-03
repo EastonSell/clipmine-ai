@@ -173,6 +173,32 @@ export function getBatchWorkspaceHref(
   return `/batches/${batchId}${search ? `?${search}` : ""}${hash}`;
 }
 
+export function getBatchInspectState(
+  items: BatchUploadItemRecord[],
+  jobId: string,
+  {
+    issuesOnly,
+    readyOnly,
+  }: {
+    issuesOnly: boolean;
+    readyOnly: boolean;
+  }
+) {
+  const normalizedReadyOnly = readyOnly && !issuesOnly;
+  const targetItem = items.find((item) => item.jobId === jobId);
+  if (!targetItem) {
+    return {
+      issuesOnly,
+      readyOnly: normalizedReadyOnly,
+    };
+  }
+
+  return {
+    issuesOnly: issuesOnly && isBatchIssueItem(targetItem),
+    readyOnly: normalizedReadyOnly && isReadyBatchItem(targetItem),
+  };
+}
+
 export function isBatchIssueItem(item: BatchUploadItemRecord) {
   return item.status === "failed" || item.status === "cancelled";
 }

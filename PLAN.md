@@ -470,8 +470,10 @@ Avoid:
   Notes: Completed on 2026-04-03 by exposing a compact skipped-job summary on successful batch package downloads, decoding that warning metadata in the web client, and rendering the latest skipped-source summary directly in the batch workspace after export.
   Verified: `PYTHONPATH=backend/src python3.11 -m pytest backend/tests/test_package_export.py -k "batch_package_export_keeps_successful_jobs_when_one_source_is_missing"`, `cd apps/web && PATH='/Users/easton/.codex/worktrees/7287/Codex Creator Challenge/apps/web/node_modules/.bin:/Users/easton/.codex/worktrees/7287/Codex Creator Challenge/node_modules/.bin:'"$PATH" NODE_PATH='/Users/easton/.codex/worktrees/7287/Codex Creator Challenge/apps/web/node_modules:/Users/easton/.codex/worktrees/7287/Codex Creator Challenge/node_modules' vitest run src/lib/api.test.ts`, `cd apps/web && PATH='/Users/easton/.codex/worktrees/7287/Codex Creator Challenge/apps/web/node_modules/.bin:/Users/easton/.codex/worktrees/7287/Codex Creator Challenge/node_modules/.bin:'"$PATH" NODE_PATH='/Users/easton/.codex/worktrees/7287/Codex Creator Challenge/apps/web/node_modules:/Users/easton/.codex/worktrees/7287/Codex Creator Challenge/node_modules' eslint src/components/batch/batch-workspace.tsx src/lib/api.ts src/lib/api.test.ts src/lib/types.ts --max-warnings=0`
 
-- [ ] Add inspect actions to skipped-job batch export warnings
+- [x] Add inspect actions to skipped-job batch export warnings
   Prompt: "Let reviewers jump from the batch export warning summary straight into each skipped source so they can diagnose missing media and retry the combined export without scanning the full queue."
+  Notes: Completed on 2026-04-03 by adding inline inspect actions to each skipped-source warning card in the batch export summary and teaching the shared inspect flow to drop issue-only or ready-only queue filters when they would otherwise hide the target source.
+  Verified: `cd apps/web && PATH='/Users/easton/.codex/worktrees/7287/Codex Creator Challenge/apps/web/node_modules/.bin:/Users/easton/.codex/worktrees/7287/Codex Creator Challenge/node_modules/.bin:'"$PATH" NODE_PATH='/Users/easton/.codex/worktrees/7287/Codex Creator Challenge/apps/web/node_modules:/Users/easton/.codex/worktrees/7287/Codex Creator Challenge/node_modules' vitest run src/lib/batch-focus.test.ts`, `git diff --check`
 
 ## Backend Tasks
 
@@ -527,6 +529,9 @@ Avoid:
 
 - [ ] Add browser coverage for queue-guidance recovery after a failed source
   Prompt: "Exercise the landing queue guidance panel after one source fails mid-queue so the recovery copy stays visible while successful uploads continue."
+
+- [ ] Add browser coverage for skipped-job warning inspect actions from issues-only triage
+  Prompt: "Prove the skipped-job warning inspect button can expand an issues-only saved batch view back to the full queue when the skipped source is still ready, so the jump works from triage-focused reopens as well as the default batch view."
 
 - [ ] Add large-file benchmark harness
   Prompt: "Create a repeatable local benchmark script that measures transfer time, transcription time, and package-export time for larger fixture files."
@@ -642,3 +647,5 @@ Avoid:
 - 2026-04-03: Added `Add browser coverage for final-source queue guidance copy` as the next landing-queue guidance regression follow-up.
 - 2026-04-03: Completed `Add browser coverage for final-source queue guidance copy` after extending the landing multipart queue Playwright flow to assert the final-source runway, backend handoff, and low-confidence ETA guidance state together.
 - 2026-04-03: Added `Add browser coverage for queue-guidance recovery after a failed source` as the next landing-queue guidance regression follow-up.
+- 2026-04-03: Completed `Add inspect actions to skipped-job batch export warnings` after wiring the batch export warning cards into the shared source-inspect flow and passing focused batch-focus unit coverage plus a diff sanity check while local browser verification remained blocked by missing in-worktree dependencies.
+- 2026-04-03: Added `Add browser coverage for skipped-job warning inspect actions from issues-only triage` as the next batch-export warning regression follow-up.

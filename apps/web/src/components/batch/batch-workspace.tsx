@@ -39,6 +39,7 @@ import {
   BATCH_QUALITY_THRESHOLD_PRESETS,
   DEFAULT_BATCH_QUALITY_THRESHOLD,
   getBatchEligibleClipCount,
+  getBatchInspectState,
   getBatchRecoveryTopSource,
   getNextBroaderBatchQualityThresholdPreset,
   getBatchWorkspaceHref,
@@ -296,10 +297,18 @@ export function BatchWorkspace({
 
   const inspectBatchJobFromExportSummary = useCallback(
     (jobId: string) => {
-      selectBatchJob(jobId);
+      const nextInspectState = getBatchInspectState(sessionRef.current?.items ?? [], jobId, {
+        issuesOnly,
+        readyOnly,
+      });
+      startTransition(() => {
+        setIssuesOnly(nextInspectState.issuesOnly);
+        setReadyOnly(nextInspectState.readyOnly);
+        setActiveJobId(jobId);
+      });
       queueSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
     },
-    [selectBatchJob]
+    [issuesOnly, readyOnly]
   );
 
   useEffect(() => {
@@ -1540,19 +1549,37 @@ export function BatchWorkspace({
                   {downloadWarningSummary.failedJobCount === 1 ? "source" : "sources"} whose media could not be packaged.
                 </p>
                 <div className="mt-3 space-y-2">
-                  {downloadWarningSummary.warnings.map((warning) => (
-                    <div
-                      key={`${warning.jobId}-${warning.fileName}`}
-                      className="rounded-[1rem] border border-amber-300/20 bg-black/10 px-3 py-3 text-sm leading-6 text-amber-50/90"
-                    >
-                      <div className="font-medium text-amber-50">{warning.fileName}</div>
-                      <p className="mt-1">{warning.message}</p>
-                      <p className="mt-1 text-xs text-amber-100/75">{warning.detail}</p>
-                    </div>
-                  ))}
+                  {downloadWarningSummary.warnings.map((warning) => {
+                    const isActiveWarningSource = warning.jobId === activeJobId;
+
+                    return (
+                      <div
+                        key={`${warning.jobId}-${warning.fileName}`}
+                        className="rounded-[1rem] border border-amber-300/20 bg-black/10 px-3 py-3 text-sm leading-6 text-amber-50/90"
+                      >
+                        <div className="flex flex-wrap items-start justify-between gap-3">
+                          <div className="min-w-0 flex-1">
+                            <div className="font-medium text-amber-50">{warning.fileName}</div>
+                            <p className="mt-1">{warning.message}</p>
+                            <p className="mt-1 text-xs text-amber-100/75">{warning.detail}</p>
+                          </div>
+                          <Button
+                            size="sm"
+                            variant={isActiveWarningSource ? "primary" : "secondary"}
+                            className="shrink-0"
+                            onClick={() => inspectBatchJobFromExportSummary(warning.jobId)}
+                            aria-label={`Inspect skipped source ${warning.fileName}`}
+                            aria-pressed={isActiveWarningSource}
+                          >
+                            Inspect source
+                          </Button>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
                 <p className="mt-3 text-xs text-amber-100/75">
-                  Review the skipped sources in the queue before retrying the combined export.
+                  Inspect a skipped source here or review the queue before retrying the combined export.
                 </p>
               </div>
             ) : null}

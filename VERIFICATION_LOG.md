@@ -1805,3 +1805,25 @@ npm run test:e2e -- --grep "batch queue shows current source progress before com
 - `npm ci`: completed successfully
 - `npm run test:web -- --run src/lib/batch-queue-guidance.test.ts src/lib/batch-upload-eta.test.ts`: 10 / 10 tests passed
 - `npm run test:e2e -- --grep "batch queue shows current source progress before completion"`: 1 / 1 test passed
+
+## Skipped-Job Warning Inspect Pass
+
+- Added inline inspect actions to each skipped-source warning card in the batch export summary so reviewers can jump straight into a skipped source after a partial-success export.
+- Extended the shared batch inspect-state helper so these warning-summary jumps clear issue-only or ready-only queue filters only when the target source would otherwise be hidden.
+- Extended the existing batch export Playwright scenario with a warning-summary inspect assertion, but browser execution stayed blocked in this synced checkout because Next/Turbopack and ESLint require dependencies to resolve from the local worktree.
+
+## Skipped-Job Warning Inspect Checks Run
+
+```bash
+cd apps/web && PATH='/Users/easton/.codex/worktrees/7287/Codex Creator Challenge/apps/web/node_modules/.bin:/Users/easton/.codex/worktrees/7287/Codex Creator Challenge/node_modules/.bin:'"$PATH" NODE_PATH='/Users/easton/.codex/worktrees/7287/Codex Creator Challenge/apps/web/node_modules:/Users/easton/.codex/worktrees/7287/Codex Creator Challenge/node_modules' vitest run src/lib/batch-focus.test.ts
+env -u FORCE_COLOR -u NO_COLOR PLAYWRIGHT_BROWSERS_PATH=/tmp/clipmine-playwright-browsers PATH='/Users/easton/.codex/worktrees/7287/Codex Creator Challenge/apps/web/node_modules/.bin:/Users/easton/.codex/worktrees/7287/Codex Creator Challenge/node_modules/.bin:'"$PATH" NODE_PATH='/Users/easton/.codex/worktrees/7287/Codex Creator Challenge/apps/web/node_modules:/Users/easton/.codex/worktrees/7287/Codex Creator Challenge/node_modules' playwright test --grep "batch workspace groups jobs and exports thresholded clips"
+cd apps/web && PATH='/Users/easton/.codex/worktrees/7287/Codex Creator Challenge/apps/web/node_modules/.bin:/Users/easton/.codex/worktrees/7287/Codex Creator Challenge/node_modules/.bin:'"$PATH" NODE_PATH='/Users/easton/.codex/worktrees/7287/Codex Creator Challenge/apps/web/node_modules:/Users/easton/.codex/worktrees/7287/Codex Creator Challenge/node_modules' eslint src/components/batch/batch-workspace.tsx src/lib/batch-focus.ts src/lib/batch-focus.test.ts --max-warnings=0
+git diff --check
+```
+
+## Skipped-Job Warning Inspect Results
+
+- `cd apps/web && ... vitest run src/lib/batch-focus.test.ts`: 20 / 20 tests passed
+- `env -u FORCE_COLOR -u NO_COLOR ... playwright test --grep "batch workspace groups jobs and exports thresholded clips"`: blocked because this synced checkout has no local `next` install; Turbopack would not accept an out-of-root shared `node_modules` workaround
+- `cd apps/web && ... eslint src/components/batch/batch-workspace.tsx src/lib/batch-focus.ts src/lib/batch-focus.test.ts --max-warnings=0`: blocked because `eslint.config.mjs` resolves `eslint-config-next` via local ESM package lookup, which also requires in-worktree dependencies
+- `git diff --check`: passed
