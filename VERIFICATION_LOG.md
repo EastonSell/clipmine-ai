@@ -1205,3 +1205,23 @@ env -u FORCE_COLOR -u NO_COLOR PLAYWRIGHT_BROWSERS_PATH=/tmp/clipmine-playwright
 - `npm ci`: completed successfully
 - `npm run lint:web`: passed
 - `env -u FORCE_COLOR -u NO_COLOR PLAYWRIGHT_BROWSERS_PATH=/tmp/clipmine-playwright-browsers npx playwright test --grep "batch workspace groups jobs and exports thresholded clips"`: 1 / 1 test passed
+
+## Batch Aggregate Duration Share Pass
+
+- Added a per-source eligible-duration share badge to the ready-source aggregate export summary so each ready upload shows how much of the current download it contributes.
+- Kept the share calculation anchored to the currently displayed ready-source totals so Strict, Balanced, and Broad threshold changes update the percentages in place without drifting from the rendered duration chips.
+- Extended the existing batch export Playwright scenario to assert the new percentage badges across equal-share, zero-share, and full-share states.
+
+## Batch Aggregate Duration Share Checks Run
+
+```bash
+npm ci
+npm run lint:web -- --file src/components/batch/batch-workspace.tsx
+npm run test:e2e -- --grep "batch workspace groups jobs and exports thresholded clips"
+```
+
+## Batch Aggregate Duration Share Results
+
+- `npm ci`: completed successfully to install missing frontend dependencies in this worktree before rerunning the targeted checks
+- `npm run lint:web -- --file src/components/batch/batch-workspace.tsx`: passed
+- `npm run test:e2e -- --grep "batch workspace groups jobs and exports thresholded clips"`: 1 / 1 test passed

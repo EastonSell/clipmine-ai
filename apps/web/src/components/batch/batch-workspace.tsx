@@ -50,7 +50,7 @@ import {
 } from "@/lib/package-export";
 import { createJob, downloadBatchClipPackage, getJob, retryJob, ApiError, isRetryableApiError } from "@/lib/api";
 import { loadBatchSession, saveBatchSession } from "@/lib/batch-sessions";
-import { formatSeconds, formatSignedScore } from "@/lib/format";
+import { formatPercent, formatSeconds, formatSignedScore } from "@/lib/format";
 import type { BatchPackageJobSelection, BatchSessionRecord, BatchUploadItemRecord, ClipRecord, JobResponse, PackageExportPreset } from "@/lib/types";
 
 type BatchWorkspaceProps = {
@@ -393,6 +393,10 @@ export function BatchWorkspace({
   );
   const contributingReadySourceCount = useMemo(
     () => readySourceEligibleClipSummaries.filter((entry) => entry.eligibleClipCount > 0).length,
+    [readySourceEligibleClipSummaries]
+  );
+  const totalReadySourceEligibleDuration = useMemo(
+    () => readySourceEligibleClipSummaries.reduce((total, entry) => total + entry.eligibleDuration, 0),
     [readySourceEligibleClipSummaries]
   );
   const presetEligibleClipCounts = useMemo(
@@ -764,6 +768,12 @@ export function BatchWorkspace({
                             </span>
                             <span className="rounded-full border border-[var(--line)] bg-white/[0.05] px-2.5 py-1 text-xs font-medium text-[var(--muted-strong)]">
                               {formatSeconds(entry.eligibleDuration)} eligible duration
+                            </span>
+                            <span className="rounded-full border border-[var(--line)] bg-white/[0.05] px-2.5 py-1 text-xs font-medium text-[var(--muted-strong)]">
+                              {formatPercent(
+                                totalReadySourceEligibleDuration > 0 ? entry.eligibleDuration / totalReadySourceEligibleDuration : 0
+                              )}{" "}
+                              of eligible duration
                             </span>
                             <Button
                               size="sm"
