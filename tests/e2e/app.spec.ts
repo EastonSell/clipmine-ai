@@ -1135,6 +1135,8 @@ test("batch workspace groups jobs and exports thresholded clips", async ({ page 
     await route.fulfill({
       status: 200,
       headers: {
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Expose-Headers": "Content-Disposition, X-ClipMine-Batch-Export-Summary",
         "Content-Type": "application/zip",
         "Content-Disposition": 'attachment; filename="clipmine-batch-export-demo.zip"',
         "X-ClipMine-Batch-Export-Summary": encodedBatchWarningSummary,
@@ -1295,6 +1297,134 @@ test("batch workspace groups jobs and exports thresholded clips", async ({ page 
     { jobId: "job-alpha", clipIds: ["clip-1"] },
     { jobId: "job-beta", clipIds: ["job-beta-clip-1"] },
   ]);
+});
+
+test("batch workspace expands broader-threshold recovery preview sources", async ({ page }) => {
+  const batchJobs = [
+    createMockJob(
+      {
+        jobId: "job-alpha",
+        sourceVideo: {
+          id: "video-alpha",
+          file_name: "alpha.mp4",
+          content_type: "video/mp4",
+          size_bytes: 12_000_000,
+          duration_seconds: 164,
+          url: "/api/jobs/job-alpha/video",
+        },
+      },
+      [{ score: 97, duration: 5 }]
+    ),
+    createMockJob(
+      {
+        jobId: "job-beta",
+        sourceVideo: {
+          id: "video-beta",
+          file_name: "beta.mp4",
+          content_type: "video/mp4",
+          size_bytes: 14_000_000,
+          duration_seconds: 201,
+          url: "/api/jobs/job-beta/video",
+        },
+      },
+      [{ score: 96, duration: 4 }]
+    ),
+    createMockJob(
+      {
+        jobId: "job-gamma",
+        sourceVideo: {
+          id: "video-gamma",
+          file_name: "gamma.mp4",
+          content_type: "video/mp4",
+          size_bytes: 11_000_000,
+          duration_seconds: 142,
+          url: "/api/jobs/job-gamma/video",
+        },
+      },
+      [{ score: 95, duration: 3 }]
+    ),
+    createMockJob(
+      {
+        jobId: "job-delta",
+        sourceVideo: {
+          id: "video-delta",
+          file_name: "delta.mp4",
+          content_type: "video/mp4",
+          size_bytes: 10_000_000,
+          duration_seconds: 133,
+          url: "/api/jobs/job-delta/video",
+        },
+      },
+      [{ score: 94, duration: 2 }]
+    ),
+  ];
+
+  await page.addInitScript(
+    ({ batchSessionsKey, session }) => {
+      window.localStorage.setItem(batchSessionsKey, JSON.stringify([session]));
+    },
+    {
+      batchSessionsKey,
+      session: {
+        batchId: "overflow-batch",
+        label: "4 sources queued",
+        createdAt: "2026-04-03T12:00:00.000Z",
+        updatedAt: "2026-04-03T12:10:00.000Z",
+        qualityThreshold: 84,
+        batchExportPreset: "full-av",
+        items: batchJobs.map((job, index) => ({
+          id: `upload-${index + 1}`,
+          fileName: job.sourceVideo.file_name,
+          sizeBytes: job.sourceVideo.size_bytes,
+          jobId: job.jobId,
+          status: "ready",
+          uploadPhase: "complete",
+          uploadProgress: 100,
+          error: null,
+          updatedAt: `2026-04-03T12:${10 + index}:00.000Z`,
+        })),
+      },
+    }
+  );
+
+  for (const job of batchJobs) {
+    await page.route(`**/api/jobs/${job.jobId}`, async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify(job),
+      });
+    });
+  }
+
+  await page.goto("/batches/overflow-batch?threshold=100");
+
+  await expect(page.getByRole("heading", { name: "4 sources queued" })).toBeVisible();
+  await expect(page.getByText("No ready sources contribute clips at 100+ right now.")).toBeVisible();
+  await expect(
+    page.getByText("Strict 92+ reopens 4 eligible clips and 0:14 of eligible duration across 4 ready sources without dragging the slider.")
+  ).toBeVisible();
+
+  const overflowToggle = page.getByTestId("broader-threshold-preview-toggle");
+  await expect(overflowToggle).toContainText("+1 more source · 0:02 of restored duration");
+  await expect(overflowToggle).toHaveAttribute("aria-expanded", "false");
+  await expect(page.getByRole("button", { name: "Inspect alpha.mp4 from the broader-threshold preview" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Inspect beta.mp4 from the broader-threshold preview" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Inspect gamma.mp4 from the broader-threshold preview" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Inspect delta.mp4 from the broader-threshold preview" })).toHaveCount(0);
+
+  await overflowToggle.click();
+  await expect(overflowToggle).toHaveAttribute("aria-expanded", "true");
+  await expect(overflowToggle).toContainText("Hide 1 extra source");
+
+  const hiddenPreviewButton = page.getByRole("button", {
+    name: "Inspect delta.mp4 from the broader-threshold preview",
+  });
+  await expect(hiddenPreviewButton).toContainText("delta.mp4 · 1 clip · 0:02 duration");
+  await hiddenPreviewButton.click();
+  await expect(page).toHaveURL(/\/batches\/overflow-batch\?job=job-delta&threshold=100$/);
+  await expect(page.getByRole("heading", { name: "delta.mp4" })).toBeVisible();
+  await expect(hiddenPreviewButton).toHaveAttribute("aria-pressed", "true");
 });
 
 test("batch workspace persists the selected source in the URL", async ({ page }) => {

@@ -131,6 +131,7 @@ export function BatchWorkspace({
   const [qualityThreshold, setQualityThreshold] = useState(initialQualityThreshold ?? DEFAULT_BATCH_QUALITY_THRESHOLD);
   const [selectedPreset, setSelectedPreset] = useState<PackageExportPreset>(initialSelectedPreset ?? "full-av");
   const [showContributorsOnly, setShowContributorsOnly] = useState(false);
+  const [showAllBroaderRecoverySources, setShowAllBroaderRecoverySources] = useState(false);
   const [downloadError, setDownloadError] = useState<ApiError | null>(null);
   const [downloadWarningSummary, setDownloadWarningSummary] = useState<BatchPackageExportWarningSummary | null>(null);
   const [isDownloading, setIsDownloading] = useState(false);
@@ -287,6 +288,7 @@ export function BatchWorkspace({
 
   function updateQualityThreshold(nextThreshold: number) {
     setQualityThreshold(nextThreshold);
+    setShowAllBroaderRecoverySources(false);
     setDownloadError(null);
   }
 
@@ -580,18 +582,22 @@ export function BatchWorkspace({
         : [],
     [jobsById, nextBroaderThresholdPreset, session?.items]
   );
-  const nextBroaderReadySourcePreviewList = nextBroaderReadySourcePreview.slice(0, 3);
+  const nextBroaderCollapsedPreviewCount = 3;
   const nextBroaderReadySourceOverflowCount = Math.max(
     0,
-    nextBroaderReadySourcePreview.length - nextBroaderReadySourcePreviewList.length
+    nextBroaderReadySourcePreview.length - nextBroaderCollapsedPreviewCount
   );
+  const broaderRecoveryPreviewExpanded = showAllBroaderRecoverySources && nextBroaderReadySourceOverflowCount > 0;
+  const nextBroaderReadySourcePreviewList = broaderRecoveryPreviewExpanded
+    ? nextBroaderReadySourcePreview
+    : nextBroaderReadySourcePreview.slice(0, nextBroaderCollapsedPreviewCount);
   const nextBroaderPresetEligibleDuration = useMemo(
     () => nextBroaderReadySourcePreview.reduce((total, entry) => total + entry.eligibleDuration, 0),
     [nextBroaderReadySourcePreview]
   );
   const nextBroaderRecoveryOverflowSummary = useMemo(
-    () => getBatchRecoveryOverflowSummary(nextBroaderReadySourcePreview, nextBroaderReadySourcePreviewList.length),
-    [nextBroaderReadySourcePreview, nextBroaderReadySourcePreviewList.length]
+    () => getBatchRecoveryOverflowSummary(nextBroaderReadySourcePreview, nextBroaderCollapsedPreviewCount),
+    [nextBroaderCollapsedPreviewCount, nextBroaderReadySourcePreview]
   );
   const nextBroaderTopRecoverySource = useMemo(
     () => getBatchRecoveryTopSource(nextBroaderReadySourcePreview),
@@ -606,6 +612,13 @@ export function BatchWorkspace({
   const activePreset = getPackageExportPresetOption(selectedPreset);
   const failedCount = session?.items.filter((item) => item.status === "failed").length ?? 0;
   const processingCount = session?.items.filter((item) => item.status === "processing").length ?? 0;
+
+  useEffect(() => {
+    if (nextBroaderReadySourceOverflowCount === 0 && showAllBroaderRecoverySources) {
+      setShowAllBroaderRecoverySources(false);
+    }
+  }, [nextBroaderReadySourceOverflowCount, showAllBroaderRecoverySources]);
+
   const queueProgress =
     session && session.items.length > 0
       ? Math.round(((readyCount + failedCount) / session.items.length) * 100)
@@ -1062,12 +1075,30 @@ export function BatchWorkspace({
                               );
                             })}
                             {nextBroaderReadySourceOverflowCount > 0 && nextBroaderRecoveryOverflowSummary ? (
-                              <span className="rounded-full border border-dashed border-[var(--line)] px-2.5 py-1 text-[11px] font-medium text-[var(--muted)]">
-                                +{nextBroaderReadySourceOverflowCount} more{" "}
-                                {nextBroaderReadySourceOverflowCount === 1 ? "source" : "sources"} ·{" "}
-                                {formatSeconds(nextBroaderRecoveryOverflowSummary.hiddenEligibleDuration)} of restored duration (
-                                {formatPercent(nextBroaderRecoveryOverflowSummary.hiddenEligibleDurationShare)})
-                              </span>
+                              <button
+                                type="button"
+                                data-testid="broader-threshold-preview-toggle"
+                                className="rounded-full border border-dashed border-[var(--line)] px-2.5 py-1 text-[11px] font-medium text-[var(--muted)] transition hover:border-[var(--line-strong)] hover:text-[var(--muted-strong)]"
+                                onClick={() => setShowAllBroaderRecoverySources((currentValue) => !currentValue)}
+                                aria-expanded={broaderRecoveryPreviewExpanded}
+                                aria-label={
+                                  broaderRecoveryPreviewExpanded
+                                    ? `Hide ${nextBroaderReadySourceOverflowCount} extra broader-threshold preview ${
+                                        nextBroaderReadySourceOverflowCount === 1 ? "source" : "sources"
+                                      }`
+                                    : `Show ${nextBroaderReadySourceOverflowCount} more broader-threshold preview ${
+                                        nextBroaderReadySourceOverflowCount === 1 ? "source" : "sources"
+                                      }`
+                                }
+                              >
+                                {broaderRecoveryPreviewExpanded
+                                  ? `Hide ${nextBroaderReadySourceOverflowCount} extra ${
+                                      nextBroaderReadySourceOverflowCount === 1 ? "source" : "sources"
+                                    }`
+                                  : `+${nextBroaderReadySourceOverflowCount} more ${
+                                      nextBroaderReadySourceOverflowCount === 1 ? "source" : "sources"
+                                    } · ${formatSeconds(nextBroaderRecoveryOverflowSummary.hiddenEligibleDuration)} of restored duration (${formatPercent(nextBroaderRecoveryOverflowSummary.hiddenEligibleDurationShare)})`}
+                              </button>
                             ) : null}
                           </div>
                         ) : null}

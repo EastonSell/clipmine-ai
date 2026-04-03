@@ -1849,3 +1849,31 @@ git diff --check
 - `env -u FORCE_COLOR -u NO_COLOR ... playwright test --grep "batch workspace groups jobs and exports thresholded clips"`: blocked because this synced checkout has no local `next` install; Turbopack would not accept an out-of-root shared `node_modules` workaround
 - `cd apps/web && ... eslint src/components/batch/batch-workspace.tsx src/lib/batch-focus.ts src/lib/batch-focus.test.ts --max-warnings=0`: blocked because `eslint.config.mjs` resolves `eslint-config-next` via local ESM package lookup, which also requires in-worktree dependencies
 - `git diff --check`: passed
+
+## Broader-Threshold Overflow Expansion Pass
+
+- Turned the broader-threshold `+N more` recovery chip into an inline toggle so hidden returning sources can be revealed and inspected without broadening the threshold first.
+- Kept the expansion local to the aggregate export panel and reset it when the threshold changes or the overflow disappears.
+- Updated the batch export Playwright mock to expose the same download headers as the real backend so the skipped-job warning summary remains readable in browser coverage.
+
+## Broader-Threshold Overflow Expansion Checks Run
+
+```bash
+npm run lint:web -- --file src/components/batch/batch-workspace.tsx
+env -u FORCE_COLOR -u NO_COLOR PLAYWRIGHT_BROWSERS_PATH=/tmp/clipmine-playwright-browsers npx playwright test --grep "batch workspace groups jobs and exports thresholded clips|batch workspace expands broader-threshold recovery preview sources"
+npm_config_cache=/tmp/clipmine-npm-cache npm ci
+npm run lint:web -- --file src/components/batch/batch-workspace.tsx
+env -u FORCE_COLOR -u NO_COLOR PLAYWRIGHT_BROWSERS_PATH=/tmp/clipmine-playwright-browsers npx playwright test --grep "batch workspace groups jobs and exports thresholded clips|batch workspace expands broader-threshold recovery preview sources"
+env -u FORCE_COLOR -u NO_COLOR PLAYWRIGHT_BROWSERS_PATH=/tmp/clipmine-playwright-browsers npx playwright test --grep "batch workspace groups jobs and exports thresholded clips|batch workspace expands broader-threshold recovery preview sources"
+git diff --check
+```
+
+## Broader-Threshold Overflow Expansion Results
+
+- First `npm run lint:web -- --file src/components/batch/batch-workspace.tsx`: blocked before `npm ci` because the synced checkout did not yet have `eslint` installed locally
+- First `env -u FORCE_COLOR -u NO_COLOR PLAYWRIGHT_BROWSERS_PATH=/tmp/clipmine-playwright-browsers npx playwright test --grep "batch workspace groups jobs and exports thresholded clips|batch workspace expands broader-threshold recovery preview sources"`: blocked before `npm ci` because `@playwright/test` was not installed in the synced checkout
+- `npm_config_cache=/tmp/clipmine-npm-cache npm ci`: completed successfully
+- Second `npm run lint:web -- --file src/components/batch/batch-workspace.tsx`: passed
+- Second `env -u FORCE_COLOR -u NO_COLOR PLAYWRIGHT_BROWSERS_PATH=/tmp/clipmine-playwright-browsers npx playwright test --grep "batch workspace groups jobs and exports thresholded clips|batch workspace expands broader-threshold recovery preview sources"`: 1 / 2 tests passed, which exposed that the mocked batch-export response was not exposing the same custom headers the backend publishes for browser reads
+- Final `env -u FORCE_COLOR -u NO_COLOR PLAYWRIGHT_BROWSERS_PATH=/tmp/clipmine-playwright-browsers npx playwright test --grep "batch workspace groups jobs and exports thresholded clips|batch workspace expands broader-threshold recovery preview sources"`: 2 / 2 tests passed
+- `git diff --check`: passed

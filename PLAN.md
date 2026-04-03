@@ -352,8 +352,13 @@ Avoid:
   Notes: Completed on 2026-04-03 by extracting a shared hidden-recovery summary helper, using it to annotate the `+N more` preview chip with hidden restored duration and share-of-recovery context, and covering the new overflow summary math with focused batch helper tests.
   Verified: `npm_config_cache=/tmp/clipmine-npm-cache npm ci`, `cd apps/web && npx vitest run src/lib/batch-focus.test.ts`, `cd apps/web && npx eslint src/components/batch/batch-workspace.tsx src/lib/batch-focus.ts src/lib/batch-focus.test.ts --max-warnings=0`
 
-- [ ] Let reviewers expand the hidden broader-threshold preview sources inline
+- [x] Let reviewers expand the hidden broader-threshold preview sources inline
   Prompt: "Turn the `+N more` broader-threshold recovery chip into an expandable inline list so reviewers can see and inspect the hidden returning sources before broadening the threshold."
+  Notes: Completed on 2026-04-03 by turning the broader-threshold overflow chip into an inline expander, keeping the hidden recovery sources inspectable in place until the threshold changes, and updating the batch export browser mock to expose the warning headers the real backend already publishes so the aggregate export regression coverage stays valid.
+  Verified: `npm_config_cache=/tmp/clipmine-npm-cache npm ci`, `npm run lint:web -- --file src/components/batch/batch-workspace.tsx`, `env -u FORCE_COLOR -u NO_COLOR PLAYWRIGHT_BROWSERS_PATH=/tmp/clipmine-playwright-browsers npx playwright test --grep "batch workspace groups jobs and exports thresholded clips|batch workspace expands broader-threshold recovery preview sources"`
+
+- [ ] Show hidden eligible clip totals in the broader-threshold overflow toggle
+  Prompt: "When the broader-threshold recovery preview still collapses extra sources, annotate the overflow toggle with how many eligible clips are hidden there in addition to the restored duration so reviewers can judge the recovery tradeoff at a glance."
 
 - [x] Add queue completion toast and summary state
   Prompt: "When a batch queue finishes, show a stronger completion summary before navigating so the user understands how many sources succeeded or failed."
