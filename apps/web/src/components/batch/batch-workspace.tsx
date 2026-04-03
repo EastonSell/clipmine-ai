@@ -383,12 +383,19 @@ export function BatchWorkspace({
     () =>
       (session?.items ?? [])
         .filter((item): item is BatchUploadItemRecord & { jobId: string } => item.status === "ready" && Boolean(item.jobId))
-        .map((item) => ({
+        .map((item, index) => ({
           jobId: item.jobId,
           fileName: jobsById.get(item.jobId)?.sourceVideo.file_name ?? item.fileName,
           eligibleClipCount: eligibleClipCountsByJobId.get(item.jobId) ?? 0,
           eligibleDuration: eligibleClipDurationsByJobId.get(item.jobId) ?? 0,
-        })),
+          readySourceIndex: index,
+        }))
+        .toSorted(
+          (left, right) =>
+            right.eligibleDuration - left.eligibleDuration ||
+            right.eligibleClipCount - left.eligibleClipCount ||
+            left.readySourceIndex - right.readySourceIndex
+        ),
     [eligibleClipCountsByJobId, eligibleClipDurationsByJobId, jobsById, session?.items]
   );
   const contributingReadySourceCount = useMemo(

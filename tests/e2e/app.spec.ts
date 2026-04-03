@@ -936,6 +936,7 @@ test("batch workspace groups jobs and exports thresholded clips", async ({ page 
   await expect(page.getByRole("button", { name: /Strict 92\+ 1 eligible clip/i })).toBeVisible();
   await expect(page.getByRole("button", { name: /Balanced 84\+ 2 eligible clips/i })).toHaveAttribute("aria-pressed", "true");
   await expect(page.getByRole("button", { name: /Broad 72\+ 4 eligible clips/i })).toBeVisible();
+  await expect(page.locator('[data-testid^="aggregate-source-summary-"]').first()).toContainText("alpha.mp4");
   await expect(page.getByTestId("aggregate-source-summary-job-alpha")).toContainText("alpha.mp4");
   await expect(page.getByTestId("aggregate-source-summary-job-alpha")).toContainText("1 eligible clip");
   await expect(page.getByTestId("aggregate-source-summary-job-alpha")).toContainText("0:02 eligible duration");
@@ -957,6 +958,8 @@ test("batch workspace groups jobs and exports thresholded clips", async ({ page 
   await expect(page).toHaveURL(/\/batches\/demo-batch\?job=job-alpha&threshold=92$/);
   await expect(page.getByText("92/100")).toBeVisible();
   await expect(page.getByRole("button", { name: /Strict 92\+ 1 eligible clip/i })).toHaveAttribute("aria-pressed", "true");
+  await expect(page.locator('[data-testid^="aggregate-source-summary-"]').first()).toContainText("beta.mp4");
+  await expect(page.locator('[data-testid^="aggregate-source-summary-"]').nth(1)).toContainText("alpha.mp4");
   await expect(page.getByTestId("aggregate-source-summary-job-alpha")).toContainText("0 eligible clips");
   await expect(page.getByTestId("aggregate-source-summary-job-alpha")).toContainText("0:00 eligible duration");
   await expect(page.getByTestId("aggregate-source-summary-job-alpha")).toContainText("0% of eligible duration");
@@ -970,6 +973,7 @@ test("batch workspace groups jobs and exports thresholded clips", async ({ page 
   await expect(page).toHaveURL(/\/batches\/demo-batch\?job=job-alpha&threshold=72$/);
   await expect(page.getByText("72/100")).toBeVisible();
   await expect(page.getByRole("button", { name: /Broad 72\+ 4 eligible clips/i })).toHaveAttribute("aria-pressed", "true");
+  await expect(page.locator('[data-testid^="aggregate-source-summary-"]').first()).toContainText("alpha.mp4");
   await expect(page.getByTestId("aggregate-source-summary-job-alpha")).toContainText("2 eligible clips");
   await expect(page.getByTestId("aggregate-source-summary-job-alpha")).toContainText("0:04 eligible duration");
   await expect(page.getByTestId("aggregate-source-summary-job-alpha")).toContainText("50% of eligible duration");

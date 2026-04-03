@@ -1,5 +1,28 @@
 # Verification Log
 
+## Batch Aggregate Contribution Sort Pass
+
+Date: 2026-04-03
+
+- Sorted the ready-source rows in the batch aggregate export summary by current eligible-duration contribution so the largest download drivers surface first when the threshold changes.
+- Added a stable tiebreak sequence that falls back to eligible clip count and then the original ready-source order so tied contributions do not reshuffle unpredictably.
+- Extended the existing batch export Playwright scenario so it asserts the summary order at balanced, strict, and broad thresholds, which covers both dominant-source and tied-source states.
+- This checkout started without frontend dependencies installed, so `npm ci` was required before the targeted lint and Playwright commands could run.
+
+### Checks run
+
+```bash
+npm ci
+npm run lint:web -- --file src/components/batch/batch-workspace.tsx
+npm run test:e2e -- --grep "batch workspace groups jobs and exports thresholded clips"
+```
+
+### Result
+
+- targeted frontend lint passed
+- `1 / 1` targeted Playwright batch export tests passed
+- ready-source aggregate rows now reorder with the current contribution while ties stay stable
+
 ## Batch Aggregate Contribution Bars Pass
 
 Date: 2026-04-03

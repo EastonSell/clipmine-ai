@@ -295,8 +295,13 @@ Avoid:
   Notes: Completed on 2026-04-03 by replacing the text-only eligible-duration share badge with a labeled contribution meter for each ready source while keeping the displayed percentage and bar width derived from the same thresholded duration totals.
   Verified: `npm ci`, `npm run lint:web -- --file src/components/batch/batch-workspace.tsx --file src/components/ui/progress-bar.tsx`, `npm run test:e2e -- --grep "batch workspace groups jobs and exports thresholded clips"`
 
-- [ ] Sort ready sources by current export contribution in the aggregate summary
+- [x] Sort ready sources by current export contribution in the aggregate summary
   Prompt: "Order the ready-source aggregate export rows by the current eligible contribution so reviewers see the biggest download drivers first without scanning the whole list."
+  Notes: Completed on 2026-04-03 by sorting ready-source aggregate export rows by eligible duration first, then eligible clip count, while keeping the original ready-source order as the stable fallback when contributions tie.
+  Verified: `npm ci`, `npm run lint:web -- --file src/components/batch/batch-workspace.tsx`, `npm run test:e2e -- --grep "batch workspace groups jobs and exports thresholded clips"`
+
+- [ ] Add contribution rank badges to the aggregate export summary
+  Prompt: "Show each ready source's current contribution rank directly in the aggregate export summary so reviewers can spot the top download drivers before reading the duration details."
 
 - [x] Add queue completion toast and summary state
   Prompt: "When a batch queue finishes, show a stronger completion summary before navigating so the user understands how many sources succeeded or failed."
@@ -482,3 +487,5 @@ Avoid:
 - 2026-04-03: Added `Show each ready source's share of eligible duration in the aggregate export summary` as the next aggregate-review follow-up.
 - 2026-04-03: Completed `Show each ready source's share of eligible duration in the aggregate export summary` after reinstalling frontend dependencies in the worktree, passing focused lint, and extending the existing batch export Playwright coverage.
 - 2026-04-03: Added `Add contribution bars to the aggregate export summary` as the next aggregate-review follow-up.
+- 2026-04-03: Completed `Sort ready sources by current export contribution in the aggregate summary` after sorting the ready-source rows by eligible duration, passing focused lint, and rerunning the targeted batch export Playwright flow.
+- 2026-04-03: Added `Add contribution rank badges to the aggregate export summary` as the next aggregate-export scanability follow-up.
