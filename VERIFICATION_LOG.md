@@ -1,5 +1,28 @@
 # Verification Log
 
+## Batch Threshold Recovery Source Preview Pass
+
+Date: 2026-04-03
+
+- Extended the empty aggregate export recovery state so it now previews the ready source names and eligible clip counts that will return at the next broader shared threshold preset.
+- Kept the existing one-click threshold jump intact, but made the recovery copy concrete enough that reviewers can understand which sources re-enter the export before they click.
+- Updated the focused Playwright batch export scenario so it asserts both the new recovery copy and the per-source preview badge for the `Strict 92+` jump from an empty `100+` state.
+- This synced checkout started without frontend dependencies installed, so `npm install` was required before the focused lint and Playwright checks could run.
+
+### Checks run
+
+```bash
+npm_config_cache=/tmp/clipmine-npm-cache npm install
+npm_config_cache=/tmp/clipmine-npm-cache npm run lint --workspace apps/web -- src/components/batch/batch-workspace.tsx
+npm_config_cache=/tmp/clipmine-npm-cache npm run test:e2e -- --grep "batch workspace groups jobs and exports thresholded clips"
+```
+
+### Result
+
+- frontend lint passed for the touched batch workspace component
+- `1 / 1` targeted Playwright batch export tests passed
+- empty aggregate recovery states now preview the specific ready sources that will return at the suggested broader threshold
+
 ## Batch Aggregate Threshold Recovery Pass
 
 Date: 2026-04-03

@@ -315,8 +315,13 @@ Avoid:
   Notes: Completed on 2026-04-03 by collapsing the ready-source aggregate summary into an empty recovery state when no ready sources contribute at the current threshold, surfacing a one-click jump to the next broader preset, and previewing how many eligible clips that broader preset will reopen before the reviewer clicks.
   Verified: `npm ci`, `npm run test:web -- --run src/lib/batch-focus.test.ts`, `npm run test:e2e -- --grep "batch workspace groups jobs and exports thresholded clips"`
 
-- [ ] Preview which ready sources return after a broader-threshold recovery jump
+- [x] Preview which ready sources return after a broader-threshold recovery jump
   Prompt: "When the empty aggregate export summary suggests a broader preset, preview the ready source names that would contribute again at that suggested threshold so reviewers understand the recovery before clicking."
+  Notes: Completed on 2026-04-03 by extending the empty aggregate-summary recovery state to preview the ready source names and eligible clip counts that return at the next broader preset, so reviewers can see which sources will re-enter the export before changing the threshold.
+  Verified: `npm_config_cache=/tmp/clipmine-npm-cache npm run lint --workspace apps/web -- src/components/batch/batch-workspace.tsx`, `npm_config_cache=/tmp/clipmine-npm-cache npm run test:e2e -- --grep "batch workspace groups jobs and exports thresholded clips"`
+
+- [ ] Add inspect actions to broader-threshold recovery previews
+  Prompt: "When the empty aggregate export summary previews returning ready sources, let reviewers jump straight into those source workspaces before they commit to a broader threshold."
 
 - [x] Add queue completion toast and summary state
   Prompt: "When a batch queue finishes, show a stronger completion summary before navigating so the user understands how many sources succeeded or failed."
@@ -513,3 +518,5 @@ Avoid:
 - 2026-04-03: Added `Add a contributors-only toggle to the aggregate export summary` as the next aggregate-export focus follow-up.
 - 2026-04-03: Completed `Add a broader-threshold recovery action when the aggregate export summary is empty` after reinstalling frontend dependencies, passing focused batch-threshold unit coverage, and rerunning the targeted batch export Playwright flow.
 - 2026-04-03: Added `Preview which ready sources return after a broader-threshold recovery jump` as the next aggregate-export recovery follow-up.
+- 2026-04-03: Completed `Preview which ready sources return after a broader-threshold recovery jump` after installing frontend dependencies in the worktree, passing focused lint, and rerunning the targeted batch export Playwright flow.
+- 2026-04-03: Added `Add inspect actions to broader-threshold recovery previews` as the next aggregate-export recovery follow-up.

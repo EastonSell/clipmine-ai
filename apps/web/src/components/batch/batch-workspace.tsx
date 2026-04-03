@@ -70,6 +70,13 @@ type AggregateClip = {
   clip: ClipRecord;
 };
 
+type ReadySourceRecoveryPreview = {
+  jobId: string;
+  fileName: string;
+  eligibleClipCount: number;
+  readySourceIndex: number;
+};
+
 function formatContributionRank(value: number) {
   const remainderHundred = value % 100;
   if (remainderHundred >= 11 && remainderHundred <= 13) {
@@ -455,6 +462,39 @@ export function BatchWorkspace({
   const nextBroaderPresetEligibleClipCount = nextBroaderThresholdPreset
     ? presetEligibleClipCounts.get(nextBroaderThresholdPreset.value) ?? 0
     : 0;
+  const nextBroaderReadySourcePreview = useMemo<ReadySourceRecoveryPreview[]>(
+    () =>
+      nextBroaderThresholdPreset
+        ? (session?.items ?? [])
+            .filter((item): item is BatchUploadItemRecord & { jobId: string } => item.status === "ready" && Boolean(item.jobId))
+            .map((item, index) => {
+              const job = jobsById.get(item.jobId);
+              return {
+                jobId: item.jobId,
+                fileName: job?.sourceVideo.file_name ?? item.fileName,
+                eligibleClipCount: job?.clips.filter((clip) => clip.score >= nextBroaderThresholdPreset.value).length ?? 0,
+                readySourceIndex: index,
+              };
+            })
+            .filter((entry) => entry.eligibleClipCount > 0)
+            .toSorted(
+              (left, right) =>
+                right.eligibleClipCount - left.eligibleClipCount || left.readySourceIndex - right.readySourceIndex
+            )
+        : [],
+    [jobsById, nextBroaderThresholdPreset, session?.items]
+  );
+  const nextBroaderReadySourcePreviewList = nextBroaderReadySourcePreview.slice(0, 3);
+  const nextBroaderReadySourceOverflowCount = Math.max(
+    0,
+    nextBroaderReadySourcePreview.length - nextBroaderReadySourcePreviewList.length
+  );
+  const nextBroaderReadySourceMessage =
+    nextBroaderReadySourcePreview.length === 1
+      ? `from ${nextBroaderReadySourcePreview[0]?.fileName}`
+      : nextBroaderReadySourcePreview.length > 1
+        ? `across ${nextBroaderReadySourcePreview.length} ready sources`
+        : "";
   const activePreset = getPackageExportPresetOption(selectedPreset);
   const readyCount = session?.items.filter((item) => item.status === "ready").length ?? 0;
   const failedCount = session?.items.filter((item) => item.status === "failed").length ?? 0;
@@ -878,9 +918,29 @@ export function BatchWorkspace({
                       <div className="mt-3 flex flex-wrap items-center gap-3">
                         <p className="text-xs leading-5 text-[var(--muted)]">
                           {nextBroaderPresetEligibleClipCount > 0
-                            ? `${nextBroaderThresholdPreset.label} ${nextBroaderThresholdPreset.value}+ reopens ${nextBroaderPresetEligibleClipCount} eligible ${nextBroaderPresetEligibleClipCount === 1 ? "clip" : "clips"} without dragging the slider.`
+                            ? `${nextBroaderThresholdPreset.label} ${nextBroaderThresholdPreset.value}+ reopens ${nextBroaderPresetEligibleClipCount} eligible ${
+                                nextBroaderPresetEligibleClipCount === 1 ? "clip" : "clips"
+                              }${nextBroaderReadySourceMessage ? ` ${nextBroaderReadySourceMessage}` : ""} without dragging the slider.`
                             : `Jump to ${nextBroaderThresholdPreset.label} ${nextBroaderThresholdPreset.value}+ to keep broadening the export floor.`}
                         </p>
+                        {nextBroaderReadySourcePreviewList.length > 0 ? (
+                          <div className="flex flex-wrap items-center gap-2">
+                            {nextBroaderReadySourcePreviewList.map((entry) => (
+                              <span
+                                key={entry.jobId}
+                                className="rounded-full border border-[var(--line)] bg-white/[0.05] px-2.5 py-1 text-[11px] font-medium text-[var(--muted-strong)]"
+                              >
+                                {entry.fileName} · {entry.eligibleClipCount} {entry.eligibleClipCount === 1 ? "clip" : "clips"}
+                              </span>
+                            ))}
+                            {nextBroaderReadySourceOverflowCount > 0 ? (
+                              <span className="rounded-full border border-dashed border-[var(--line)] px-2.5 py-1 text-[11px] font-medium text-[var(--muted)]">
+                                +{nextBroaderReadySourceOverflowCount} more{" "}
+                                {nextBroaderReadySourceOverflowCount === 1 ? "source" : "sources"}
+                              </span>
+                            ) : null}
+                          </div>
+                        ) : null}
                         <Button
                           size="sm"
                           variant="secondary"
