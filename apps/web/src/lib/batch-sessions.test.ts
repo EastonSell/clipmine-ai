@@ -25,8 +25,6 @@ function createStorage() {
   };
 }
 
-const BATCH_SESSIONS_KEY = "clipmine:batches:v1";
-
 function createBatchSession(overrides: Partial<BatchSessionRecord> = {}): BatchSessionRecord {
   return {
     batchId: "batch-1",
@@ -102,57 +100,35 @@ describe("batch-sessions", () => {
     expect(loadBatchSession("batch-1", storage)?.lastCompletionSummary).toEqual(createCompletionSummary());
   });
 
-  it("returns the newest completed batch session with a reusable workspace", () => {
+  it("returns the newest saved session with a completion summary", () => {
     const storage = createStorage();
 
-    storage.setItem(
-      BATCH_SESSIONS_KEY,
-      JSON.stringify([
-        createBatchSession({
+    saveBatchSession(
+      createBatchSession({
+        batchId: "batch-1",
+        lastCompletionSummary: createCompletionSummary(),
+      }),
+      storage
+    );
+    saveBatchSession(
+      createBatchSession({
+        batchId: "batch-2",
+      }),
+      storage
+    );
+    saveBatchSession(
+      createBatchSession({
+        batchId: "batch-3",
+        label: "4 sources queued",
+        lastCompletionSummary: createCompletionSummary({
           batchId: "batch-3",
-          updatedAt: "2026-04-02T12:30:00.000Z",
-          lastCompletionSummary: createCompletionSummary({
-            batchId: "batch-3",
-            finishedAt: "2026-04-02T12:30:00.000Z",
-            readyCount: 1,
-          }),
+          label: "4 sources queued",
+          totalSources: 4,
         }),
-        createBatchSession({
-          batchId: "batch-2",
-          updatedAt: "2026-04-02T12:20:00.000Z",
-        }),
-        createBatchSession({
-          batchId: "batch-1",
-          updatedAt: "2026-04-02T12:10:00.000Z",
-          lastCompletionSummary: createCompletionSummary({
-            batchId: "batch-1",
-            finishedAt: "2026-04-02T12:10:00.000Z",
-            readyCount: 2,
-          }),
-        }),
-      ])
+      }),
+      storage
     );
 
     expect(loadLatestCompletedBatchSession(storage)?.batchId).toBe("batch-3");
-  });
-
-  it("ignores completed-session summaries that cannot reopen any workspace", () => {
-    const storage = createStorage();
-
-    storage.setItem(
-      BATCH_SESSIONS_KEY,
-      JSON.stringify([
-        createBatchSession({
-          batchId: "batch-empty",
-          lastCompletionSummary: createCompletionSummary({
-            batchId: "batch-empty",
-            readyCount: 0,
-            failedCount: 2,
-          }),
-        }),
-      ])
-    );
-
-    expect(loadLatestCompletedBatchSession(storage)).toBeNull();
   });
 });

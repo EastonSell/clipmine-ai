@@ -1,33 +1,15 @@
 # ClipMine AI Plan
 
 > Global operating prompt:
-> At the start of every automated loop iteration, sync the repo first with `git fetch origin` and `git reset --hard origin/main`, then evaluate `LOCK.md`. If a fresh lock exists, exit immediately without changing files, adding tasks, or committing anything. Only after a lock is created, committed, and pushed may the run update this file, add a task, or perform implementation work.
+> Every time you open this file, add at least one new task before doing anything else. Then mark completed work, record new bugs, record anything that still needs testing, pick one unchecked task, implement it, verify it, push it to GitHub, reopen this file, add another task, and continue. Do not silently drop old tasks. Check them off and leave a short note instead.
 
 ## Loop Rules
 
 - Always begin by reading this file (PLAN.md)
-- Before checking `LOCK.md`:
-  - Run `git fetch origin`
-  - Run `git reset --hard origin/main`
-- After sync:
-  - If `LOCK.md` exists:
-    - Read the timestamp inside it
-    - If the lock is 30 minutes old or less → exit immediately with no file changes, no task additions, and no commits
-    - If the lock is older than 30 minutes:
-      - Delete `LOCK.md`
-      - `git add LOCK.md`
-      - `git commit -m 'agent: clear stale lock'`
-      - `git push`
-      - Continue to normal lock acquisition
-  - If `LOCK.md` does not exist:
-    - Create it with:
-      - `timestamp: <ISO 8601 UTC>`
-      - `run_id: <short identifier>`
-    - Immediately:
-      - `git add LOCK.md`
-      - `git commit -m 'agent: acquire lock'`
-      - `git push`
-- Do not modify `PLAN.md`, add tasks, or perform product work before the lock commit is pushed
+- Before doing any work:
+  - Check if LOCK.md exists
+    - If it exists → exit immediately (another agent is running)
+    - If not → create LOCK.md and continue
 - Select the highest-impact unfinished task
 - Complete ONLY 1–2 tasks per run
 - Add EXACTLY 1 new task per run
@@ -35,58 +17,29 @@
 - Avoid duplicate, vague, or low-value tasks
 
 ## Workflow
-1. `git fetch origin`
-2. `git reset --hard origin/main`
-3. Inspect `LOCK.md`
-4. If `LOCK.md` is fresh, exit immediately with no changes and no commits
-5. If `LOCK.md` is stale, remove it, commit `agent: clear stale lock`, and push
-6. Acquire lock by creating `LOCK.md`, then commit `agent: acquire lock` and push
-7. Only after the lock push, add exactly 1 task and select the highest priority unfinished task
-8. Implement minimal, clean solution
-9. Run tests if applicable
-10. Update:
+1. git pull --rebase
+2. Acquire lock (create LOCK.md)
+3. Select highest priority task
+4. Implement minimal, clean solution
+5. Run tests if applicable
+6. Update:
    - PLAN.md (mark completed + add 1 task)
    - VERIFICATION_LOG.md
-11. Commit product changes with a clear message
-12. Push to main
-13. Remove `LOCK.md`
-14. `git add LOCK.md`
-15. `git commit -m 'agent: release lock'`
-16. `git push`
+7. Commit with clear message
+8. Push to main
+9. Remove LOCK.md
+10. Commit removal if needed
 
 ## Safety Rules
-- Never leave `LOCK.md` behind if execution completes
-- If execution fails after lock acquisition, remove `LOCK.md`, commit `agent: release lock`, and push before exit
-- Never modify `PLAN.md`, `VERIFICATION_LOG.md`, or source files when exiting due to a fresh lock
-- Never perform implementation work before the lock acquisition commit is pushed
+- Never leave LOCK.md behind if execution completes
+- If execution fails, ensure LOCK.md is removed before exit
 - Avoid large refactors unless explicitly required
 - Do not break existing workflows (upload, review, export)
 
 ## Stop Conditions
 - If no meaningful progress can be made → exit cleanly
-- If exiting because a fresh lock exists → do nothing except exit
 - Do NOT fabricate work
 - Do NOT loop indefinitely inside a single run
-
-## Lock File Format
-
-Use this exact minimal shape for `LOCK.md`:
-
-```text
-timestamp: 2026-04-02T17:45:00Z
-run_id: abc123
-```
-
-Interpret the timestamp in UTC and treat any lock older than 30 minutes as stale.
-
-## Lock Validation
-
-- Sync the repo before checking the lock
-- Push lock acquisition before any work begins
-- Push lock release after work completes
-- If a fresh lock exists, do not change files, add tasks, or commit
-- If a stale lock exists, clear it with a dedicated commit before continuing
-- The goal is that only one Codex worktree run can perform work at a time
 
 ---
 
@@ -221,11 +174,11 @@ Avoid:
 
 - [x] Surface the latest finished batch session from the landing page
   Prompt: "Add a compact landing shortcut for the most recently completed batch session so users can reopen it without re-queueing the same sources."
-  Notes: Completed on 2026-04-02 by loading the newest completed batch session from local storage and surfacing a persistent reopen card in the landing upload bay when no queue is active.
-  Verified: `npm run test:web`, `npm run lint:web`, `npm run build:web`
+  Notes: Completed on 2026-04-02 by loading the newest saved batch session with a completion summary, surfacing it in the idle upload bay, and keeping the shortcut dismissible for the current visit so the queue-more action still works.
+  Verified: `npm run test:web`, `npm run lint:web`, `npm run build:web`, `npm run test:e2e -- --grep "landing page reopens the most recent finished batch session|landing page completes a batch queue and then opens the workspace on demand"`
 
-- [ ] Add dismiss action for stale finished batch shortcuts
-  Prompt: "Let users clear an outdated finished batch session shortcut from the landing page so local-session clutter does not keep resurfacing old work."
+- [ ] Flag stale saved batch shortcuts on the landing page
+  Prompt: "If the most recent saved batch session no longer has any ready jobs or looks incomplete, surface a stale-state warning instead of presenting it like a healthy reopen path."
 
 - [ ] Add per-source ETA hints to the active queue card
   Prompt: "Estimate queue progress for the current source and remaining queue so large multi-file uploads feel less opaque while the active transfer is running."
@@ -293,5 +246,5 @@ Avoid:
 - 2026-04-02: Added `Add a console-warning guard around the browser smoke runner` as the next testing follow-up.
 - 2026-04-02: Added `Document README asset workflow churn on main` before writing down the git publishing workaround.
 - 2026-04-02: Completed `Document temp-checkout git publishing workaround` after updating `README.md` and `AGENT.md`.
-- 2026-04-02: Added `Add dismiss action for stale finished batch shortcuts` before surfacing the latest finished batch session from the landing page.
-- 2026-04-02: Completed `Surface the latest finished batch session from the landing page` after adding the persisted landing shortcut and passing web test, lint, and build verification.
+- 2026-04-02: Added `Flag stale saved batch shortcuts on the landing page` before implementing the landing shortcut recovery flow.
+- 2026-04-02: Completed `Surface the latest finished batch session from the landing page` after web tests, lint, build, and targeted Playwright coverage for the saved-batch and queue-complete flows.

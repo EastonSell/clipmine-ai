@@ -2,29 +2,6 @@
 
 Date: 2026-04-02
 
-## Latest Finished Batch Session Shortcut Pass
-
-- Added a persistent landing-page shortcut for the most recently completed batch session using the existing browser-stored batch session history.
-- Introduced a `loadLatestCompletedBatchSession` helper so the landing UI can reopen the newest reusable batch workspace without re-queueing sources.
-- Updated the upload bay messaging to mention the saved batch session when the page is idle and no new queue is active.
-- Added coverage for:
-  - returning the newest completed batch session
-  - ignoring completion summaries that cannot reopen any workspace
-
-### Checks run
-
-```bash
-npm run test:web
-npm run lint:web
-npm run build:web
-```
-
-### Result
-
-- `22 / 22` web unit tests passed
-- frontend lint passed
-- frontend production build passed
-
 ## Plan And Queue Status Pass
 
 - Added `PLAN.md` as the living implementation plan for the repository.
@@ -676,3 +653,28 @@ npm run test:e2e
 ```bash
 rg -n "temp checkout|gh auth setup-git|fetch origin|README asset workflow" README.md AGENT.md
 ```
+
+## Saved Batch Shortcut Pass
+
+- Added a landing-page shortcut that reopens the newest saved batch session with a persisted completion summary.
+- Kept the existing in-session queue completion card, but made the shared shortcut dismissible for the current visit so `Queue more sources` still clears the bay instead of immediately re-showing the same saved batch.
+- Added:
+  - a batch-session helper that returns the newest completed saved session
+  - a web unit test for that helper
+  - a Playwright flow that seeds local storage, surfaces the saved shortcut, and reopens the batch workspace
+
+## Saved Batch Shortcut Checks Run
+
+```bash
+npm run test:web
+npm run lint:web
+npm run build:web
+npm run test:e2e -- --grep "landing page reopens the most recent finished batch session|landing page completes a batch queue and then opens the workspace on demand"
+```
+
+## Saved Batch Shortcut Results
+
+- `npm run test:web`: 21 / 21 tests passed
+- `npm run lint:web`: passed
+- `npm run build:web`: passed
+- `npm run test:e2e -- --grep "landing page reopens the most recent finished batch session|landing page completes a batch queue and then opens the workspace on demand"`: 2 / 2 tests passed

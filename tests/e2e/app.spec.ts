@@ -51,6 +51,107 @@ test("landing page renders recent jobs and validates unsupported uploads", async
   expect(consoleErrors.some((message) => message.includes("same key"))).toBe(false);
 });
 
+test("landing page reopens the most recent finished batch session", async ({ page }) => {
+  const alpha = createMockJob({
+    jobId: "saved-batch-alpha",
+    sourceVideo: {
+      id: "saved-video-alpha",
+      file_name: "alpha.mp4",
+      content_type: "video/mp4",
+      size_bytes: 12_000_000,
+      duration_seconds: 164,
+      url: "/api/jobs/saved-batch-alpha/video",
+    },
+  });
+  const beta = createMockJob({
+    jobId: "saved-batch-beta",
+    sourceVideo: {
+      id: "saved-video-beta",
+      file_name: "beta.mp4",
+      content_type: "video/mp4",
+      size_bytes: 10_500_000,
+      duration_seconds: 141,
+      url: "/api/jobs/saved-batch-beta/video",
+    },
+  });
+
+  await page.addInitScript(
+    ({ batchSessionsKey, session }) => {
+      window.localStorage.setItem(batchSessionsKey, JSON.stringify([session]));
+    },
+    {
+      batchSessionsKey,
+      session: {
+        batchId: "saved-batch",
+        label: "2 sources queued",
+        createdAt: "2026-04-02T11:50:00.000Z",
+        updatedAt: "2026-04-02T12:12:00.000Z",
+        qualityThreshold: 84,
+        lastCompletionSummary: {
+          batchId: "saved-batch",
+          label: "2 sources queued",
+          finishedAt: "2026-04-02T12:12:00.000Z",
+          totalSources: 2,
+          readyCount: 2,
+          failedCount: 0,
+          cancelledCount: 0,
+        },
+        items: [
+          {
+            id: "upload-1",
+            fileName: "alpha.mp4",
+            sizeBytes: 12_000_000,
+            jobId: "saved-batch-alpha",
+            status: "ready",
+            uploadPhase: "complete",
+            uploadProgress: 100,
+            error: null,
+            updatedAt: "2026-04-02T12:10:00.000Z",
+          },
+          {
+            id: "upload-2",
+            fileName: "beta.mp4",
+            sizeBytes: 10_500_000,
+            jobId: "saved-batch-beta",
+            status: "ready",
+            uploadPhase: "complete",
+            uploadProgress: 100,
+            error: null,
+            updatedAt: "2026-04-02T12:12:00.000Z",
+          },
+        ],
+      },
+    }
+  );
+
+  await page.route("**/api/jobs/saved-batch-alpha", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(alpha),
+    });
+  });
+  await page.route("**/api/jobs/saved-batch-beta", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(beta),
+    });
+  });
+
+  await page.goto("/");
+
+  await expect(page.getByText("Latest finished batch")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Reopen the last batch review session" })).toBeVisible();
+  await expect(page.getByText("2 of 2 sources reached the workspace stage.")).toBeVisible();
+
+  await page.getByRole("button", { name: "Open batch workspace" }).click();
+  await page.waitForURL("**/batches/saved-batch");
+  await expect(page.getByRole("heading", { name: "2 sources queued" })).toBeVisible();
+  await expect(page.getByRole("button", { name: /alpha\.mp4 ready/i })).toBeVisible();
+  await expect(page.getByRole("button", { name: /beta\.mp4 ready/i })).toBeVisible();
+});
+
 test("uploading a valid source opens the workspace and supports shortlist persistence", async ({ page }) => {
   const job = createMockJob({ jobId: "job-ready" });
   const uploadSessionId = "session-ready";

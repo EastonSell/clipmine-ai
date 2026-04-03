@@ -10,7 +10,7 @@ import {
   UploadCloud,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { startTransition, useMemo, useRef, useState } from "react";
+import { startTransition, useEffect, useMemo, useRef, useState } from "react";
 
 import { loadLatestCompletedBatchSession, saveBatchSession } from "@/lib/batch-sessions";
 import { ApiError, createJob, getUploadMode, isRetryableApiError } from "@/lib/api";
@@ -74,14 +74,14 @@ function createBatchItems(files: File[]): BatchUploadItemRecord[] {
   }));
 }
 
-function upsertBatchSnapshot(
+function createBatchSnapshot(
   batchId: string,
   label: string,
   createdAt: string,
   items: BatchUploadItemRecord[],
   lastCompletionSummary: BatchCompletionSummary | null = null
-) {
-  const snapshot: BatchSessionRecord = {
+): BatchSessionRecord {
+  return {
     batchId,
     label,
     createdAt,
@@ -90,7 +90,18 @@ function upsertBatchSnapshot(
     items,
     lastCompletionSummary,
   };
+}
+
+function upsertBatchSnapshot(
+  batchId: string,
+  label: string,
+  createdAt: string,
+  items: BatchUploadItemRecord[],
+  lastCompletionSummary: BatchCompletionSummary | null = null
+) {
+  const snapshot = createBatchSnapshot(batchId, label, createdAt, items, lastCompletionSummary);
   saveBatchSession(snapshot);
+  return snapshot;
 }
 
 function buildBatchCompletionSummary(
@@ -185,9 +196,8 @@ export function UploadSection() {
   const [batchQueue, setBatchQueue] = useState<BatchUploadItemRecord[]>([]);
   const [currentBatchIndex, setCurrentBatchIndex] = useState<number | null>(null);
   const [completedBatchSummary, setCompletedBatchSummary] = useState<BatchCompletionSummary | null>(null);
-  const [latestFinishedBatchSession, setLatestFinishedBatchSession] = useState<BatchSessionRecord | null>(() =>
-    loadLatestCompletedBatchSession()
-  );
+  const [latestCompletedBatch, setLatestCompletedBatch] = useState<BatchSessionRecord | null>(null);
+  const [dismissedBatchId, setDismissedBatchId] = useState<string | null>(null);
   const activeUploadCancelRef = useRef<(() => void) | null>(null);
   const batchCancelledRef = useRef(false);
   const uploadMode = getUploadMode();
@@ -200,12 +210,20 @@ export function UploadSection() {
   const cancelledQueueCount = batchQueue.filter((item) => item.status === "cancelled").length;
   const waitingQueueCount = batchQueue.filter((item) => item.status === "queued").length;
   const activeQueueOrdinal = currentBatchIndex !== null ? currentBatchIndex + 1 : null;
-  const latestFinishedBatchSummary = latestFinishedBatchSession?.lastCompletionSummary ?? null;
-  const showLatestFinishedBatchShortcut =
-    !isUploading &&
-    selectedFiles.length === 0 &&
-    !completedBatchSummary &&
-    Boolean(latestFinishedBatchSummary);
+  const savedBatchSummary =
+    latestCompletedBatch && latestCompletedBatch.batchId !== dismissedBatchId
+      ? latestCompletedBatch.lastCompletionSummary ?? null
+      : null;
+  const visibleBatchShortcut =
+    completedBatchSummary && completedBatchSummary.batchId !== dismissedBatchId
+      ? { source: "current" as const, summary: completedBatchSummary }
+      : !isUploading && selectedFiles.length === 0 && batchQueue.length === 0 && savedBatchSummary
+        ? { source: "saved" as const, summary: savedBatchSummary }
+        : null;
+
+  useEffect(() => {
+    setLatestCompletedBatch(loadLatestCompletedBatchSession());
+  }, []);
 
   function replaceQueueItem(index: number, updater: (current: BatchUploadItemRecord) => BatchUploadItemRecord) {
     setBatchQueue((currentItems) => {
@@ -301,6 +319,7 @@ export function UploadSection() {
     const initialItems = createBatchItems(files);
 
     batchCancelledRef.current = false;
+    setDismissedBatchId(null);
     setCompletedBatchSummary(null);
     setError(null);
     setIsUploading(true);
@@ -412,9 +431,9 @@ export function UploadSection() {
 
     if (workingItems.some((item) => item.jobId)) {
       const completionSummary = buildBatchCompletionSummary(batchId, label, workingItems);
-      upsertBatchSnapshot(batchId, label, createdAt, [...workingItems], completionSummary);
+      const nextSnapshot = upsertBatchSnapshot(batchId, label, createdAt, [...workingItems], completionSummary);
+      setLatestCompletedBatch(nextSnapshot);
       setCompletedBatchSummary(completionSummary);
-      setLatestFinishedBatchSession(loadLatestCompletedBatchSession());
       setSelectedFiles([]);
       return;
     }
@@ -478,12 +497,18 @@ export function UploadSection() {
     });
   }
 
+  function handleQueueMoreSources(batchId: string) {
+    setCompletedBatchSummary(null);
+    setDismissedBatchId(batchId);
+    setSelectedFiles([]);
+    setBatchQueue([]);
+    setError(null);
+  }
+
   const queueSummary = isBatchMode
     ? `${selectedFiles.length} sources selected`
     : completedBatchSummary
       ? "The latest queue finished successfully. Open the batch workspace or replace it with a new queue."
-      : showLatestFinishedBatchShortcut
-        ? "The latest finished batch session is still available here, or you can start a fresh upload."
       : "Use the dropzone below to start a new review job.";
 
   return (
@@ -746,89 +771,14 @@ export function UploadSection() {
                 </div>
               ) : null}
 
-              {completedBatchSummary && !isUploading ? (
+              {visibleBatchShortcut ? (
                 <div className="mt-5 border-t border-[var(--line)] pt-5">
-                  <div className="rounded-[1.25rem] border border-[var(--line)] bg-[var(--surface-overlay)] px-4 py-4">
-                    <div className="flex flex-wrap items-start justify-between gap-4">
-                      <div className="max-w-2xl">
-                        <div className="metric-label text-[var(--accent)]">Queue complete</div>
-                        <h3 className="mt-2 text-xl font-semibold tracking-[-0.04em] text-[var(--text)]">
-                          Batch review session is ready
-                        </h3>
-                        <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
-                          {completedBatchSummary.readyCount} of {completedBatchSummary.totalSources} sources reached
-                          the workspace stage. Open the grouped batch review page to inspect each job and export top
-                          clips together.
-                        </p>
-                      </div>
-                      <div className="flex flex-wrap gap-2">
-                        <Button
-                          type="button"
-                          variant="secondary"
-                          size="lg"
-                          onClick={() => setCompletedBatchSummary(null)}
-                        >
-                          Queue more sources
-                        </Button>
-                        <Button
-                          type="button"
-                          variant="primary"
-                          size="lg"
-                          onClick={() => handleOpenBatchWorkspace(completedBatchSummary.batchId)}
-                        >
-                          <ArrowUpRight className="size-4" />
-                          Open batch workspace
-                        </Button>
-                      </div>
-                    </div>
-
-                    <div className="mt-4 grid gap-3 sm:grid-cols-4">
-                      <QueueMetric label="Sources" value={String(completedBatchSummary.totalSources)} />
-                      <QueueMetric label="Workspace ready" value={String(completedBatchSummary.readyCount)} />
-                      <QueueMetric label="Failed" value={String(completedBatchSummary.failedCount)} />
-                      <QueueMetric label="Cancelled" value={String(completedBatchSummary.cancelledCount)} />
-                    </div>
-                  </div>
-                </div>
-              ) : null}
-
-              {showLatestFinishedBatchShortcut && latestFinishedBatchSummary && latestFinishedBatchSession ? (
-                <div className="mt-5 border-t border-[var(--line)] pt-5">
-                  <div className="rounded-[1.25rem] border border-[var(--line)] bg-white/[0.03] px-4 py-4">
-                    <div className="flex flex-wrap items-start justify-between gap-4">
-                      <div className="max-w-2xl">
-                        <div className="flex flex-wrap items-center gap-3">
-                          <div className="metric-label text-[var(--accent)]">Latest batch session</div>
-                          <div className="text-xs text-[var(--muted)]">
-                            Finished {formatDateTime(latestFinishedBatchSummary.finishedAt)}
-                          </div>
-                        </div>
-                        <h3 className="mt-2 text-xl font-semibold tracking-[-0.04em] text-[var(--text)]">
-                          {latestFinishedBatchSession.label}
-                        </h3>
-                        <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
-                          Reopen the most recent completed queue without uploading the same sources again. The grouped
-                          workspace keeps every source together for per-job review and combined export.
-                        </p>
-                      </div>
-                      <Button
-                        type="button"
-                        variant="secondary"
-                        size="lg"
-                        onClick={() => handleOpenBatchWorkspace(latestFinishedBatchSession.batchId)}
-                      >
-                        <ArrowUpRight className="size-4" />
-                        Reopen batch workspace
-                      </Button>
-                    </div>
-
-                    <div className="mt-4 grid gap-3 sm:grid-cols-4">
-                      <QueueMetric label="Sources" value={String(latestFinishedBatchSummary.totalSources)} />
-                      <QueueMetric label="Workspace ready" value={String(latestFinishedBatchSummary.readyCount)} />
-                      <QueueMetric label="Failed" value={String(latestFinishedBatchSummary.failedCount)} />
-                      <QueueMetric label="Cancelled" value={String(latestFinishedBatchSummary.cancelledCount)} />
-                    </div>
-                  </div>
+                  <BatchCompletionShortcut
+                    summary={visibleBatchShortcut.summary}
+                    source={visibleBatchShortcut.source}
+                    onDismiss={() => handleQueueMoreSources(visibleBatchShortcut.summary.batchId)}
+                    onOpen={() => handleOpenBatchWorkspace(visibleBatchShortcut.summary.batchId)}
+                  />
                 </div>
               ) : null}
 
@@ -862,6 +812,54 @@ function QueueMetric({ label, value }: { label: string; value: string }) {
     <div className="rounded-[1rem] border border-[var(--line)] bg-white/[0.03] px-4 py-4">
       <div className="metric-label text-[var(--muted)]">{label}</div>
       <div className="mt-2 text-lg font-semibold tracking-[-0.03em] text-[var(--text)]">{value}</div>
+    </div>
+  );
+}
+
+function BatchCompletionShortcut({
+  summary,
+  source,
+  onDismiss,
+  onOpen,
+}: {
+  summary: BatchCompletionSummary;
+  source: "current" | "saved";
+  onDismiss: () => void;
+  onOpen: () => void;
+}) {
+  return (
+    <div className="rounded-[1.25rem] border border-[var(--line)] bg-[var(--surface-overlay)] px-4 py-4">
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div className="max-w-2xl">
+          <div className="metric-label text-[var(--accent)]">
+            {source === "current" ? "Queue complete" : "Latest finished batch"}
+          </div>
+          <h3 className="mt-2 text-xl font-semibold tracking-[-0.04em] text-[var(--text)]">
+            {source === "current" ? "Batch review session is ready" : "Reopen the last batch review session"}
+          </h3>
+          <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
+            {source === "saved" ? `Last completed ${formatDateTime(summary.finishedAt)}. ` : null}
+            {summary.readyCount} of {summary.totalSources} sources reached the workspace stage. Open the grouped batch
+            review page to inspect each job and export top clips together.
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <Button type="button" variant="secondary" size="lg" onClick={onDismiss}>
+            Queue more sources
+          </Button>
+          <Button type="button" variant="primary" size="lg" onClick={onOpen}>
+            <ArrowUpRight className="size-4" />
+            Open batch workspace
+          </Button>
+        </div>
+      </div>
+
+      <div className="mt-4 grid gap-3 sm:grid-cols-4">
+        <QueueMetric label="Sources" value={String(summary.totalSources)} />
+        <QueueMetric label="Workspace ready" value={String(summary.readyCount)} />
+        <QueueMetric label="Failed" value={String(summary.failedCount)} />
+        <QueueMetric label="Cancelled" value={String(summary.cancelledCount)} />
+      </div>
     </div>
   );
 }

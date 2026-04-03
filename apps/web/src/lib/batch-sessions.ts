@@ -33,11 +33,7 @@ export function loadBatchSession(
 export function loadLatestCompletedBatchSession(
   storage: StorageLike | null = getBrowserStorage()
 ): BatchSessionRecord | null {
-  return (
-    loadBatchSessions(storage).find(
-      (session) => Boolean(session.lastCompletionSummary) && (session.lastCompletionSummary?.readyCount ?? 0) > 0
-    ) ?? null
-  );
+  return loadBatchSessions(storage).find((session) => Boolean(session.lastCompletionSummary)) ?? null;
 }
 
 export function saveBatchSession(
