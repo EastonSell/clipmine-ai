@@ -1,15 +1,33 @@
 # ClipMine AI Plan
 
 > Global operating prompt:
-> Every time you open this file, add at least one new task before doing anything else. Then mark completed work, record new bugs, record anything that still needs testing, pick one unchecked task, implement it, verify it, push it to GitHub, reopen this file, add another task, and continue. Do not silently drop old tasks. Check them off and leave a short note instead.
+> At the start of every automated loop iteration, sync the repo first with `git fetch origin` and `git reset --hard origin/main`, then evaluate `LOCK.md`. If a fresh lock exists, exit immediately without changing files, adding tasks, or committing anything. Only after a lock is created, committed, and pushed may the run update this file, add a task, or perform implementation work.
 
 ## Loop Rules
 
 - Always begin by reading this file (PLAN.md)
-- Before doing any work:
-  - Check if LOCK.md exists
-    - If it exists → exit immediately (another agent is running)
-    - If not → create LOCK.md and continue
+- Before checking `LOCK.md`:
+  - Run `git fetch origin`
+  - Run `git reset --hard origin/main`
+- After sync:
+  - If `LOCK.md` exists:
+    - Read the timestamp inside it
+    - If the lock is 30 minutes old or less → exit immediately with no file changes, no task additions, and no commits
+    - If the lock is older than 30 minutes:
+      - Delete `LOCK.md`
+      - `git add LOCK.md`
+      - `git commit -m 'agent: clear stale lock'`
+      - `git push`
+      - Continue to normal lock acquisition
+  - If `LOCK.md` does not exist:
+    - Create it with:
+      - `timestamp: <ISO 8601 UTC>`
+      - `run_id: <short identifier>`
+    - Immediately:
+      - `git add LOCK.md`
+      - `git commit -m 'agent: acquire lock'`
+      - `git push`
+- Do not modify `PLAN.md`, add tasks, or perform product work before the lock commit is pushed
 - Select the highest-impact unfinished task
 - Complete ONLY 1–2 tasks per run
 - Add EXACTLY 1 new task per run
@@ -17,29 +35,58 @@
 - Avoid duplicate, vague, or low-value tasks
 
 ## Workflow
-1. git pull --rebase
-2. Acquire lock (create LOCK.md)
-3. Select highest priority task
-4. Implement minimal, clean solution
-5. Run tests if applicable
-6. Update:
+1. `git fetch origin`
+2. `git reset --hard origin/main`
+3. Inspect `LOCK.md`
+4. If `LOCK.md` is fresh, exit immediately with no changes and no commits
+5. If `LOCK.md` is stale, remove it, commit `agent: clear stale lock`, and push
+6. Acquire lock by creating `LOCK.md`, then commit `agent: acquire lock` and push
+7. Only after the lock push, add exactly 1 task and select the highest priority unfinished task
+8. Implement minimal, clean solution
+9. Run tests if applicable
+10. Update:
    - PLAN.md (mark completed + add 1 task)
    - VERIFICATION_LOG.md
-7. Commit with clear message
-8. Push to main
-9. Remove LOCK.md
-10. Commit removal if needed
+11. Commit product changes with a clear message
+12. Push to main
+13. Remove `LOCK.md`
+14. `git add LOCK.md`
+15. `git commit -m 'agent: release lock'`
+16. `git push`
 
 ## Safety Rules
-- Never leave LOCK.md behind if execution completes
-- If execution fails, ensure LOCK.md is removed before exit
+- Never leave `LOCK.md` behind if execution completes
+- If execution fails after lock acquisition, remove `LOCK.md`, commit `agent: release lock`, and push before exit
+- Never modify `PLAN.md`, `VERIFICATION_LOG.md`, or source files when exiting due to a fresh lock
+- Never perform implementation work before the lock acquisition commit is pushed
 - Avoid large refactors unless explicitly required
 - Do not break existing workflows (upload, review, export)
 
 ## Stop Conditions
 - If no meaningful progress can be made → exit cleanly
+- If exiting because a fresh lock exists → do nothing except exit
 - Do NOT fabricate work
 - Do NOT loop indefinitely inside a single run
+
+## Lock File Format
+
+Use this exact minimal shape for `LOCK.md`:
+
+```text
+timestamp: 2026-04-02T17:45:00Z
+run_id: abc123
+```
+
+Interpret the timestamp in UTC and treat any lock older than 30 minutes as stale.
+
+## Lock Validation
+
+- Sync the repo before checking the lock
+- Push lock acquisition before any work begins
+- Push lock release after work completes
+- If a fresh lock exists, do not change files, add tasks, or commit
+- If a stale lock exists, clear it with a dedicated commit before continuing
+- The goal is that only one Codex worktree run can perform work at a time
 
 ---
 
