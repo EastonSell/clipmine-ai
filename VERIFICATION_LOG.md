@@ -1,5 +1,27 @@
 # Verification Log
 
+## Batch Threshold Recovery Overflow Duration Pass
+
+Date: 2026-04-03
+
+- Extended the empty broader-threshold recovery preview so the existing `+N more` chip now reports how much restored eligible duration sits behind the hidden ready sources instead of only showing the hidden source count.
+- Extracted the hidden-duration aggregation into the shared `batch-focus` helpers so the overflow math stays unit-testable alongside the existing top-recovery-source summary.
+- Installed the workspace dependencies in this synced checkout with `npm ci`, then reran focused helper tests and scoped ESLint against the touched batch workspace files.
+
+### Checks run
+
+```bash
+npm_config_cache=/tmp/clipmine-npm-cache npm ci
+cd apps/web && npx vitest run src/lib/batch-focus.test.ts
+cd apps/web && npx eslint src/components/batch/batch-workspace.tsx src/lib/batch-focus.ts src/lib/batch-focus.test.ts --max-warnings=0
+```
+
+### Result
+
+- `21 / 21` focused `batch-focus` unit tests passed
+- targeted frontend lint passed for the touched broader-threshold recovery files
+- the broader-threshold overflow chip now shows hidden restored duration and its share of the suggested recovery
+
 ## Final-Source Queue Guidance Browser Pass
 
 Date: 2026-04-03

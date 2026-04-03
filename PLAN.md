@@ -347,8 +347,13 @@ Avoid:
   Notes: Completed on 2026-04-03 by surfacing a dedicated top-returning-source callout in the empty broader-threshold recovery state, deriving the leader and its restored-duration share from the suggested preset preview so the summary shows whether one upload dominates the recovery.
   Verified: `npm_config_cache=/tmp/clipmine-npm-cache npm ci`, `npm run test:web -- --run src/lib/batch-focus.test.ts`, `npm run lint:web -- --file src/components/batch/batch-workspace.tsx --file src/lib/batch-focus.ts --file src/lib/batch-focus.test.ts`, `npm run test:e2e -- --grep "batch workspace groups jobs and exports thresholded clips"`
 
-- [ ] Show how much restored duration sits behind the hidden broader-threshold preview sources
+- [x] Show how much restored duration sits behind the hidden broader-threshold preview sources
   Prompt: "When the broader-threshold recovery preview truncates extra ready sources behind a `+N more` chip, show how much restored eligible duration those hidden sources account for so reviewers know whether the preview already covers most of the export gain."
+  Notes: Completed on 2026-04-03 by extracting a shared hidden-recovery summary helper, using it to annotate the `+N more` preview chip with hidden restored duration and share-of-recovery context, and covering the new overflow summary math with focused batch helper tests.
+  Verified: `npm_config_cache=/tmp/clipmine-npm-cache npm ci`, `cd apps/web && npx vitest run src/lib/batch-focus.test.ts`, `cd apps/web && npx eslint src/components/batch/batch-workspace.tsx src/lib/batch-focus.ts src/lib/batch-focus.test.ts --max-warnings=0`
+
+- [ ] Let reviewers expand the hidden broader-threshold preview sources inline
+  Prompt: "Turn the `+N more` broader-threshold recovery chip into an expandable inline list so reviewers can see and inspect the hidden returning sources before broadening the threshold."
 
 - [x] Add queue completion toast and summary state
   Prompt: "When a batch queue finishes, show a stronger completion summary before navigating so the user understands how many sources succeeded or failed."

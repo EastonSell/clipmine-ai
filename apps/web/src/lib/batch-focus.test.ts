@@ -5,6 +5,7 @@ import {
   DEFAULT_BATCH_QUALITY_THRESHOLD,
   getBatchEligibleClipCount,
   getBatchInspectState,
+  getBatchRecoveryOverflowSummary,
   getBatchRecoveryTopSource,
   getNextBroaderBatchQualityThresholdPreset,
   getBatchWorkspaceHref,
@@ -125,6 +126,25 @@ describe("batch-focus", () => {
     });
     expect(topSource?.eligibleDurationShare).toBeCloseTo(4.5 / 7);
     expect(getBatchRecoveryTopSource([{ fileName: "empty.mp4", eligibleDuration: 0 }])).toBeNull();
+  });
+
+  it("summarizes hidden broader-threshold recovery duration behind the overflow chip", () => {
+    const summary = getBatchRecoveryOverflowSummary(
+      [
+        { fileName: "alpha.mp4", eligibleDuration: 5 },
+        { fileName: "beta.mp4", eligibleDuration: 3 },
+        { fileName: "gamma.mp4", eligibleDuration: 2 },
+        { fileName: "delta.mp4", eligibleDuration: 1 },
+      ],
+      2
+    );
+
+    expect(summary).toMatchObject({
+      hiddenSourceCount: 2,
+      hiddenEligibleDuration: 3,
+    });
+    expect(summary?.hiddenEligibleDurationShare).toBeCloseTo(3 / 11);
+    expect(getBatchRecoveryOverflowSummary([{ fileName: "solo.mp4", eligibleDuration: 4 }], 3)).toBeNull();
   });
 
   it("parses the saved batch triage state from search params", () => {

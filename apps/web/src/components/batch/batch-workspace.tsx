@@ -40,6 +40,7 @@ import {
   DEFAULT_BATCH_QUALITY_THRESHOLD,
   getBatchEligibleClipCount,
   getBatchInspectState,
+  getBatchRecoveryOverflowSummary,
   getBatchRecoveryTopSource,
   getNextBroaderBatchQualityThresholdPreset,
   getBatchWorkspaceHref,
@@ -588,6 +589,10 @@ export function BatchWorkspace({
     () => nextBroaderReadySourcePreview.reduce((total, entry) => total + entry.eligibleDuration, 0),
     [nextBroaderReadySourcePreview]
   );
+  const nextBroaderRecoveryOverflowSummary = useMemo(
+    () => getBatchRecoveryOverflowSummary(nextBroaderReadySourcePreview, nextBroaderReadySourcePreviewList.length),
+    [nextBroaderReadySourcePreview, nextBroaderReadySourcePreviewList.length]
+  );
   const nextBroaderTopRecoverySource = useMemo(
     () => getBatchRecoveryTopSource(nextBroaderReadySourcePreview),
     [nextBroaderReadySourcePreview]
@@ -1056,10 +1061,12 @@ export function BatchWorkspace({
                                 </Button>
                               );
                             })}
-                            {nextBroaderReadySourceOverflowCount > 0 ? (
+                            {nextBroaderReadySourceOverflowCount > 0 && nextBroaderRecoveryOverflowSummary ? (
                               <span className="rounded-full border border-dashed border-[var(--line)] px-2.5 py-1 text-[11px] font-medium text-[var(--muted)]">
                                 +{nextBroaderReadySourceOverflowCount} more{" "}
-                                {nextBroaderReadySourceOverflowCount === 1 ? "source" : "sources"}
+                                {nextBroaderReadySourceOverflowCount === 1 ? "source" : "sources"} ·{" "}
+                                {formatSeconds(nextBroaderRecoveryOverflowSummary.hiddenEligibleDuration)} of restored duration (
+                                {formatPercent(nextBroaderRecoveryOverflowSummary.hiddenEligibleDurationShare)})
                               </span>
                             ) : null}
                           </div>

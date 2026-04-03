@@ -26,6 +26,12 @@ export type BatchRecoveryTopSource = {
   eligibleDurationShare: number;
 };
 
+export type BatchRecoveryOverflowSummary = {
+  hiddenSourceCount: number;
+  hiddenEligibleDuration: number;
+  hiddenEligibleDurationShare: number;
+};
+
 export const DEFAULT_BATCH_QUALITY_THRESHOLD = 84;
 const MIN_BATCH_QUALITY_THRESHOLD = 50;
 const MAX_BATCH_QUALITY_THRESHOLD = 100;
@@ -79,6 +85,29 @@ export function getBatchRecoveryTopSource<T extends { fileName: string; eligible
     fileName: topSource.fileName,
     eligibleDuration: topSource.eligibleDuration,
     eligibleDurationShare: topSource.eligibleDuration / totalEligibleDuration,
+  };
+}
+
+export function getBatchRecoveryOverflowSummary<T extends { eligibleDuration: number }>(
+  sources: readonly T[],
+  visibleSourceCount: number
+): BatchRecoveryOverflowSummary | null {
+  if (visibleSourceCount >= sources.length) {
+    return null;
+  }
+
+  const hiddenSources = sources.slice(visibleSourceCount);
+  if (hiddenSources.length === 0) {
+    return null;
+  }
+
+  const hiddenEligibleDuration = hiddenSources.reduce((total, source) => total + source.eligibleDuration, 0);
+  const totalEligibleDuration = sources.reduce((total, source) => total + source.eligibleDuration, 0);
+
+  return {
+    hiddenSourceCount: hiddenSources.length,
+    hiddenEligibleDuration,
+    hiddenEligibleDurationShare: totalEligibleDuration > 0 ? hiddenEligibleDuration / totalEligibleDuration : 0,
   };
 }
 
