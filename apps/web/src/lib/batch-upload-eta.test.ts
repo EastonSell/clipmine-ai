@@ -65,6 +65,7 @@ describe("batch-upload-eta", () => {
       queueBasis: "live",
       queueHistorySampleCount: null,
       historyAnchorFileName: null,
+      historyAnchorDurationSeconds: null,
     });
   });
 
@@ -118,6 +119,7 @@ describe("batch-upload-eta", () => {
       queueBasis: "history",
       queueHistorySampleCount: 1,
       historyAnchorFileName: "alpha.mp4",
+      historyAnchorDurationSeconds: 20,
     });
   });
 
@@ -171,6 +173,7 @@ describe("batch-upload-eta", () => {
       queueBasis: "mixed",
       queueHistorySampleCount: 1,
       historyAnchorFileName: "alpha.mp4",
+      historyAnchorDurationSeconds: 40,
     });
   });
 
@@ -213,6 +216,7 @@ describe("batch-upload-eta", () => {
       queueBasis: null,
       queueHistorySampleCount: null,
       historyAnchorFileName: null,
+      historyAnchorDurationSeconds: null,
     });
   });
 
@@ -265,6 +269,7 @@ describe("batch-upload-eta", () => {
       queueBasis: "history",
       queueHistorySampleCount: 2,
       historyAnchorFileName: null,
+      historyAnchorDurationSeconds: null,
     });
   });
 
@@ -273,13 +278,13 @@ describe("batch-upload-eta", () => {
     expect(formatUploadEta(null)).toBe("Estimating");
     expect(formatUploadEtaBasis("live")).toBe("Live transfer rate");
     expect(formatUploadEtaBasis("history")).toBe("Completed upload history");
-    expect(formatUploadEtaBasis("history", 1, "alpha.mp4")).toBe(
-      "Completed upload history · 1 completed source · Based on alpha.mp4 · Low confidence"
+    expect(formatUploadEtaBasis("history", 1, "alpha.mp4", 20)).toBe(
+      "Completed upload history · 1 completed source · Based on alpha.mp4 · Anchor took 0:20 · Low confidence"
     );
     expect(formatUploadEtaBasis("history", 3)).toBe("Completed upload history · 3 completed sources");
     expect(formatUploadEtaBasis("mixed")).toBe("Live + completed uploads");
-    expect(formatUploadEtaBasis("mixed", 1, "alpha.mp4")).toBe(
-      "Live + completed uploads · 1 completed source · Based on alpha.mp4 · Low confidence"
+    expect(formatUploadEtaBasis("mixed", 1, "alpha.mp4", 20)).toBe(
+      "Live + completed uploads · 1 completed source · Based on alpha.mp4 · Anchor took 0:20 · Low confidence"
     );
     expect(formatUploadEtaBasis("mixed", 2)).toBe("Live + completed uploads · 2 completed sources");
     expect(formatUploadEtaBasis(null)).toBeNull();

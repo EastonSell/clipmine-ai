@@ -398,8 +398,10 @@ Avoid:
   Notes: Completed on 2026-04-03 by extending the shared batch ETA estimate model with the single completed-source filename when only one history sample exists, then threading that anchor through the landing queue timing labels for both history-only and mixed ETA states.
   Verified: `npm_config_cache=/tmp/clipmine-npm-cache npm ci`, `npm run test:web -- --run src/lib/batch-upload-eta.test.ts`, `cd apps/web && npx eslint src/lib/batch-upload-eta.ts src/lib/batch-upload-eta.test.ts src/components/landing/upload-section.tsx --max-warnings=0`
 
-- [ ] Show the anchor upload duration behind single-sample batch ETA hints
+- [x] Show the anchor upload duration behind single-sample batch ETA hints
   Prompt: "When a history-based batch ETA is still based on exactly one completed upload, show how long that anchor source actually took so reviewers can judge whether the provisional estimate comes from a short or long transfer."
+  Notes: Completed on 2026-04-03 by extending the shared batch ETA estimate model with the single completed upload's measured duration when only one history sample exists, then threading that duration through the landing queue timing labels for both history-only and mixed ETA states. Standard `vitest` and `eslint` verification was blocked in this synced checkout because frontend dependencies were absent and `npm ci` failed with `ENOSPC`, so the ETA helper was verified with a focused `tsx` assertion harness instead.
+  Verified: `npm run test:web -- --run src/lib/batch-upload-eta.test.ts` (blocked: `vitest` missing), `cd apps/web && npx eslint src/components/landing/upload-section.tsx src/lib/batch-upload-eta.ts src/lib/batch-upload-eta.test.ts --max-warnings=0` (blocked: missing `eslint-config-next` without installed deps), `npm ci` (blocked: `ENOSPC`), `npx -y tsx` focused `batch-upload-eta` assertions
 
 - [x] Preserve failed-upload retry readiness across reloads
   Prompt: "Persist enough local source reference data that a failed upload in the batch workspace can still be retried after a refresh or reopened saved batch, instead of only within the original tab lifetime."
@@ -480,6 +482,9 @@ Avoid:
 
 - [ ] Add regression coverage for batch queue cancellation
   Prompt: "Cover the batch queue cancellation path with a browser test that asserts current source state, queue counters, and the retryable cancellation message."
+
+- [ ] Add browser coverage for single-sample batch ETA anchor details
+  Prompt: "Exercise the landing batch queue timing card so the anchor source filename and duration appear when only one completed upload informs the estimate, then disappear after a second completed source is available."
 
 - [ ] Add large-file benchmark harness
   Prompt: "Create a repeatable local benchmark script that measures transfer time, transcription time, and package-export time for larger fixture files."
@@ -578,3 +583,5 @@ Avoid:
 - 2026-04-03: Added `Name the completed source behind single-sample batch ETA hints` as the next queue-estimation transparency follow-up.
 - 2026-04-03: Completed `Name the completed source behind single-sample batch ETA hints` after restoring frontend dependencies, passing focused `batch-upload-eta` unit coverage, and linting the touched landing ETA files.
 - 2026-04-03: Added `Show the anchor upload duration behind single-sample batch ETA hints` as the next queue-estimation context follow-up.
+- 2026-04-03: Completed `Show the anchor upload duration behind single-sample batch ETA hints` after carrying the single-sample upload duration through the shared ETA model and validating it with a focused `tsx` assertion after `npm ci` hit `ENOSPC` in this synced checkout.
+- 2026-04-03: Added `Add browser coverage for single-sample batch ETA anchor details` as the next queue-estimation regression follow-up.

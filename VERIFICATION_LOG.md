@@ -1,5 +1,35 @@
 # Verification Log
 
+## Batch ETA Anchor Duration Pass
+
+Date: 2026-04-03
+
+- Extended the shared batch ETA estimate model so single-sample history-backed timing hints now retain the measured duration of the lone completed upload instead of only the anchor filename.
+- Updated the landing upload queue timing copy to append that anchor duration to history-only and mixed ETA labels, which gives reviewers better context for how representative the provisional estimate is.
+- Added focused unit expectations for the new duration field and label text in `batch-upload-eta.test.ts`, but standard `vitest` and ESLint verification could not run in this synced checkout because frontend dependencies were absent.
+- A follow-up `npm ci` attempt also failed with `ENOSPC`, so the ETA helper was verified with a direct `tsx` assertion harness that exercised the single-sample and multi-sample history paths without needing the full Next.js dependency tree.
+
+### Checks run
+
+```bash
+npm run test:web -- --run src/lib/batch-upload-eta.test.ts
+cd apps/web && npx eslint src/components/landing/upload-section.tsx src/lib/batch-upload-eta.ts src/lib/batch-upload-eta.test.ts --max-warnings=0
+npm ci
+npx -y tsx <<'EOF'
+import assert from 'node:assert/strict';
+const mod = await import('./apps/web/src/lib/batch-upload-eta.ts');
+const { estimateBatchUploadEta, formatUploadEtaBasis } = mod.default;
+// Assert the single-sample anchor duration is exposed and omitted once a second sample exists.
+EOF
+```
+
+### Result
+
+- `npm run test:web -- --run src/lib/batch-upload-eta.test.ts` was blocked by missing `vitest`
+- scoped ESLint was blocked by missing `eslint-config-next`
+- `npm ci` was blocked by `ENOSPC`
+- direct `tsx` assertions passed for both the single-sample anchor-duration label and the multi-sample reset path
+- single-sample history-based batch ETA hints now show both the anchor filename and the anchor upload duration
 ## Batch ETA Anchor Source Pass
 
 Date: 2026-04-03

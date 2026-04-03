@@ -23,6 +23,7 @@ export type BatchUploadEtaEstimate = {
   queueBasis: BatchUploadEtaBasis | null;
   queueHistorySampleCount: number | null;
   historyAnchorFileName: string | null;
+  historyAnchorDurationSeconds: number | null;
 };
 
 export type BatchUploadEtaBasis = "live" | "history" | "mixed";
@@ -31,6 +32,7 @@ type BatchUploadHistoricalPace = {
   msPerByte: number;
   sampleCount: number;
   anchorFileName: string | null;
+  anchorDurationSeconds: number | null;
 };
 
 export function estimateBatchUploadEta({
@@ -51,6 +53,7 @@ export function estimateBatchUploadEta({
       queueBasis: null,
       queueHistorySampleCount: null,
       historyAnchorFileName: null,
+      historyAnchorDurationSeconds: null,
     };
   }
 
@@ -64,6 +67,7 @@ export function estimateBatchUploadEta({
       queueBasis: null,
       queueHistorySampleCount: null,
       historyAnchorFileName: null,
+      historyAnchorDurationSeconds: null,
     };
   }
 
@@ -121,6 +125,7 @@ export function estimateBatchUploadEta({
     queueBasis,
     queueHistorySampleCount,
     historyAnchorFileName: historicalPace?.anchorFileName ?? null,
+    historyAnchorDurationSeconds: historicalPace?.anchorDurationSeconds ?? null,
   };
 }
 
@@ -142,11 +147,16 @@ export function isLowConfidenceUploadEta(
 export function formatUploadEtaBasis(
   basis: BatchUploadEtaBasis | null,
   completedSourceCount?: number | null,
-  historyAnchorFileName?: string | null
+  historyAnchorFileName?: string | null,
+  historyAnchorDurationSeconds?: number | null
 ) {
   const historySampleLabel = formatCompletedSourceCount(completedSourceCount);
   const historyAnchorLabel =
     completedSourceCount === 1 && historyAnchorFileName ? `Based on ${historyAnchorFileName}` : null;
+  const historyAnchorDurationLabel =
+    completedSourceCount === 1 && historyAnchorDurationSeconds
+      ? `Anchor took ${formatSeconds(historyAnchorDurationSeconds)}`
+      : null;
   const lowConfidenceLabel = isLowConfidenceUploadEta(basis, completedSourceCount) ? "Low confidence" : null;
 
   if (basis === "live") {
@@ -154,11 +164,15 @@ export function formatUploadEtaBasis(
   }
 
   if (basis === "history") {
-    return ["Completed upload history", historySampleLabel, historyAnchorLabel, lowConfidenceLabel].filter(Boolean).join(" · ");
+    return ["Completed upload history", historySampleLabel, historyAnchorLabel, historyAnchorDurationLabel, lowConfidenceLabel]
+      .filter(Boolean)
+      .join(" · ");
   }
 
   if (basis === "mixed") {
-    return ["Live + completed uploads", historySampleLabel, historyAnchorLabel, lowConfidenceLabel].filter(Boolean).join(" · ");
+    return ["Live + completed uploads", historySampleLabel, historyAnchorLabel, historyAnchorDurationLabel, lowConfidenceLabel]
+      .filter(Boolean)
+      .join(" · ");
   }
 
   return null;
@@ -172,6 +186,7 @@ function getHistoricalMsPerByte(
   let totalDurationMs = 0;
   let sampleCount = 0;
   let anchorFileName: string | null = null;
+  let anchorDurationSeconds: number | null = null;
 
   for (const item of items) {
     const durationMs = completedSourceDurationsMsByItemId[item.id];
@@ -187,6 +202,7 @@ function getHistoricalMsPerByte(
     totalDurationMs += durationMs;
     sampleCount += 1;
     anchorFileName = sampleCount === 1 ? item.fileName : null;
+    anchorDurationSeconds = sampleCount === 1 ? toMeasuredSeconds(durationMs) : null;
   }
 
   if (totalBytes <= 0 || totalDurationMs <= 0) {
@@ -197,6 +213,7 @@ function getHistoricalMsPerByte(
     msPerByte: totalDurationMs / totalBytes,
     sampleCount,
     anchorFileName,
+    anchorDurationSeconds,
   };
 }
 
@@ -243,6 +260,10 @@ function toRoundedSeconds(valueMs: number | null) {
   }
 
   return Math.max(1, Math.ceil(valueMs / 1000));
+}
+
+function toMeasuredSeconds(valueMs: number) {
+  return Math.max(1, Math.round(valueMs / 1000));
 }
 
 function combineEtaBasis(
