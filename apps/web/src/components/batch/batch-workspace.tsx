@@ -17,6 +17,7 @@ import { ProgressBar } from "@/components/ui/progress-bar";
 import { SectionHeader } from "@/components/ui/section-header";
 import { TopBar } from "@/components/ui/top-bar";
 import { loadBatchSourceFile, removeBatchSourceFile } from "@/lib/batch-source-files";
+import { getOrderedBatchItems, getPreferredBatchJobId, hasBatchIssues } from "@/lib/batch-focus";
 import { createJob, downloadBatchClipPackage, getJob, retryJob, ApiError, isRetryableApiError } from "@/lib/api";
 import { loadBatchSession, saveBatchSession } from "@/lib/batch-sessions";
 import { formatSeconds, formatSignedScore } from "@/lib/format";
@@ -24,6 +25,7 @@ import type { BatchSessionRecord, BatchUploadItemRecord, ClipRecord, JobResponse
 
 type BatchWorkspaceProps = {
   batchId: string;
+  prioritizeIssues?: boolean;
 };
 
 type AggregateClip = {
@@ -32,7 +34,7 @@ type AggregateClip = {
   clip: ClipRecord;
 };
 
-export function BatchWorkspace({ batchId }: BatchWorkspaceProps) {
+export function BatchWorkspace({ batchId, prioritizeIssues = false }: BatchWorkspaceProps) {
   const [session, setSession] = useState<BatchSessionRecord | null>(null);
   const [activeJobId, setActiveJobId] = useState<string | null>(null);
   const [qualityThreshold, setQualityThreshold] = useState(84);
@@ -46,8 +48,8 @@ export function BatchWorkspace({ batchId }: BatchWorkspaceProps) {
     setSession(nextSession);
     sessionRef.current = nextSession;
     setQualityThreshold(nextSession?.qualityThreshold ?? 84);
-    setActiveJobId(nextSession?.items.find((item) => item.jobId)?.jobId ?? null);
-  }, [batchId]);
+    setActiveJobId(getPreferredBatchJobId(nextSession?.items ?? [], prioritizeIssues));
+  }, [batchId, prioritizeIssues]);
 
   useEffect(() => {
     sessionRef.current = session;
@@ -76,6 +78,15 @@ export function BatchWorkspace({ batchId }: BatchWorkspaceProps) {
   const jobs = useMemo(() => data ?? [], [data]);
   const jobsById = useMemo(() => new Map(jobs.map((job) => [job.jobId, job])), [jobs]);
   const retryingItemIdSet = useMemo(() => new Set(retryingItemIds), [retryingItemIds]);
+  const queueItems = useMemo(
+    () => getOrderedBatchItems(session?.items ?? [], prioritizeIssues),
+    [prioritizeIssues, session?.items]
+  );
+  const queueItemOrdinals = useMemo(
+    () => new Map((session?.items ?? []).map((item, index) => [item.id, index + 1])),
+    [session?.items]
+  );
+  const queueHasIssues = useMemo(() => hasBatchIssues(session?.items ?? []), [session?.items]);
 
   function commitSession(nextSession: BatchSessionRecord) {
     sessionRef.current = nextSession;
@@ -143,9 +154,9 @@ export function BatchWorkspace({ batchId }: BatchWorkspaceProps) {
 
   useEffect(() => {
     if (!activeJobId && jobs.length > 0) {
-      setActiveJobId(jobs[0].jobId);
+      setActiveJobId(getPreferredBatchJobId(session?.items ?? [], prioritizeIssues) ?? jobs[0].jobId);
     }
-  }, [activeJobId, jobs]);
+  }, [activeJobId, jobs, prioritizeIssues, session?.items]);
 
   const selectedJob =
     jobs.find((job) => job.jobId === activeJobId) ??
@@ -466,8 +477,21 @@ export function BatchWorkspace({ batchId }: BatchWorkspaceProps) {
               description="Click any source to inspect its latest status and top clips, or open the full single-job workspace when you need deeper review."
             />
 
+            {prioritizeIssues && queueHasIssues ? (
+              <div
+                data-testid="batch-queue-attention-banner"
+                className="mt-6 rounded-[1.1rem] border border-red-500/25 bg-[var(--danger-soft)] px-4 py-4 text-sm text-red-100"
+              >
+                <div className="font-medium">Attention-first view</div>
+                <p className="mt-2 leading-6">
+                  Failed and cancelled sources are pinned to the top of this reopened batch so the items that need retry
+                  or cleanup are visible before the ready jobs.
+                </p>
+              </div>
+            ) : null}
+
             <div className="mt-6 space-y-3">
-              {session.items.map((item, index) => {
+              {queueItems.map((item) => {
                 const job = item.jobId ? jobsById.get(item.jobId) ?? null : null;
                 const active = item.jobId && item.jobId === selectedJob?.jobId;
                 const isRetrying = retryingItemIdSet.has(item.id);
@@ -475,10 +499,12 @@ export function BatchWorkspace({ batchId }: BatchWorkspaceProps) {
                 const canRetry = item.status === "failed" && (Boolean(item.jobId) || hasCachedSourceFile);
                 const statusLabel = job ? (isRetrying ? "processing" : job.status) : item.status;
                 const progressValue = statusLabel === "ready" ? 100 : item.uploadProgress;
+                const ordinal = queueItemOrdinals.get(item.id) ?? 0;
 
                 return (
                   <div
                     key={item.id}
+                    data-testid="batch-queue-item"
                     className={[
                       "w-full rounded-[1.15rem] border px-4 py-4 text-left transition duration-200",
                       active
@@ -494,7 +520,7 @@ export function BatchWorkspace({ batchId }: BatchWorkspaceProps) {
                         className="min-w-0 flex-1 text-left"
                       >
                         <div className="flex items-center gap-3">
-                          <span className="font-mono text-xs text-[var(--muted)]">{`0${index + 1}`}</span>
+                          <span className="font-mono text-xs text-[var(--muted)]">{ordinal.toString().padStart(2, "0")}</span>
                           <div className="min-w-0">
                             <div className="truncate font-medium text-[var(--text)]">{item.fileName}</div>
                             <div className="mt-1 text-xs text-[var(--muted)]">

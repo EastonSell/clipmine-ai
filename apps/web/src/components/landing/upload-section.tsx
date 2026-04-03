@@ -15,6 +15,7 @@ import { startTransition, useEffect, useMemo, useRef, useState } from "react";
 import { loadLatestCompletedBatchSession, removeBatchSession, saveBatchSession } from "@/lib/batch-sessions";
 import { clearBatchSourceFiles, removeBatchSourceFile, saveBatchSourceFile } from "@/lib/batch-source-files";
 import { ApiError, createJob, getUploadMode, isRetryableApiError } from "@/lib/api";
+import { hasBatchIssues } from "@/lib/batch-focus";
 import { formatBytes, formatDateTime } from "@/lib/format";
 import type {
   BatchCompletionSummary,
@@ -518,9 +519,9 @@ export function UploadSection() {
     void (selectedFiles.length > 1 ? runBatchUpload(selectedFiles) : runSingleUpload(selectedFiles[0]));
   }
 
-  function handleOpenBatchWorkspace(batchId: string) {
+  function handleOpenBatchWorkspace(batchId: string, prioritizeIssues = false) {
     startTransition(() => {
-      router.push(`/batches/${batchId}`);
+      router.push(prioritizeIssues ? `/batches/${batchId}?focus=issues#batch-queue` : `/batches/${batchId}`);
     });
   }
 
@@ -814,7 +815,12 @@ export function UploadSection() {
                     issueSourceNames={visibleBatchShortcut.issueSourceNames}
                     dismissLabel={visibleBatchShortcut.source === "saved" ? "Dismiss shortcut" : "Queue more sources"}
                     onDismiss={() => handleDismissBatchShortcut(visibleBatchShortcut.summary.batchId, visibleBatchShortcut.source)}
-                    onOpen={() => handleOpenBatchWorkspace(visibleBatchShortcut.summary.batchId)}
+                    onOpen={() =>
+                      handleOpenBatchWorkspace(
+                        visibleBatchShortcut.summary.batchId,
+                        visibleBatchShortcut.source === "saved" && hasBatchIssues(latestCompletedBatch?.items ?? [])
+                      )
+                    }
                   />
                 </div>
               ) : null}

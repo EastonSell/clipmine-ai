@@ -256,8 +256,13 @@ Avoid:
   Notes: Completed on 2026-04-03 by deriving failed and cancelled source names from the persisted batch session items and surfacing them directly in the landing shortcut for saved and just-finished batch summaries.
   Verified: `npm run test:web`, `npm run test:e2e -- --grep "landing page reopens the most recent finished batch session|landing page can dismiss a saved batch shortcut without letting it reappear|landing page previews failed source names in a saved batch shortcut"`
 
-- [ ] Open saved batch workspaces with failed sources surfaced first
+- [x] Open saved batch workspaces with failed sources surfaced first
   Prompt: "When reopening a saved batch session that includes failed or cancelled uploads, land the user on the jobs that need attention first instead of making them hunt through the batch list."
+  Notes: Completed on 2026-04-03 by reopening saved batch shortcuts with a `focus=issues` state, jumping directly to the queue section, pinning failed and cancelled sources above ready jobs, and preserving original queue ordinals while the issue-first view is active.
+  Verified: `npm run test:web`, `npm run test:e2e -- --grep "saved batch workspaces reopen with failed sources surfaced first|landing page previews failed source names in a saved batch shortcut|landing page reopens the most recent finished batch session"`
+
+- [ ] Add issue-only toggle for saved batch triage
+  Prompt: "Let users collapse the reopened batch queue to only failed or cancelled sources so retry triage stays focused before they return to ready jobs."
 
 - [ ] Add per-source ETA hints to the active queue card
   Prompt: "Estimate queue progress for the current source and remaining queue so large multi-file uploads feel less opaque while the active transfer is running."
@@ -336,3 +341,5 @@ Avoid:
 - 2026-04-03: Added `Preserve failed-upload retry readiness across reloads` as the follow-up to the new batch retry flow.
 - 2026-04-03: Completed `Preview failed source names in the saved batch shortcut` after web unit and targeted Playwright verification.
 - 2026-04-03: Added `Open saved batch workspaces with failed sources surfaced first` as the next landing-session follow-up.
+- 2026-04-03: Completed `Open saved batch workspaces with failed sources surfaced first` after web unit and targeted Playwright verification.
+- 2026-04-03: Added `Add issue-only toggle for saved batch triage` as the next queue-triage follow-up.

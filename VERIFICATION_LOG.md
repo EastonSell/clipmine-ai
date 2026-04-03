@@ -2,6 +2,27 @@
 
 Date: 2026-04-02
 
+## Saved Batch Issue-First Reopen Pass
+
+Date: 2026-04-03
+
+- Updated the saved landing-page batch shortcut so sessions with failed or cancelled sources reopen with `focus=issues` and jump directly to the batch queue.
+- Added an issue-priority ordering helper so failed and cancelled sources pin to the top of the reopened queue without rewriting the persisted batch-session record.
+- Added an attention-first banner in the batch workspace and preserved the original queue ordinals while the issue-focused ordering is active.
+- Added unit coverage for the issue-priority ordering helper plus Playwright coverage for reopening a saved batch session into the failure-first queue state.
+
+### Checks run
+
+```bash
+npm run test:web
+npm run test:e2e -- --grep "saved batch workspaces reopen with failed sources surfaced first|landing page previews failed source names in a saved batch shortcut|landing page reopens the most recent finished batch session"
+```
+
+### Result
+
+- `25 / 25` web unit tests passed
+- `3 / 3` targeted Playwright saved-batch tests passed
+
 ## Saved Batch Failure Preview Pass
 
 Date: 2026-04-03
