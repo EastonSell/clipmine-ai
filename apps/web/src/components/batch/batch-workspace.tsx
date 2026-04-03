@@ -100,6 +100,7 @@ export function BatchWorkspace({
   const [issuesOnly, setIssuesOnly] = useState(prioritizeIssues && initialIssuesOnly);
   const [qualityThreshold, setQualityThreshold] = useState(DEFAULT_BATCH_QUALITY_THRESHOLD);
   const [selectedPreset, setSelectedPreset] = useState<PackageExportPreset>(initialSelectedPreset ?? "full-av");
+  const [showContributorsOnly, setShowContributorsOnly] = useState(false);
   const [downloadError, setDownloadError] = useState<ApiError | null>(null);
   const [isDownloading, setIsDownloading] = useState(false);
   const [retryingItemIds, setRetryingItemIds] = useState<string[]>([]);
@@ -425,6 +426,17 @@ export function BatchWorkspace({
     () => readySourceEligibleClipSummaries.filter((entry) => entry.eligibleClipCount > 0).length,
     [readySourceEligibleClipSummaries]
   );
+  const nonContributingReadySourceCount = useMemo(
+    () => readySourceEligibleClipSummaries.length - contributingReadySourceCount,
+    [contributingReadySourceCount, readySourceEligibleClipSummaries.length]
+  );
+  const visibleReadySourceEligibleClipSummaries = useMemo(
+    () =>
+      showContributorsOnly
+        ? readySourceEligibleClipSummaries.filter((entry) => entry.eligibleClipCount > 0)
+        : readySourceEligibleClipSummaries,
+    [readySourceEligibleClipSummaries, showContributorsOnly]
+  );
   const totalReadySourceEligibleDuration = useMemo(
     () => readySourceEligibleClipSummaries.reduce((total, entry) => total + entry.eligibleDuration, 0),
     [readySourceEligibleClipSummaries]
@@ -446,6 +458,12 @@ export function BatchWorkspace({
     session && session.items.length > 0
       ? Math.round(((readyCount + failedCount) / session.items.length) * 100)
       : 0;
+
+  useEffect(() => {
+    if (showContributorsOnly && nonContributingReadySourceCount === 0) {
+      setShowContributorsOnly(false);
+    }
+  }, [nonContributingReadySourceCount, showContributorsOnly]);
 
   const aggregateSelections = useMemo(() => {
     return jobs
@@ -765,14 +783,24 @@ export function BatchWorkspace({
                       {readySourceEligibleClipSummaries.length > 0
                         ? `${contributingReadySourceCount} of ${readySourceEligibleClipSummaries.length} ready ${
                             readySourceEligibleClipSummaries.length === 1 ? "source contributes" : "sources contribute"
-                          } clips at ${qualityThreshold}+ before export.`
+                          } clips at ${qualityThreshold}+ before export.${showContributorsOnly && nonContributingReadySourceCount > 0 ? ` Contributors-only view hides ${nonContributingReadySourceCount} ${nonContributingReadySourceCount === 1 ? "source" : "sources"} below the current threshold.` : ""}`
                         : "Ready sources will appear here as soon as their jobs finish processing."}
                     </p>
                   </div>
+                  {nonContributingReadySourceCount > 0 ? (
+                    <Button
+                      size="sm"
+                      variant={showContributorsOnly ? "primary" : "secondary"}
+                      aria-pressed={showContributorsOnly}
+                      onClick={() => setShowContributorsOnly((current) => !current)}
+                    >
+                      Contributors only
+                    </Button>
+                  ) : null}
                 </div>
-                {readySourceEligibleClipSummaries.length > 0 ? (
+                {visibleReadySourceEligibleClipSummaries.length > 0 ? (
                   <div className="mt-4 grid gap-2">
-                    {readySourceEligibleClipSummaries.map((entry, index) => {
+                    {visibleReadySourceEligibleClipSummaries.map((entry, index) => {
                       const isActiveSource = entry.jobId === activeJobId;
                       const eligibleDurationShare =
                         totalReadySourceEligibleDuration > 0 ? entry.eligibleDuration / totalReadySourceEligibleDuration : 0;
@@ -835,6 +863,10 @@ export function BatchWorkspace({
                         </div>
                       );
                     })}
+                  </div>
+                ) : readySourceEligibleClipSummaries.length > 0 ? (
+                  <div className="mt-4 rounded-[0.95rem] border border-dashed border-[var(--line)] bg-[var(--surface-dark)]/25 px-4 py-4 text-sm text-[var(--muted)]">
+                    No ready sources contribute clips at {qualityThreshold}+ right now.
                   </div>
                 ) : null}
               </div>

@@ -972,6 +972,18 @@ test("batch workspace groups jobs and exports thresholded clips", async ({ page 
   await expect(page.getByTestId("aggregate-source-summary-job-beta")).toContainText("0:02 eligible duration");
   await expect(page.getByTestId("aggregate-source-summary-job-beta")).toContainText("100% of eligible duration");
   await expect(page.getByRole("progressbar", { name: "beta.mp4 contribution to eligible duration" })).toHaveAttribute("aria-valuenow", "100");
+  const contributorsOnlyToggle = page.getByRole("button", { name: "Contributors only" });
+  await expect(contributorsOnlyToggle).toHaveAttribute("aria-pressed", "false");
+  await contributorsOnlyToggle.click();
+  await expect(contributorsOnlyToggle).toHaveAttribute("aria-pressed", "true");
+  await expect(page.getByText("Contributors-only view hides 1 source below the current threshold.")).toBeVisible();
+  await expect(page.locator('[data-testid^="aggregate-source-summary-"]')).toHaveCount(1);
+  await expect(page.getByTestId("aggregate-source-summary-job-beta")).toBeVisible();
+  await expect(page.getByTestId("aggregate-source-summary-job-alpha")).toHaveCount(0);
+  await contributorsOnlyToggle.click();
+  await expect(contributorsOnlyToggle).toHaveAttribute("aria-pressed", "false");
+  await expect(page.locator('[data-testid^="aggregate-source-summary-"]')).toHaveCount(2);
+  await expect(page.getByTestId("aggregate-source-summary-job-alpha")).toBeVisible();
 
   await page.getByRole("button", { name: /Broad 72\+ 4 eligible clips/i }).click();
   await expect(page).toHaveURL(/\/batches\/demo-batch\?job=job-alpha&threshold=72$/);

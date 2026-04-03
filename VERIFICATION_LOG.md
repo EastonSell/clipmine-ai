@@ -1,5 +1,28 @@
 # Verification Log
 
+## Batch Aggregate Contributors-Only Toggle Pass
+
+Date: 2026-04-03
+
+- Added a contributors-only toggle to the ready-source aggregate export summary so reviewers can temporarily hide sources that contribute zero eligible clips at the current threshold.
+- Kept the toggle scoped to the current batch workspace view, automatically clearing it when every ready source contributes again, and added summary copy that explains how many below-threshold sources are being hidden.
+- Extended the existing batch export Playwright scenario so it proves the strict-threshold view can hide and restore the zero-contribution source without disturbing the existing export assertions.
+- This checkout started without frontend dependencies installed, so `npm ci` was required before the targeted lint and Playwright commands could run.
+
+### Checks run
+
+```bash
+npm ci
+npm run lint:web -- --file src/components/batch/batch-workspace.tsx
+npm run test:e2e -- --grep "batch workspace groups jobs and exports thresholded clips"
+```
+
+### Result
+
+- targeted frontend lint passed
+- `1 / 1` targeted Playwright batch export tests passed
+- aggregate export reviewers can now collapse zero-contribution ready sources and restore them on demand
+
 ## Batch Aggregate Contribution Sort Pass
 
 Date: 2026-04-03

@@ -305,8 +305,13 @@ Avoid:
   Notes: Completed on 2026-04-03 by adding ordinal contribution-rank badges to each ready-source summary row and keeping those labels derived from the existing eligible-duration, eligible-clip-count, and ready-source tie-break ordering so threshold changes update the rank in place.
   Verified: `npm ci`, `npm run lint:web -- --file src/components/batch/batch-workspace.tsx`, `npm run test:e2e -- --grep "batch workspace groups jobs and exports thresholded clips"`
 
-- [ ] Add a contributors-only toggle to the aggregate export summary
+- [x] Add a contributors-only toggle to the aggregate export summary
   Prompt: "Let reviewers temporarily hide ready sources that contribute zero clips at the current threshold so large batch exports stay focused on the sources that will actually ship."
+  Notes: Completed on 2026-04-03 by adding a temporary contributors-only toggle to the batch aggregate export summary, hiding zero-clip ready sources from the summary rows while the toggle is active, and surfacing explanatory copy when below-threshold sources are being filtered out.
+  Verified: `npm ci`, `npm run lint:web -- --file src/components/batch/batch-workspace.tsx`, `npm run test:e2e -- --grep "batch workspace groups jobs and exports thresholded clips"`
+
+- [ ] Add a broader-threshold recovery action when the aggregate export summary is empty
+  Prompt: "When the current batch threshold leaves no contributing ready sources, offer a one-click way to jump to the next broader preset so reviewers can recover from an empty export summary without dragging the slider."
 
 - [x] Add queue completion toast and summary state
   Prompt: "When a batch queue finishes, show a stronger completion summary before navigating so the user understands how many sources succeeded or failed."
