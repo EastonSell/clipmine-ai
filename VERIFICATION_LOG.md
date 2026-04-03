@@ -2,6 +2,28 @@
 
 Date: 2026-04-02
 
+## Batch Ready Source Shortcut Pass
+
+Date: 2026-04-03
+
+- Added a keyboard shortcut helper for the batch selected-source panel so `[` steps to the previous ready workspace and `]` steps to the next one.
+- Scoped the shortcut listener to non-text-entry targets, which keeps the batch quality slider and any future form controls from hijacking the same keystrokes.
+- Surfaced the shortcut hint directly in the ready-source navigation card and extended the existing Playwright navigation scenario to prove the keyboard path updates both the selected heading and the `job` URL param.
+- This checkout started without frontend dependencies installed, so `npm ci` was required before the targeted verification commands could run.
+
+### Checks run
+
+```bash
+npm ci
+npm run test:web -- --run src/lib/batch-focus.test.ts
+npm run test:e2e -- --grep="batch workspace navigates ready sources from the selected panel"
+```
+
+### Result
+
+- `9 / 9` targeted web unit tests passed
+- `1 / 1` targeted Playwright batch-navigation tests passed
+
 ## Batch Ready Source Navigation Pass
 
 Date: 2026-04-03

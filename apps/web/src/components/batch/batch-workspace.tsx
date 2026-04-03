@@ -22,6 +22,7 @@ import {
   getOrderedBatchItems,
   getPreferredBatchJobId,
   getReadyBatchJobNavigation,
+  getReadyBatchJobShortcutDirection,
   hasBatchIssues,
   isBatchIssueItem,
 } from "@/lib/batch-focus";
@@ -235,6 +236,49 @@ export function BatchWorkspace({
     () => getReadyBatchJobNavigation(queueItems, selectedQueueItem?.status === "ready" ? selectedQueueItem.jobId : null),
     [queueItems, selectedQueueItem?.jobId, selectedQueueItem?.status]
   );
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    if (readyJobNavigation.currentIndex < 0 || readyJobNavigation.jobIds.length < 2) {
+      return;
+    }
+
+    function handleReadySourceShortcut(event: KeyboardEvent) {
+      const target = event.target instanceof HTMLElement ? event.target : null;
+      const direction = getReadyBatchJobShortcutDirection({
+        key: event.key,
+        altKey: event.altKey,
+        ctrlKey: event.ctrlKey,
+        metaKey: event.metaKey,
+        isContentEditable: target?.isContentEditable ?? false,
+        targetTagName: target?.tagName ?? null,
+      });
+
+      if (!direction) {
+        return;
+      }
+
+      const nextJobId = direction === "previous" ? readyJobNavigation.previousJobId : readyJobNavigation.nextJobId;
+      if (!nextJobId) {
+        return;
+      }
+
+      event.preventDefault();
+      selectBatchJob(nextJobId);
+    }
+
+    window.addEventListener("keydown", handleReadySourceShortcut);
+    return () => window.removeEventListener("keydown", handleReadySourceShortcut);
+  }, [
+    readyJobNavigation.currentIndex,
+    readyJobNavigation.jobIds.length,
+    readyJobNavigation.nextJobId,
+    readyJobNavigation.previousJobId,
+    selectBatchJob,
+  ]);
 
   const aggregateClips = useMemo<AggregateClip[]>(() => {
     return jobs
@@ -683,7 +727,8 @@ export function BatchWorkspace({
                       <div>
                         <div className="metric-label text-[var(--muted)]">Ready source navigation</div>
                         <p className="mt-2 text-sm text-[var(--muted)]">
-                          Source {readyJobNavigation.currentIndex + 1} of {readyJobNavigation.jobIds.length} ready workspaces in the current queue order.
+                          Source {readyJobNavigation.currentIndex + 1} of {readyJobNavigation.jobIds.length} ready workspaces in the current queue order. Use{" "}
+                          <ShortcutKey>[</ShortcutKey> and <ShortcutKey>]</ShortcutKey> to move without leaving the keyboard.
                         </p>
                       </div>
                       <div className="flex flex-wrap gap-2">
@@ -854,6 +899,14 @@ export function BatchWorkspace({
         <FooterNotes id="batch-notes" title="Batch notes" notes={footerNotes} />
       </div>
     </WorkspaceFrame>
+  );
+}
+
+function ShortcutKey({ children }: { children: React.ReactNode }) {
+  return (
+    <span className="inline-flex min-w-6 items-center justify-center rounded-md border border-[var(--line)] bg-[var(--surface-dark)] px-1.5 py-0.5 font-mono text-[11px] text-white/80">
+      {children}
+    </span>
   );
 }
 

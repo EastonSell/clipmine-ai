@@ -1157,25 +1157,45 @@ test("batch workspace navigates ready sources from the selected panel", async ({
 
   await expect(page.getByRole("heading", { name: "alpha.mp4" })).toBeVisible();
   await expect(page.getByText("Source 1 of 3 ready workspaces in the current queue order.")).toBeVisible();
+  await expect(page.getByText("Use [ and ] to move without leaving the keyboard.")).toBeVisible();
   await expect(previousSourceButton).toBeDisabled();
   await expect(nextSourceButton).toBeEnabled();
 
-  await nextSourceButton.click();
+  await page.keyboard.press("]");
   await expect(page).toHaveURL(/\/batches\/demo-batch-navigation\?job=job-beta$/);
   await expect(page.getByRole("heading", { name: "beta.mp4" })).toBeVisible();
   await expect(page.getByText("Source 2 of 3 ready workspaces in the current queue order.")).toBeVisible();
   await expect(previousSourceButton).toBeEnabled();
   await expect(nextSourceButton).toBeEnabled();
 
-  await nextSourceButton.click();
+  await page.keyboard.press("]");
   await expect(page).toHaveURL(/\/batches\/demo-batch-navigation\?job=job-gamma$/);
   await expect(page.getByRole("heading", { name: "gamma.mp4" })).toBeVisible();
   await expect(page.getByText("Source 3 of 3 ready workspaces in the current queue order.")).toBeVisible();
   await expect(nextSourceButton).toBeDisabled();
 
+  await page.keyboard.press("[");
+  await expect(page).toHaveURL(/\/batches\/demo-batch-navigation\?job=job-beta$/);
+  await expect(page.getByRole("heading", { name: "beta.mp4" })).toBeVisible();
+
+  await nextSourceButton.click();
+  await expect(page).toHaveURL(/\/batches\/demo-batch-navigation\?job=job-gamma$/);
+  await expect(page.getByRole("heading", { name: "gamma.mp4" })).toBeVisible();
+  await expect(page.getByText("Source 3 of 3 ready workspaces in the current queue order.")).toBeVisible();
+  await expect(previousSourceButton).toBeEnabled();
+  await expect(nextSourceButton).toBeDisabled();
+
+  const thresholdSlider = page.locator('input[type="range"]');
+  await thresholdSlider.focus();
+  await page.keyboard.press("]");
+  await expect(page).toHaveURL(/\/batches\/demo-batch-navigation\?job=job-gamma$/);
+  await expect(page.getByRole("heading", { name: "gamma.mp4" })).toBeVisible();
+
   await previousSourceButton.click();
   await expect(page).toHaveURL(/\/batches\/demo-batch-navigation\?job=job-beta$/);
   await expect(page.getByRole("heading", { name: "beta.mp4" })).toBeVisible();
+  await expect(previousSourceButton).toBeEnabled();
+  await expect(nextSourceButton).toBeEnabled();
 });
 
 test("batch workspace retries a failed source without returning home", async ({ page }) => {

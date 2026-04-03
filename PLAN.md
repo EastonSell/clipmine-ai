@@ -289,8 +289,13 @@ Avoid:
   Notes: Completed on 2026-04-03 by deriving previous and next ready-job targets from the visible batch queue, adding inline navigation controls in the selected-source panel, and keeping the batch `job` query param in sync while reviewers step between ready uploads.
   Verified: `npm ci`, `npm run test:web -- --run src/lib/batch-focus.test.ts`, `npm run test:e2e -- --grep='batch workspace persists the selected source in the URL|batch workspace navigates ready sources from the selected panel'`
 
-- [ ] Add keyboard shortcuts for ready-source navigation in the batch workspace
+- [x] Add keyboard shortcuts for ready-source navigation in the batch workspace
   Prompt: "Let reviewers move between ready sources with keyboard shortcuts from the batch workspace so adjacent comparisons stay fast without repeated clicks."
+  Notes: Completed on 2026-04-03 by adding `[` and `]` ready-source shortcuts in the selected-source panel, ignoring text-entry targets like the threshold slider, and surfacing the shortcut hint directly in the navigation card.
+  Verified: `npm ci`, `npm run test:web -- --run src/lib/batch-focus.test.ts`, `npm run test:e2e -- --grep="batch workspace navigates ready sources from the selected panel"`
+
+- [ ] Add first and last ready-source jump controls in the batch workspace
+  Prompt: "Let reviewers jump straight to the first or last ready source from the selected-source panel so large queues do not require repeated next or previous steps."
 
 ## Backend Tasks
 
@@ -373,3 +378,5 @@ Avoid:
 - 2026-04-03: Added `Add previous and next source navigation in the batch workspace` as the next batch-review follow-up.
 - 2026-04-03: Completed `Add previous and next source navigation in the batch workspace` after installing frontend dependencies and passing focused web-unit and Playwright verification.
 - 2026-04-03: Added `Add keyboard shortcuts for ready-source navigation in the batch workspace` as the next batch-review follow-up.
+- 2026-04-03: Completed `Add keyboard shortcuts for ready-source navigation in the batch workspace` after installing frontend dependencies and passing focused web-unit and Playwright verification.
+- 2026-04-03: Added `Add first and last ready-source jump controls in the batch workspace` as the next batch-review follow-up.

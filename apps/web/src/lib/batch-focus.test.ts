@@ -5,6 +5,7 @@ import {
   getOrderedBatchItems,
   getPreferredBatchJobId,
   getReadyBatchJobNavigation,
+  getReadyBatchJobShortcutDirection,
   hasBatchIssues,
   isBatchIssueItem,
   parseBatchSelectedJobId,
@@ -155,6 +156,45 @@ describe("batch-focus", () => {
       previousJobId: null,
       nextJobId: null,
     });
+  });
+
+  it("maps ready-source keyboard shortcuts and ignores text-entry targets", () => {
+    expect(
+      getReadyBatchJobShortcutDirection({
+        key: "[",
+        altKey: false,
+        ctrlKey: false,
+        metaKey: false,
+      })
+    ).toBe("previous");
+
+    expect(
+      getReadyBatchJobShortcutDirection({
+        key: "]",
+        altKey: false,
+        ctrlKey: false,
+        metaKey: false,
+      })
+    ).toBe("next");
+
+    expect(
+      getReadyBatchJobShortcutDirection({
+        key: "]",
+        altKey: false,
+        ctrlKey: false,
+        metaKey: false,
+        targetTagName: "input",
+      })
+    ).toBeNull();
+
+    expect(
+      getReadyBatchJobShortcutDirection({
+        key: "[",
+        altKey: false,
+        ctrlKey: true,
+        metaKey: false,
+      })
+    ).toBeNull();
   });
 
   it("detects whether a saved batch has issue items", () => {

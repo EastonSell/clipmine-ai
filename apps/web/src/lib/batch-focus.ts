@@ -5,6 +5,8 @@ export type BatchTriageState = {
   issuesOnly: boolean;
 };
 
+export type ReadyBatchJobShortcutDirection = "previous" | "next";
+
 export function parseBatchSelectedJobId(jobId: string | null | undefined) {
   const normalizedJobId = jobId?.trim();
   return normalizedJobId ? normalizedJobId : null;
@@ -105,6 +107,41 @@ export function getReadyBatchJobNavigation(
     previousJobId: currentIndex > 0 ? jobIds[currentIndex - 1] : null,
     nextJobId: currentIndex >= 0 && currentIndex < jobIds.length - 1 ? jobIds[currentIndex + 1] : null,
   };
+}
+
+export function getReadyBatchJobShortcutDirection({
+  key,
+  altKey,
+  ctrlKey,
+  metaKey,
+  isContentEditable = false,
+  targetTagName = null,
+}: {
+  key: string;
+  altKey: boolean;
+  ctrlKey: boolean;
+  metaKey: boolean;
+  isContentEditable?: boolean;
+  targetTagName?: string | null;
+}): ReadyBatchJobShortcutDirection | null {
+  if (altKey || ctrlKey || metaKey || isContentEditable) {
+    return null;
+  }
+
+  const normalizedTagName = targetTagName?.toLowerCase();
+  if (normalizedTagName === "input" || normalizedTagName === "textarea" || normalizedTagName === "select") {
+    return null;
+  }
+
+  if (key === "[") {
+    return "previous";
+  }
+
+  if (key === "]") {
+    return "next";
+  }
+
+  return null;
 }
 
 export function hasBatchIssues(items: BatchUploadItemRecord[]) {
