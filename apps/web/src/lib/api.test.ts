@@ -106,6 +106,7 @@ describe("api upload helpers", () => {
 
     const fetchMock = vi
       .fn()
+      .mockRejectedValueOnce(new TypeError("proxy unavailable"))
       .mockRejectedValueOnce(new TypeError("connect ECONNREFUSED"))
       .mockResolvedValueOnce(
         new Response(
@@ -156,15 +157,78 @@ describe("api upload helpers", () => {
 
     expect(fetchMock).toHaveBeenNthCalledWith(
       1,
-      "http://localhost:8000/api/jobs/job-fallback",
+      "/api/jobs/job-fallback",
       { cache: "no-store" }
     );
     expect(fetchMock).toHaveBeenNthCalledWith(
       2,
+      "http://localhost:8000/api/jobs/job-fallback",
+      { cache: "no-store" }
+    );
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      3,
       "http://127.0.0.1:8000/api/jobs/job-fallback",
       { cache: "no-store" }
     );
     expect(getApiBaseUrl()).toBe("http://127.0.0.1:8000");
+  });
+
+  it("prefers the same-origin api proxy in the browser", async () => {
+    vi.stubGlobal("window", {
+      location: {
+        hostname: "clipmine.test",
+      },
+    });
+
+    const fetchMock = vi.fn().mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          jobId: "job-proxy",
+          status: "ready",
+          progressPhase: "ready",
+          error: null,
+          sourceVideo: {
+            id: "job-proxy",
+            file_name: "sample.mp4",
+            content_type: "video/mp4",
+            size_bytes: 128,
+            duration_seconds: 1.2,
+            url: "/api/jobs/job-proxy/video",
+          },
+          summary: null,
+          clips: [],
+          timeline: [],
+          language: "en",
+          processingTimings: {},
+          warnings: [],
+          processingStats: {
+            source_duration_seconds: 1.2,
+            transcript_word_count: 0,
+            candidate_clip_count: 0,
+            discarded_candidate_count: 0,
+            deduped_candidate_count: 0,
+            shortlist_recommended_count: 0,
+            clip_count: 0,
+            timeline_bin_count: 0,
+          },
+          createdAt: "2026-04-02T12:00:00.000Z",
+          updatedAt: "2026-04-02T12:00:00.000Z",
+        }),
+        {
+          status: 200,
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
+      )
+    );
+
+    vi.stubGlobal("fetch", fetchMock);
+
+    await getJob("job-proxy");
+
+    expect(fetchMock).toHaveBeenCalledWith("/api/jobs/job-proxy", { cache: "no-store" });
+    expect(getApiBaseUrl()).toBe("");
   });
 
   it("retries a failed job through the api", async () => {

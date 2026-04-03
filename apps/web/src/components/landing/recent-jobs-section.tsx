@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { History } from "lucide-react";
-import { useState } from "react";
+import { useSyncExternalStore } from "react";
 
 import { Card } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -11,8 +11,24 @@ import { loadRecentJobs } from "@/lib/recent-jobs";
 import { formatDateTime, formatSeconds, formatSignedScore } from "@/lib/format";
 import type { RecentJobRecord } from "@/lib/types";
 
+const EMPTY_RECENT_JOBS: RecentJobRecord[] = [];
+
+function subscribeToRecentJobs(onStoreChange: () => void) {
+  if (typeof window === "undefined") {
+    return () => undefined;
+  }
+
+  const handleStorage = () => onStoreChange();
+  window.addEventListener("storage", handleStorage);
+  return () => window.removeEventListener("storage", handleStorage);
+}
+
 export function RecentJobsSection() {
-  const [recentJobs] = useState<RecentJobRecord[]>(() => loadRecentJobs());
+  const recentJobs = useSyncExternalStore(
+    subscribeToRecentJobs,
+    loadRecentJobs,
+    () => EMPTY_RECENT_JOBS
+  );
 
   return (
     <section id="recent-jobs" className="border-t border-[var(--line)] py-16 sm:py-20">

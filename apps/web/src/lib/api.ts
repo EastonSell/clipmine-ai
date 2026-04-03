@@ -12,6 +12,7 @@ import type {
 } from "./types";
 
 const DEFAULT_API_BASE_URL = "http://localhost:8000";
+const SAME_ORIGIN_API_BASE_URL = "";
 const LOOPBACK_API_BASE_URLS: Record<string, string[]> = {
   localhost: ["http://localhost:8000", "http://127.0.0.1:8000"],
   "127.0.0.1": ["http://127.0.0.1:8000", "http://localhost:8000"],
@@ -764,19 +765,24 @@ function buildErrorDetail(code: string, message: string, retryable: boolean): Ap
 }
 
 function getApiBaseUrls() {
-  const configuredBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL?.trim();
+  const configuredBaseUrl = normalizeApiBaseUrl(process.env.NEXT_PUBLIC_API_BASE_URL);
+  if (typeof window === "undefined") {
+    return configuredBaseUrl ? [configuredBaseUrl] : [DEFAULT_API_BASE_URL];
+  }
+
+  const baseUrls = [SAME_ORIGIN_API_BASE_URL];
   if (configuredBaseUrl) {
-    return [configuredBaseUrl.replace(/\/$/, "")];
+    baseUrls.push(configuredBaseUrl);
   }
 
-  if (typeof window !== "undefined") {
-    const loopbackBaseUrls = LOOPBACK_API_BASE_URLS[window.location.hostname];
-    if (loopbackBaseUrls) {
-      return loopbackBaseUrls;
-    }
+  const loopbackBaseUrls = LOOPBACK_API_BASE_URLS[window.location.hostname];
+  if (loopbackBaseUrls) {
+    baseUrls.push(...loopbackBaseUrls);
+  } else if (!configuredBaseUrl) {
+    baseUrls.push(DEFAULT_API_BASE_URL);
   }
 
-  return [DEFAULT_API_BASE_URL];
+  return Array.from(new Set(baseUrls));
 }
 
 function recordSuccessfulApiBaseUrl(baseUrl: string | null) {
@@ -793,6 +799,19 @@ function extractApiBaseUrl(url: string) {
   } catch {
     return null;
   }
+}
+
+function normalizeApiBaseUrl(value: string | undefined | null) {
+  if (!value) {
+    return null;
+  }
+
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return null;
+  }
+
+  return trimmed.replace(/\/$/, "");
 }
 
 function isAbortLikeError(error: unknown) {
