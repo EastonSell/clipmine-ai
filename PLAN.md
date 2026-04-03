@@ -294,8 +294,13 @@ Avoid:
   Notes: Completed on 2026-04-03 by adding `[` and `]` ready-source shortcuts in the selected-source panel, ignoring text-entry targets like the threshold slider, and surfacing the shortcut hint directly in the navigation card.
   Verified: `npm ci`, `npm run test:web -- --run src/lib/batch-focus.test.ts`, `npm run test:e2e -- --grep="batch workspace navigates ready sources from the selected panel"`
 
-- [ ] Add first and last ready-source jump controls in the batch workspace
+- [x] Add first and last ready-source jump controls in the batch workspace
   Prompt: "Let reviewers jump straight to the first or last ready source from the selected-source panel so large queues do not require repeated next or previous steps."
+  Notes: Completed on 2026-04-03 by extending the ready-source navigation model with first and last targets, adding direct jump controls alongside the existing previous and next actions, and updating the selected-panel copy so the jump behavior is explicit while the `job` URL param stays in sync.
+  Verified: `npm ci`, `npm run test:web -- --run src/lib/batch-focus.test.ts`, `npm run test:e2e -- --grep "batch workspace navigates ready sources from the selected panel"`
+
+- [ ] Add ready-source position badges to batch queue cards
+  Prompt: "Show each ready source's review-order position directly in the batch queue so reviewers can spot the first, current, and last ready workspaces before opening one."
 
 ## Backend Tasks
 
@@ -380,3 +385,5 @@ Avoid:
 - 2026-04-03: Added `Add keyboard shortcuts for ready-source navigation in the batch workspace` as the next batch-review follow-up.
 - 2026-04-03: Completed `Add keyboard shortcuts for ready-source navigation in the batch workspace` after installing frontend dependencies and passing focused web-unit and Playwright verification.
 - 2026-04-03: Added `Add first and last ready-source jump controls in the batch workspace` as the next batch-review follow-up.
+- 2026-04-03: Completed `Add first and last ready-source jump controls in the batch workspace` after installing frontend dependencies and passing focused web-unit and Playwright verification.
+- 2026-04-03: Added `Add ready-source position badges to batch queue cards` as the next batch-review follow-up.

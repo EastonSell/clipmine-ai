@@ -147,12 +147,16 @@ describe("batch-focus", () => {
     expect(getReadyBatchJobNavigation(items, "job-beta")).toEqual({
       jobIds: ["job-alpha", "job-beta", "job-delta"],
       currentIndex: 1,
+      firstJobId: "job-alpha",
+      lastJobId: "job-delta",
       previousJobId: "job-alpha",
       nextJobId: "job-delta",
     });
     expect(getReadyBatchJobNavigation(items, "job-gamma")).toEqual({
       jobIds: ["job-alpha", "job-beta", "job-delta"],
       currentIndex: -1,
+      firstJobId: "job-alpha",
+      lastJobId: "job-delta",
       previousJobId: null,
       nextJobId: null,
     });

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ChevronLeft, ChevronRight, Download, ExternalLink, RefreshCcw, SlidersHorizontal } from "lucide-react";
+import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Download, ExternalLink, RefreshCcw, SlidersHorizontal } from "lucide-react";
 import { startTransition, useEffect, useMemo, useRef, useState } from "react";
 import useSWR from "swr";
 
@@ -728,10 +728,20 @@ export function BatchWorkspace({
                         <div className="metric-label text-[var(--muted)]">Ready source navigation</div>
                         <p className="mt-2 text-sm text-[var(--muted)]">
                           Source {readyJobNavigation.currentIndex + 1} of {readyJobNavigation.jobIds.length} ready workspaces in the current queue order. Use{" "}
-                          <ShortcutKey>[</ShortcutKey> and <ShortcutKey>]</ShortcutKey> to move without leaving the keyboard.
+                          <ShortcutKey>[</ShortcutKey> and <ShortcutKey>]</ShortcutKey> to step between neighbors, or jump straight to the first and last ready sources below.
                         </p>
                       </div>
                       <div className="flex flex-wrap gap-2">
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          onClick={() => readyJobNavigation.firstJobId && selectBatchJob(readyJobNavigation.firstJobId)}
+                          disabled={!readyJobNavigation.firstJobId || readyJobNavigation.currentIndex <= 0}
+                          aria-label="First ready source"
+                        >
+                          <ChevronsLeft className="size-4" />
+                          First source
+                        </Button>
                         <Button
                           size="sm"
                           variant="secondary"
@@ -751,6 +761,16 @@ export function BatchWorkspace({
                         >
                           Next source
                           <ChevronRight className="size-4" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          onClick={() => readyJobNavigation.lastJobId && selectBatchJob(readyJobNavigation.lastJobId)}
+                          disabled={!readyJobNavigation.lastJobId || readyJobNavigation.currentIndex === readyJobNavigation.jobIds.length - 1}
+                          aria-label="Last ready source"
+                        >
+                          Last source
+                          <ChevronsRight className="size-4" />
                         </Button>
                       </div>
                     </div>

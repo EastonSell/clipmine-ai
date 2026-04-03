@@ -100,10 +100,14 @@ export function getReadyBatchJobNavigation(
 ) {
   const jobIds = items.flatMap((item) => (item.status === "ready" && item.jobId ? [item.jobId] : []));
   const currentIndex = activeJobId ? jobIds.indexOf(activeJobId) : -1;
+  const firstJobId = jobIds[0] ?? null;
+  const lastJobId = jobIds.length > 0 ? jobIds[jobIds.length - 1] : null;
 
   return {
     jobIds,
     currentIndex,
+    firstJobId,
+    lastJobId,
     previousJobId: currentIndex > 0 ? jobIds[currentIndex - 1] : null,
     nextJobId: currentIndex >= 0 && currentIndex < jobIds.length - 1 ? jobIds[currentIndex + 1] : null,
   };

@@ -2,6 +2,28 @@
 
 Date: 2026-04-02
 
+## Batch Ready Source Jump Controls Pass
+
+Date: 2026-04-03
+
+- Extended the batch ready-source navigation helper with first and last ready-job targets so the selected-source panel can jump to either end of the current reviewable queue.
+- Added explicit `First source` and `Last source` controls beside the existing previous and next buttons, while keeping the selected-source `job` URL param synchronized as reviewers jump across the queue.
+- Expanded the targeted Playwright batch-navigation scenario to cover the new jump controls and their disabled states at the queue boundaries.
+- This checkout started without frontend dependencies installed, so `npm ci` was required before the targeted verification commands could run.
+
+### Checks run
+
+```bash
+npm ci
+npm run test:web -- --run src/lib/batch-focus.test.ts
+npm run test:e2e -- --grep "batch workspace navigates ready sources from the selected panel"
+```
+
+### Result
+
+- `9 / 9` targeted web unit tests passed
+- `1 / 1` targeted Playwright batch-navigation tests passed
+
 ## Batch Ready Source Shortcut Pass
 
 Date: 2026-04-03
