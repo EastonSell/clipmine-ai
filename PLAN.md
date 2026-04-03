@@ -241,8 +241,13 @@ Avoid:
   Notes: Completed on 2026-04-03 by differentiating the saved landing shortcut from the just-finished queue summary. Saved shortcuts now remove their persisted batch session from local storage, while current queue completions keep the existing queue-more flow.
   Verified: `npm run test:web`, `npm run lint:web`, `npm run test:e2e -- --grep "landing page reopens the most recent finished batch session|landing page can dismiss a saved batch shortcut without letting it reappear"`
 
-- [ ] Preview failed source names in the saved batch shortcut
+- [x] Preview failed source names in the saved batch shortcut
   Prompt: "If the latest finished batch session includes failed or cancelled uploads, list the affected source names directly in the landing shortcut so users can decide whether reopening the batch is worthwhile."
+  Notes: Completed on 2026-04-03 by deriving failed and cancelled source names from the persisted batch session items and surfacing them directly in the landing shortcut for saved and just-finished batch summaries.
+  Verified: `npm run test:web`, `npm run test:e2e -- --grep "landing page reopens the most recent finished batch session|landing page can dismiss a saved batch shortcut without letting it reappear|landing page previews failed source names in a saved batch shortcut"`
+
+- [ ] Open saved batch workspaces with failed sources surfaced first
+  Prompt: "When reopening a saved batch session that includes failed or cancelled uploads, land the user on the jobs that need attention first instead of making them hunt through the batch list."
 
 - [ ] Add per-source ETA hints to the active queue card
   Prompt: "Estimate queue progress for the current source and remaining queue so large multi-file uploads feel less opaque while the active transfer is running."
@@ -319,3 +324,5 @@ Avoid:
 - 2026-04-03: Added `Preview failed source names in the saved batch shortcut` as the next landing-session follow-up.
 - 2026-04-03: Completed `Add per-job retry from batch workspace` after web unit, backend API, and targeted Playwright verification.
 - 2026-04-03: Added `Preserve failed-upload retry readiness across reloads` as the follow-up to the new batch retry flow.
+- 2026-04-03: Completed `Preview failed source names in the saved batch shortcut` after web unit and targeted Playwright verification.
+- 2026-04-03: Added `Open saved batch workspaces with failed sources surfaced first` as the next landing-session follow-up.

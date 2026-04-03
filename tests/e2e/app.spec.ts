@@ -203,6 +203,76 @@ test("landing page can dismiss a saved batch shortcut without letting it reappea
     .toBeNull();
 });
 
+test("landing page previews failed source names in a saved batch shortcut", async ({ page }) => {
+  await page.addInitScript(
+    ({ batchSessionsKey, session }) => {
+      window.localStorage.setItem(batchSessionsKey, JSON.stringify([session]));
+    },
+    {
+      batchSessionsKey,
+      session: {
+        batchId: "saved-batch-failures",
+        label: "3 sources queued",
+        createdAt: "2026-04-02T11:50:00.000Z",
+        updatedAt: "2026-04-02T12:12:00.000Z",
+        qualityThreshold: 84,
+        lastCompletionSummary: {
+          batchId: "saved-batch-failures",
+          label: "3 sources queued",
+          finishedAt: "2026-04-02T12:12:00.000Z",
+          totalSources: 3,
+          readyCount: 1,
+          failedCount: 1,
+          cancelledCount: 1,
+        },
+        items: [
+          {
+            id: "upload-1",
+            fileName: "alpha.mp4",
+            sizeBytes: 12_000_000,
+            jobId: "saved-batch-alpha",
+            status: "ready",
+            uploadPhase: "complete",
+            uploadProgress: 100,
+            error: null,
+            updatedAt: "2026-04-02T12:10:00.000Z",
+          },
+          {
+            id: "upload-2",
+            fileName: "broken-intro.mov",
+            sizeBytes: 10_500_000,
+            jobId: null,
+            status: "failed",
+            uploadPhase: "queued",
+            uploadProgress: 34,
+            error: "Upload failed.",
+            updatedAt: "2026-04-02T12:11:00.000Z",
+          },
+          {
+            id: "upload-3",
+            fileName: "retake.mp4",
+            sizeBytes: 9_500_000,
+            jobId: null,
+            status: "cancelled",
+            uploadPhase: "queued",
+            uploadProgress: 0,
+            error: "Queue was cancelled before this source finished uploading.",
+            updatedAt: "2026-04-02T12:12:00.000Z",
+          },
+        ],
+      },
+    }
+  );
+
+  await page.goto("/");
+
+  await expect(page.getByText("Latest finished batch")).toBeVisible();
+  await expect(page.getByText("1 of 3 sources reached the workspace stage.")).toBeVisible();
+  await expect(page.getByText("Failed or cancelled sources")).toBeVisible();
+  await expect(page.getByText("broken-intro.mov")).toBeVisible();
+  await expect(page.getByText("retake.mp4")).toBeVisible();
+});
+
 test("uploading a valid source opens the workspace and supports shortlist persistence", async ({ page }) => {
   const job = createMockJob({ jobId: "job-ready" });
   const uploadSessionId = "session-ready";

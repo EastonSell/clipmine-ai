@@ -36,6 +36,7 @@ const ACCEPTED_TYPES = ["video/mp4", "video/quicktime"];
 const ACCEPTED_EXTENSIONS = [".mp4", ".mov"];
 const MAX_UPLOAD_MB = Number(process.env.NEXT_PUBLIC_MAX_UPLOAD_MB ?? "1024");
 const DEFAULT_BATCH_THRESHOLD = 84;
+const MAX_BATCH_SHORTCUT_ISSUE_NAMES = 4;
 
 const uploadDetails = [
   ["Queue sources", "Upload one video into a direct workspace or send a whole batch through a sequential intake queue."],
@@ -119,6 +120,14 @@ function buildBatchCompletionSummary(
     failedCount: items.filter((item) => item.status === "failed").length,
     cancelledCount: items.filter((item) => item.status === "cancelled").length,
   };
+}
+
+function getBatchIssueSourceNames(items: BatchUploadItemRecord[]) {
+  return Array.from(
+    new Set(
+      items.flatMap((item) => (item.status === "failed" || item.status === "cancelled" ? [item.fileName] : []))
+    )
+  );
 }
 
 function formatOverallQueueProgress(items: BatchUploadItemRecord[]) {
@@ -215,11 +224,20 @@ export function UploadSection() {
     latestCompletedBatch && latestCompletedBatch.batchId !== dismissedBatchId
       ? latestCompletedBatch.lastCompletionSummary ?? null
       : null;
+  const savedBatchIssueSourceNames = latestCompletedBatch ? getBatchIssueSourceNames(latestCompletedBatch.items) : [];
   const visibleBatchShortcut =
     completedBatchSummary && completedBatchSummary.batchId !== dismissedBatchId
-      ? { source: "current" as const, summary: completedBatchSummary }
+      ? {
+          source: "current" as const,
+          summary: completedBatchSummary,
+          issueSourceNames: getBatchIssueSourceNames(batchQueue),
+        }
       : !isUploading && selectedFiles.length === 0 && batchQueue.length === 0 && savedBatchSummary
-        ? { source: "saved" as const, summary: savedBatchSummary }
+        ? {
+            source: "saved" as const,
+            summary: savedBatchSummary,
+            issueSourceNames: savedBatchIssueSourceNames,
+          }
         : null;
 
   useEffect(() => {
@@ -793,6 +811,7 @@ export function UploadSection() {
                   <BatchCompletionShortcut
                     summary={visibleBatchShortcut.summary}
                     source={visibleBatchShortcut.source}
+                    issueSourceNames={visibleBatchShortcut.issueSourceNames}
                     dismissLabel={visibleBatchShortcut.source === "saved" ? "Dismiss shortcut" : "Queue more sources"}
                     onDismiss={() => handleDismissBatchShortcut(visibleBatchShortcut.summary.batchId, visibleBatchShortcut.source)}
                     onOpen={() => handleOpenBatchWorkspace(visibleBatchShortcut.summary.batchId)}
@@ -836,17 +855,22 @@ function QueueMetric({ label, value }: { label: string; value: string }) {
 
 function BatchCompletionShortcut({
   dismissLabel,
+  issueSourceNames,
   summary,
   source,
   onDismiss,
   onOpen,
 }: {
   dismissLabel: string;
+  issueSourceNames: string[];
   summary: BatchCompletionSummary;
   source: "current" | "saved";
   onDismiss: () => void;
   onOpen: () => void;
 }) {
+  const visibleIssueSourceNames = issueSourceNames.slice(0, MAX_BATCH_SHORTCUT_ISSUE_NAMES);
+  const hiddenIssueSourceCount = Math.max(0, issueSourceNames.length - visibleIssueSourceNames.length);
+
   return (
     <div className="rounded-[1.25rem] border border-[var(--line)] bg-[var(--surface-overlay)] px-4 py-4">
       <div className="flex flex-wrap items-start justify-between gap-4">
@@ -862,6 +886,23 @@ function BatchCompletionShortcut({
             {summary.readyCount} of {summary.totalSources} sources reached the workspace stage. Open the grouped batch
             review page to inspect each job and export top clips together.
           </p>
+          {issueSourceNames.length > 0 ? (
+            <div className="mt-4 rounded-[1rem] border border-red-500/20 bg-[var(--danger-soft)] px-4 py-3">
+              <div className="metric-label text-red-200">
+                {issueSourceNames.length === 1 ? "Failed or cancelled source" : "Failed or cancelled sources"}
+              </div>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {visibleIssueSourceNames.map((fileName) => (
+                  <Badge key={fileName} tone="danger" className="max-w-full truncate">
+                    {fileName}
+                  </Badge>
+                ))}
+                {hiddenIssueSourceCount > 0 ? (
+                  <Badge tone="danger">+{hiddenIssueSourceCount} more</Badge>
+                ) : null}
+              </div>
+            </div>
+          ) : null}
         </div>
         <div className="flex flex-wrap gap-2">
           <Button type="button" variant="secondary" size="lg" onClick={onDismiss}>

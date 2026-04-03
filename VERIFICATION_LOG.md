@@ -2,6 +2,26 @@
 
 Date: 2026-04-02
 
+## Saved Batch Failure Preview Pass
+
+Date: 2026-04-03
+
+- Surfaced failed or cancelled source names directly in the landing-page saved batch shortcut so users can judge whether reopening the batch is worthwhile.
+- Derived the shortcut names from persisted batch-session items, which keeps older saved sessions compatible without changing the stored summary shape.
+- Added targeted Playwright coverage for a saved batch session that includes both failed and cancelled uploads.
+
+### Checks run
+
+```bash
+npm run test:web
+npm run test:e2e -- --grep "landing page reopens the most recent finished batch session|landing page can dismiss a saved batch shortcut without letting it reappear|landing page previews failed source names in a saved batch shortcut"
+```
+
+### Result
+
+- `22 / 22` web unit tests passed
+- `3 / 3` targeted Playwright landing-page batch-session tests passed
+
 ## Saved Batch Shortcut Dismissal Pass
 
 Date: 2026-04-03
