@@ -3,6 +3,64 @@
 > Global operating prompt:
 > Every time you open this file, add at least one new task before doing anything else. Then mark completed work, record new bugs, record anything that still needs testing, pick one unchecked task, implement it, verify it, push it to GitHub, reopen this file, add another task, and continue. Do not silently drop old tasks. Check them off and leave a short note instead.
 
+## Loop Rules
+
+- Always begin by reading this file (PLAN.md)
+- Before doing any work:
+  - Check if LOCK.md exists
+    - If it exists → exit immediately (another agent is running)
+    - If not → create LOCK.md and continue
+- Select the highest-impact unfinished task
+- Complete ONLY 1–2 tasks per run
+- Add EXACTLY 1 new task per run
+- Prefer improving existing systems over adding new ones
+- Avoid duplicate, vague, or low-value tasks
+
+## Workflow
+1. git pull --rebase
+2. Acquire lock (create LOCK.md)
+3. Select highest priority task
+4. Implement minimal, clean solution
+5. Run tests if applicable
+6. Update:
+   - PLAN.md (mark completed + add 1 task)
+   - VERIFICATION_LOG.md
+7. Commit with clear message
+8. Push to main
+9. Remove LOCK.md
+10. Commit removal if needed
+
+## Safety Rules
+- Never leave LOCK.md behind if execution completes
+- If execution fails, ensure LOCK.md is removed before exit
+- Avoid large refactors unless explicitly required
+- Do not break existing workflows (upload, review, export)
+
+## Stop Conditions
+- If no meaningful progress can be made → exit cleanly
+- Do NOT fabricate work
+- Do NOT loop indefinitely inside a single run
+
+---
+
+## PRIORITIZATION STRATEGY
+
+When choosing tasks, prefer:
+
+1. User-visible improvements (UX clarity, flow)
+2. Data extraction improvements (audio/video features, metadata)
+3. Model quality or ranking improvements
+4. Reliability and edge-case handling
+5. Performance improvements
+6. Documentation (only if necessary)
+
+Avoid:
+- Cosmetic-only changes
+- Redundant refactors
+- Low-impact micro-tasks
+
+---
+
 ## Working Rules
 
 1. Add at least one new task on every read of this plan.
@@ -170,6 +228,7 @@
   Prompt: "Explain that the README asset workflow can add follow-up commits on `main`, so temp-checkout publishing should always fetch and reset before staging new work."
 
 ## Session Ledger
+(append only, do not delete history)
 
 - 2026-04-02: Added `Improve live batch queue status` and completed it in the same pass.
 - 2026-04-02: Added `Add queue completion toast and summary state` as the next follow-on frontend task.
