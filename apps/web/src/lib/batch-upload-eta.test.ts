@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 
-import { estimateBatchUploadEta, formatUploadEta, formatUploadEtaBasis } from "./batch-upload-eta";
+import {
+  estimateBatchUploadEta,
+  formatUploadEta,
+  formatUploadEtaBasis,
+  isLowConfidenceUploadEta,
+} from "./batch-upload-eta";
 import type { BatchUploadItemRecord } from "./types";
 
 function createItem(
@@ -212,10 +217,19 @@ describe("batch-upload-eta", () => {
     expect(formatUploadEta(null)).toBe("Estimating");
     expect(formatUploadEtaBasis("live")).toBe("Live transfer rate");
     expect(formatUploadEtaBasis("history")).toBe("Completed upload history");
-    expect(formatUploadEtaBasis("history", 1)).toBe("Completed upload history · 1 completed source");
+    expect(formatUploadEtaBasis("history", 1)).toBe("Completed upload history · 1 completed source · Low confidence");
     expect(formatUploadEtaBasis("history", 3)).toBe("Completed upload history · 3 completed sources");
     expect(formatUploadEtaBasis("mixed")).toBe("Live + completed uploads");
+    expect(formatUploadEtaBasis("mixed", 1)).toBe("Live + completed uploads · 1 completed source · Low confidence");
     expect(formatUploadEtaBasis("mixed", 2)).toBe("Live + completed uploads · 2 completed sources");
     expect(formatUploadEtaBasis(null)).toBeNull();
+  });
+
+  it("flags single-sample history estimates as low confidence", () => {
+    expect(isLowConfidenceUploadEta("live", 1)).toBe(false);
+    expect(isLowConfidenceUploadEta("history", 1)).toBe(true);
+    expect(isLowConfidenceUploadEta("mixed", 1)).toBe(true);
+    expect(isLowConfidenceUploadEta("history", 2)).toBe(false);
+    expect(isLowConfidenceUploadEta(null, 1)).toBe(false);
   });
 });

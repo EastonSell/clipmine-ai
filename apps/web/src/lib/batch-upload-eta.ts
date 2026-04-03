@@ -127,19 +127,27 @@ export function formatUploadEta(seconds: number | null) {
   return `~${formatSeconds(Math.max(1, Math.ceil(seconds)))}`;
 }
 
+export function isLowConfidenceUploadEta(
+  basis: BatchUploadEtaBasis | null,
+  completedSourceCount?: number | null
+) {
+  return completedSourceCount === 1 && basis !== null && basis !== "live";
+}
+
 export function formatUploadEtaBasis(basis: BatchUploadEtaBasis | null, completedSourceCount?: number | null) {
   const historySampleLabel = formatCompletedSourceCount(completedSourceCount);
+  const lowConfidenceLabel = isLowConfidenceUploadEta(basis, completedSourceCount) ? "Low confidence" : null;
 
   if (basis === "live") {
     return "Live transfer rate";
   }
 
   if (basis === "history") {
-    return historySampleLabel ? `Completed upload history · ${historySampleLabel}` : "Completed upload history";
+    return ["Completed upload history", historySampleLabel, lowConfidenceLabel].filter(Boolean).join(" · ");
   }
 
   if (basis === "mixed") {
-    return historySampleLabel ? `Live + completed uploads · ${historySampleLabel}` : "Live + completed uploads";
+    return ["Live + completed uploads", historySampleLabel, lowConfidenceLabel].filter(Boolean).join(" · ");
   }
 
   return null;

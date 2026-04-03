@@ -12,7 +12,12 @@ import {
 import { useRouter } from "next/navigation";
 import { startTransition, useEffect, useMemo, useRef, useState } from "react";
 
-import { estimateBatchUploadEta, formatUploadEta, formatUploadEtaBasis } from "@/lib/batch-upload-eta";
+import {
+  estimateBatchUploadEta,
+  formatUploadEta,
+  formatUploadEtaBasis,
+  isLowConfidenceUploadEta,
+} from "@/lib/batch-upload-eta";
 import { loadLatestCompletedBatchSession, removeBatchSession, saveBatchSession } from "@/lib/batch-sessions";
 import { clearBatchSourceFiles, removeBatchSourceFile, saveBatchSourceFile } from "@/lib/batch-source-files";
 import { ApiError, createJob, getUploadMode, isRetryableApiError } from "@/lib/api";
@@ -815,11 +820,19 @@ export function UploadSection() {
                                           batchUploadEta.currentSourceBasis,
                                           batchUploadEta.currentSourceHistorySampleCount
                                         )}
+                                        isLowConfidence={isLowConfidenceUploadEta(
+                                          batchUploadEta.currentSourceBasis,
+                                          batchUploadEta.currentSourceHistorySampleCount
+                                        )}
                                       />
                                       <QueueTimingHint
                                         label="Queue intake ETA"
                                         value={formatUploadEta(batchUploadEta.queueSeconds)}
                                         basis={formatUploadEtaBasis(
+                                          batchUploadEta.queueBasis,
+                                          batchUploadEta.queueHistorySampleCount
+                                        )}
+                                        isLowConfidence={isLowConfidenceUploadEta(
                                           batchUploadEta.queueBasis,
                                           batchUploadEta.queueHistorySampleCount
                                         )}
@@ -954,12 +967,30 @@ function QueueMetric({ label, value }: { label: string; value: string }) {
   );
 }
 
-function QueueTimingHint({ label, value, basis }: { label: string; value: string; basis: string | null }) {
+function QueueTimingHint({
+  label,
+  value,
+  basis,
+  isLowConfidence = false,
+}: {
+  label: string;
+  value: string;
+  basis: string | null;
+  isLowConfidence?: boolean;
+}) {
   return (
     <div className="rounded-[1rem] border border-[var(--line)] bg-white/[0.03] px-4 py-3">
       <div className="metric-label text-[var(--muted)]">{label}</div>
       <div className="mt-2 text-base font-semibold tracking-[-0.03em] text-[var(--text)]">{value}</div>
-      <div className="mt-1 text-xs text-[var(--muted)]">{basis ?? "Waiting for enough upload signal"}</div>
+      <div className={`mt-1 text-xs ${isLowConfidence ? "text-[var(--muted-strong)]" : "text-[var(--muted)]"}`}>
+        {basis ?? "Waiting for enough upload signal"}
+      </div>
+      {isLowConfidence ? (
+        <Badge tone="neutral" className="mt-2 w-fit gap-1.5 px-2.5 py-1">
+          <AlertCircle className="h-3.5 w-3.5" />
+          Low confidence
+        </Badge>
+      ) : null}
     </div>
   );
 }

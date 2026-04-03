@@ -388,8 +388,13 @@ Avoid:
   Notes: Completed on 2026-04-03 by extending the batch ETA estimate model with completed-history sample counts, appending those counts to the history and mixed ETA basis labels, and wiring the landing queue card to show that context only when completed uploads contribute to the estimate.
   Verified: `npm ci`, `npm run test:web -- --run src/lib/batch-upload-eta.test.ts`, `cd apps/web && npx eslint src/lib/batch-upload-eta.ts src/lib/batch-upload-eta.test.ts src/components/landing/upload-section.tsx --max-warnings=0`
 
-- [ ] Flag low-confidence batch ETA history when only one completed source is available
+- [x] Flag low-confidence batch ETA history when only one completed source is available
   Prompt: "When a history-based queue ETA is still based on a single completed source, add a low-confidence indicator so reviewers know the estimate may swing sharply as more uploads finish."
+  Notes: Completed on 2026-04-03 by teaching the shared ETA helper to flag history-backed and mixed queue estimates as low-confidence when they only have one completed-source sample, appending that state to the basis copy, and surfacing a matching badge in the landing queue timing hints.
+  Verified: `npm ci`, `npm run test:web -- --run src/lib/batch-upload-eta.test.ts`, `cd apps/web && npx eslint src/components/landing/upload-section.tsx src/lib/batch-upload-eta.ts src/lib/batch-upload-eta.test.ts --max-warnings=0`
+
+- [ ] Name the completed source behind single-sample batch ETA hints
+  Prompt: "When a history-based batch ETA is still based on exactly one completed upload, show which completed source is anchoring that estimate so reviewers know what file the provisional timing came from."
 
 - [x] Preserve failed-upload retry readiness across reloads
   Prompt: "Persist enough local source reference data that a failed upload in the batch workspace can still be retried after a refresh or reopened saved batch, instead of only within the original tab lifetime."
@@ -564,3 +569,5 @@ Avoid:
 - 2026-04-03: Completed `Persist ready-only batch queue scope in the URL` after reinstalling frontend dependencies in the worktree and passing focused web-unit plus reload-aware Playwright verification.
 - 2026-04-03: Added `Add ready-review reopen action to saved batch shortcuts` as the next batch-review resume follow-up.
 - 2026-04-03: Completed `Add ready-review reopen action to saved batch shortcuts` after reinstalling frontend dependencies, passing focused batch-focus unit coverage, and rerunning the saved-batch landing Playwright reopen scenarios.
+- 2026-04-03: Completed `Flag low-confidence batch ETA history when only one completed source is available` after installing frontend dependencies in the worktree, passing focused `batch-upload-eta` unit coverage, and linting the touched landing ETA files.
+- 2026-04-03: Added `Name the completed source behind single-sample batch ETA hints` as the next queue-estimation transparency follow-up.

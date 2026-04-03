@@ -1,5 +1,28 @@
 # Verification Log
 
+## Batch ETA Low-Confidence Indicator Pass
+
+Date: 2026-04-03
+
+- Extended the shared batch ETA helper so history-backed and mixed estimates now explicitly recognize when they are still based on a single completed-source sample instead of presenting that early timing signal as equally stable.
+- Updated the landing upload queue timing hints to append that low-confidence state to the ETA basis copy and surface a dedicated badge when only one completed upload is informing the estimate.
+- Added focused unit coverage for the new low-confidence helper and label text, then validated the touched landing ETA files with a scoped ESLint run.
+- This synced checkout started without frontend dependencies installed, so `npm ci` was required after the first focused checks failed with missing `vitest` and `eslint-config-next`.
+
+### Checks run
+
+```bash
+npm ci
+npm run test:web -- --run src/lib/batch-upload-eta.test.ts
+cd apps/web && npx eslint src/components/landing/upload-section.tsx src/lib/batch-upload-eta.ts src/lib/batch-upload-eta.test.ts --max-warnings=0
+```
+
+### Result
+
+- `6 / 6` focused `batch-upload-eta` unit tests passed
+- targeted frontend lint passed for the touched landing ETA files
+- single-sample history-based queue ETA hints now explicitly warn that the estimate is low confidence
+
 ## Batch Threshold Recovery Duration Preview Pass
 
 Date: 2026-04-03
