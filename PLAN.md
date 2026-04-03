@@ -290,8 +290,13 @@ Avoid:
   Notes: Completed on 2026-04-03 by adding a per-source percentage badge beside each ready source's eligible duration, deriving the share from the currently displayed ready-source totals so the percentages stay aligned with threshold changes.
   Verified: `npm ci`, `npm run lint:web -- --file src/components/batch/batch-workspace.tsx`, `npm run test:e2e -- --grep "batch workspace groups jobs and exports thresholded clips"`
 
-- [ ] Add contribution bars to the aggregate export summary
+- [x] Add contribution bars to the aggregate export summary
   Prompt: "Render a compact visual contribution bar for each ready source in the aggregate export summary so reviewers can scan dominant download contributors faster than reading percentages alone."
+  Notes: Completed on 2026-04-03 by replacing the text-only eligible-duration share badge with a labeled contribution meter for each ready source while keeping the displayed percentage and bar width derived from the same thresholded duration totals.
+  Verified: `npm ci`, `npm run lint:web -- --file src/components/batch/batch-workspace.tsx --file src/components/ui/progress-bar.tsx`, `npm run test:e2e -- --grep "batch workspace groups jobs and exports thresholded clips"`
+
+- [ ] Sort ready sources by current export contribution in the aggregate summary
+  Prompt: "Order the ready-source aggregate export rows by the current eligible contribution so reviewers see the biggest download drivers first without scanning the whole list."
 
 - [x] Add queue completion toast and summary state
   Prompt: "When a batch queue finishes, show a stronger completion summary before navigating so the user understands how many sources succeeded or failed."
@@ -428,6 +433,8 @@ Avoid:
 - 2026-04-02: Completed `Add queue completion toast and summary state` after web unit, lint, build, and Playwright verification.
 - 2026-04-02: Added `Add per-source ETA hints to the active queue card` as the next frontend queue follow-up.
 - 2026-04-02: Added `Add a smoke assertion for the finished batch summary action row` before fixing the remaining Playwright color-env warning.
+- 2026-04-03: Completed `Add contribution bars to the aggregate export summary` after targeted lint and Playwright verification.
+- 2026-04-03: Added `Sort ready sources by current export contribution in the aggregate summary` as the next aggregate-export follow-up.
 - 2026-04-02: Completed `Remove Playwright color warnings` after confirming `npm run test:e2e` no longer prints the startup warning.
 - 2026-04-02: Added `Add a console-warning guard around the browser smoke runner` as the next testing follow-up.
 - 2026-04-02: Added `Document README asset workflow churn on main` before writing down the git publishing workaround.

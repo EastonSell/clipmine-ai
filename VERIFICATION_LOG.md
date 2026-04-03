@@ -1,5 +1,27 @@
 # Verification Log
 
+## Batch Aggregate Contribution Bars Pass
+
+Date: 2026-04-03
+
+- Replaced the text-only eligible-duration share badge in the ready-source aggregate export summary with labeled contribution bars so reviewers can spot dominant download contributors at a glance.
+- Kept the displayed percentage and the new bar width derived from the same eligible-duration share calculation, and added explicit progress-bar labels so the browser test can assert the visual contribution values directly.
+- This checkout started without frontend dependencies installed, so `npm ci` was required before the targeted lint and Playwright commands could run.
+
+### Checks run
+
+```bash
+npm ci
+npm run lint:web -- --file src/components/batch/batch-workspace.tsx --file src/components/ui/progress-bar.tsx
+npm run test:e2e -- --grep "batch workspace groups jobs and exports thresholded clips"
+```
+
+### Result
+
+- targeted frontend lint passed
+- `1 / 1` targeted Playwright batch export tests passed
+- ready-source aggregate rows now show contribution bars aligned with the existing eligible-duration percentages
+
 ## Batch Aggregate Eligible Duration Pass
 
 Date: 2026-04-03

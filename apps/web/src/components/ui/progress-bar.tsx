@@ -3,6 +3,7 @@ import { cn } from "@/lib/cn";
 type ProgressBarProps = {
   value: number;
   tone?: "accent" | "danger";
+  ariaLabel?: string;
   className?: string;
   trackClassName?: string;
   barClassName?: string;
@@ -11,6 +12,7 @@ type ProgressBarProps = {
 export function ProgressBar({
   value,
   tone = "accent",
+  ariaLabel = "Progress",
   className,
   trackClassName,
   barClassName,
@@ -28,7 +30,7 @@ export function ProgressBar({
       aria-valuemin={0}
       aria-valuemax={100}
       aria-valuenow={Math.round(normalizedValue)}
-      aria-label="Progress"
+      aria-label={ariaLabel}
     >
       <div
         className={cn(

@@ -744,6 +744,8 @@ export function BatchWorkspace({
                   <div className="mt-4 grid gap-2">
                     {readySourceEligibleClipSummaries.map((entry) => {
                       const isActiveSource = entry.jobId === activeJobId;
+                      const eligibleDurationShare =
+                        totalReadySourceEligibleDuration > 0 ? entry.eligibleDuration / totalReadySourceEligibleDuration : 0;
 
                       return (
                         <div
@@ -761,6 +763,18 @@ export function BatchWorkspace({
                             <div className="mt-1 text-xs text-[var(--muted)]">
                               {entry.eligibleClipCount > 0 ? "Included in the current export selection." : "Below the current threshold."}
                             </div>
+                            <div className="mt-3 max-w-xl">
+                              <div className="flex items-center justify-between gap-3 text-[11px] font-medium uppercase tracking-[0.08em] text-[var(--muted-strong)]">
+                                <span>Contribution</span>
+                                <span>{formatPercent(eligibleDurationShare)} of eligible duration</span>
+                              </div>
+                              <ProgressBar
+                                value={eligibleDurationShare * 100}
+                                ariaLabel={`${entry.fileName} contribution to eligible duration`}
+                                className="mt-1.5 h-2 border-[var(--line)] bg-white/[0.04]"
+                                barClassName={isActiveSource ? "bg-[var(--accent-strong)]" : undefined}
+                              />
+                            </div>
                           </div>
                           <div className="flex flex-wrap items-center justify-end gap-2">
                             <span className="rounded-full border border-[var(--line)] bg-white/[0.05] px-2.5 py-1 text-xs font-medium text-[var(--muted-strong)]">
@@ -768,12 +782,6 @@ export function BatchWorkspace({
                             </span>
                             <span className="rounded-full border border-[var(--line)] bg-white/[0.05] px-2.5 py-1 text-xs font-medium text-[var(--muted-strong)]">
                               {formatSeconds(entry.eligibleDuration)} eligible duration
-                            </span>
-                            <span className="rounded-full border border-[var(--line)] bg-white/[0.05] px-2.5 py-1 text-xs font-medium text-[var(--muted-strong)]">
-                              {formatPercent(
-                                totalReadySourceEligibleDuration > 0 ? entry.eligibleDuration / totalReadySourceEligibleDuration : 0
-                              )}{" "}
-                              of eligible duration
                             </span>
                             <Button
                               size="sm"
