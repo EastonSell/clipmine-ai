@@ -33,6 +33,8 @@ type WorkspaceViewModel = {
   shortlistedClips: JobResponse["clips"];
   rankedClips: JobResponse["clips"];
   pinnedClipIds: string[];
+  comparedClipIds: string[];
+  comparedClips: JobResponse["clips"];
   selectedClipIds: string[];
   selectedClips: JobResponse["clips"];
   selectedClipDuration: number;
@@ -45,6 +47,9 @@ type WorkspaceViewModel = {
   clearFilters: () => void;
   isPinned: (clipId: string) => boolean;
   togglePinned: (clipId: string) => void;
+  isCompared: (clipId: string) => boolean;
+  toggleCompared: (clipId: string) => void;
+  clearCompared: () => void;
   isSelected: (clipId: string) => boolean;
   toggleSelected: (clipId: string) => void;
   selectVisible: () => void;
@@ -60,6 +65,7 @@ export function useWorkspaceViewModel(jobId: string, job: JobResponse | undefine
   const paramsString = searchParams.toString();
 
   const [pinnedClipIds, setPinnedClipIds] = useState<string[]>([]);
+  const [comparedClipIds, setComparedClipIds] = useState<string[]>([]);
   const [selectedClipIds, setSelectedClipIds] = useState<string[]>([]);
   const [recentJobs, setRecentJobs] = useState<RecentJobRecord[]>([]);
 
@@ -137,6 +143,16 @@ export function useWorkspaceViewModel(jobId: string, job: JobResponse | undefine
     const selectedSet = new Set(selectedClipIds);
     return (job?.clips ?? []).filter((clip) => selectedSet.has(clip.id));
   }, [job?.clips, selectedClipIds]);
+  const comparedClips = useMemo(() => {
+    if (!job) {
+      return [];
+    }
+
+    const clipsById = new Map(job.clips.map((clip) => [clip.id, clip]));
+    return comparedClipIds
+      .map((clipId) => clipsById.get(clipId))
+      .filter((clip): clip is JobResponse["clips"][number] => Boolean(clip));
+  }, [comparedClipIds, job]);
   const selectedClipDuration = useMemo(
     () => selectedClips.reduce((total, clip) => total + clip.duration, 0),
     [selectedClips]
@@ -167,8 +183,13 @@ export function useWorkspaceViewModel(jobId: string, job: JobResponse | undefine
 
     const validIds = new Set(job.clips.map((clip) => clip.id));
     setPinnedClipIds((currentIds) => currentIds.filter((clipId) => validIds.has(clipId)));
+    setComparedClipIds((currentIds) => currentIds.filter((clipId) => validIds.has(clipId)));
     setSelectedClipIds((currentIds) => currentIds.filter((clipId) => validIds.has(clipId)));
   }, [job?.clips]);
+
+  useEffect(() => {
+    setComparedClipIds((currentIds) => currentIds.filter((clipId) => pinnedClipIds.includes(clipId)));
+  }, [pinnedClipIds]);
 
   function updateFilters(partial: Partial<ReviewFilters>) {
     const nextFilters = { ...filters, ...partial };
@@ -223,6 +244,24 @@ export function useWorkspaceViewModel(jobId: string, job: JobResponse | undefine
     return pinnedClipIds.includes(clipId);
   }
 
+  function isCompared(clipId: string) {
+    return comparedClipIds.includes(clipId);
+  }
+
+  function toggleCompared(clipId: string) {
+    if (!pinnedClipIds.includes(clipId)) {
+      return;
+    }
+
+    setComparedClipIds((currentIds) => {
+      if (currentIds.includes(clipId)) {
+        return currentIds.filter((value) => value !== clipId);
+      }
+
+      return [...currentIds, clipId].slice(-2);
+    });
+  }
+
   function isSelected(clipId: string) {
     return selectedClipIds.includes(clipId);
   }
@@ -235,6 +274,10 @@ export function useWorkspaceViewModel(jobId: string, job: JobResponse | undefine
 
   function clearSelected() {
     setSelectedClipIds([]);
+  }
+
+  function clearCompared() {
+    setComparedClipIds([]);
   }
 
   function selectVisible() {
@@ -261,6 +304,8 @@ export function useWorkspaceViewModel(jobId: string, job: JobResponse | undefine
     shortlistedClips,
     rankedClips,
     pinnedClipIds,
+    comparedClipIds,
+    comparedClips,
     selectedClipIds,
     selectedClips,
     selectedClipDuration,
@@ -273,6 +318,9 @@ export function useWorkspaceViewModel(jobId: string, job: JobResponse | undefine
     clearFilters,
     isPinned,
     togglePinned,
+    isCompared,
+    toggleCompared,
+    clearCompared,
     isSelected,
     toggleSelected,
     selectVisible,

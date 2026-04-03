@@ -561,6 +561,44 @@ test("uploading a valid source opens the workspace and supports shortlist persis
   await expect(page.getByText("Speech density", { exact: true }).first()).toBeVisible();
 });
 
+test("shortlisted clips can be compared side by side", async ({ page }) => {
+  const job = createMockJob();
+
+  await page.route(`**/api/jobs/${job.jobId}`, async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(job),
+    });
+  });
+
+  await page.route(`**/api/jobs/${job.jobId}/video`, async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "video/mp4",
+      body: "",
+    });
+  });
+
+  await page.goto(`/jobs/${job.jobId}`);
+
+  await page.getByRole("button", { name: /Add to shortlist/i }).click();
+  await page.getByRole("button", { name: /Add more context before the final label\./i }).click();
+  await page.getByRole("button", { name: /Add to shortlist/i }).click();
+
+  await page.getByRole("button", { name: /Compare Keep the labeling steady across every segment\./i }).click();
+  await page.getByRole("button", { name: /Compare Add more context before the final label\./i }).click();
+
+  await expect(page.getByRole("heading", { name: "Compare two pinned clips without leaving review" })).toBeVisible();
+  await expect(page.getByText("Recommendation shift")).toBeVisible();
+  await expect(page.getByText("Stable and training-ready.", { exact: true })).toBeVisible();
+  await expect(page.getByText("Useful, but less decisive than the top clip.", { exact: true })).toBeVisible();
+  await expect(page.getByText("Only in clip B").first()).toBeVisible();
+
+  await page.getByRole("button", { name: /Clear comparison/i }).click();
+  await expect(page.getByRole("button", { name: /Remove from shortlist/i })).toBeVisible();
+});
+
 test("multipart upload can be cancelled and returns a retryable error state", async ({ page }) => {
   const uploadSessionId = "session-cancel";
   const uploadPartUrl = buildMultipartPartUrl(uploadSessionId, 1);

@@ -215,7 +215,7 @@ Avoid:
 - [x] Premium dark app shell
 - [x] README visuals and generated assets
 - [ ] Better live queue guidance for large batch uploads
-- [ ] Side-by-side shortlist comparison
+- [x] Side-by-side shortlist comparison
 - [ ] Export preset options beyond JSON + zip
 
 ## Frontend Tasks
@@ -230,8 +230,10 @@ Avoid:
   Notes: Completed on 2026-04-03 by adding inline retry controls in the batch workspace for both upload-stage failures and backend processing failures. Failed uploads now reuse the original source file while it remains available in the active browser tab, and failed jobs can be re-queued against the existing backend job record.
   Verified: `npm run test:web`, `python3.11 -m pytest backend/tests/test_jobs_api.py`, `npm run test:e2e -- --grep "batch workspace groups jobs and exports thresholded clips|batch workspace retries a failed source without returning home|landing page completes a batch queue and then opens the workspace on demand"`
 
-- [ ] Add side-by-side shortlisted clip comparison
+- [x] Add side-by-side shortlisted clip comparison
   Prompt: "Build a compact comparison mode for two shortlisted clips so users can inspect transcript, metrics, and recommendation differences without switching context."
+  Notes: Completed on 2026-04-03 by adding shortlist-only compare picks in the ranked clip list and swapping the detail panel into a side-by-side comparison view once two pinned clips are chosen. The comparison mode now highlights transcript, recommendation, metric, tag, and recommended-use differences while keeping playback controls in place.
+  Verified: `npm run lint:web`, `npm run test:web`, `npm run test:e2e -- --grep "shortlisted clips can be compared side by side"`
 
 - [ ] Add export preset selector
   Prompt: "Extend the export panel with presets like full AV package, audio-only package, and metadata-only package while keeping the current zip export as the default."

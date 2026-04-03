@@ -839,3 +839,25 @@ npm run test:e2e -- --grep "batch workspace groups jobs and exports thresholded 
 - The repo did not have Node dependencies installed at the start of this run, so `npm ci` was required before frontend verification.
 - The default `python3` on this machine is 3.13, and that environment segfaulted inside the backend dependency stack before pytest reached the repo tests.
 - Backend verification was therefore run with `python3.11`, which completed cleanly against the targeted API test file.
+
+## Shortlist Comparison Pass
+
+- Added shortlist-only compare picks directly in the ranked clip list.
+- When two pinned clips are selected for comparison, the workspace now swaps the single-clip detail card for a side-by-side comparison panel.
+- The compare panel surfaces transcript, recommendation, metric, tag, and recommended-use differences while keeping clip playback controls available.
+
+## Shortlist Comparison Checks Run
+
+```bash
+npm ci
+npm run lint:web
+npm run test:web
+npm run test:e2e -- --grep "shortlisted clips can be compared side by side"
+```
+
+## Shortlist Comparison Results
+
+- `npm ci`: completed successfully to install missing workspace dependencies
+- `npm run lint:web`: passed
+- `npm run test:web`: 29 / 29 tests passed
+- `npm run test:e2e -- --grep "shortlisted clips can be compared side by side"`: 1 / 1 test passed

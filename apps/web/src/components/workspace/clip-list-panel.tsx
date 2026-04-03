@@ -4,6 +4,7 @@ import { Card } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { SectionHeader } from "@/components/ui/section-header";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { formatPercent, formatSeconds, formatSignedScore, formatTokenLabel } from "@/lib/format";
 import type { ClipRecord } from "@/lib/types";
 
@@ -13,11 +14,14 @@ type ClipListPanelProps = {
   shortlistedClips: ClipRecord[];
   clips: ClipRecord[];
   activeClipId: string | null;
+  comparedClipIds: string[];
   selectedClipIds: string[];
   totalClipCount: number;
   hasActiveFilters: boolean;
   pinnedOnly: boolean;
   onSelect: (start: number, clipId?: string | null) => void;
+  onToggleCompared: (clipId: string) => void;
+  onClearCompared: () => void;
   onToggleSelected: (clipId: string) => void;
 };
 
@@ -25,11 +29,14 @@ export function ClipListPanel({
   shortlistedClips,
   clips,
   activeClipId,
+  comparedClipIds,
   selectedClipIds,
   totalClipCount,
   hasActiveFilters,
   pinnedOnly,
   onSelect,
+  onToggleCompared,
+  onClearCompared,
   onToggleSelected,
 }: ClipListPanelProps) {
   if (totalClipCount === 0) {
@@ -80,17 +87,27 @@ export function ClipListPanel({
               <div>
                 <div className="metric-label text-[var(--accent)]">Shortlist</div>
                 <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
-                  Keep a smaller set of strong clips above the full ranking while you review.
+                  {getShortlistComparisonCopy(comparedClipIds.length)}
                 </p>
               </div>
-              <Badge tone="accent">{shortlistedClips.length} pinned</Badge>
+              <div className="flex flex-wrap items-center gap-2">
+                <Badge tone="accent">{shortlistedClips.length} pinned</Badge>
+                {comparedClipIds.length > 0 ? <Badge tone="neutral">Compare {comparedClipIds.length}/2</Badge> : null}
+                {comparedClipIds.length > 0 ? (
+                  <Button variant="ghost" size="sm" onClick={onClearCompared}>
+                    Reset compare
+                  </Button>
+                ) : null}
+              </div>
             </div>
             <div className="mt-4 divide-y divide-[var(--line)] overflow-hidden rounded-[1.15rem] border border-[var(--line)]">
               {shortlistedClips.map((clip, index) =>
                 renderClipRow(clip, index, {
                   activeClipId,
+                  compared: comparedClipIds.includes(clip.id),
                   selectedClipIds,
                   onSelect,
+                  onToggleCompared,
                   onToggleSelected,
                 })
               )}
@@ -103,8 +120,10 @@ export function ClipListPanel({
             {clips.map((clip, index) =>
               renderClipRow(clip, index, {
                 activeClipId,
+                compared: false,
                 selectedClipIds,
                 onSelect,
+                onToggleCompared: null,
                 onToggleSelected,
               })
             )}
@@ -120,13 +139,17 @@ function renderClipRow(
   index: number,
   {
     activeClipId,
+    compared,
     selectedClipIds,
     onSelect,
+    onToggleCompared,
     onToggleSelected,
   }: {
     activeClipId: string | null;
+    compared: boolean;
     selectedClipIds: string[];
     onSelect: (start: number, clipId?: string | null) => void;
+    onToggleCompared: ((clipId: string) => void) | null;
     onToggleSelected: (clipId: string) => void;
   }
 ) {
@@ -163,6 +186,17 @@ function renderClipRow(
           <div className="rounded-full border border-[var(--line)] bg-white/[0.04] px-3 py-1 text-sm font-medium text-[var(--text)]">
             {formatSignedScore(clip.score)}
           </div>
+          {onToggleCompared ? (
+            <Button
+              variant={compared ? "primary" : "ghost"}
+              size="sm"
+              onClick={() => onToggleCompared(clip.id)}
+              aria-pressed={compared}
+              aria-label={`${compared ? "Remove" : "Compare"} ${clip.text}`}
+            >
+              {compared ? "Comparing" : "Compare"}
+            </Button>
+          ) : null}
         </div>
       </div>
 
@@ -215,6 +249,18 @@ function renderClipRow(
       </button>
     </div>
   );
+}
+
+function getShortlistComparisonCopy(comparedCount: number) {
+  if (comparedCount >= 2) {
+    return "Comparison mode is open below. Pick another pinned clip to swap the older compare pick.";
+  }
+
+  if (comparedCount === 1) {
+    return "Pick one more pinned clip to open the side-by-side comparison view without leaving review.";
+  }
+
+  return "Keep a smaller set of strong clips above the full ranking while you review, then pick any two pinned clips to compare them side by side.";
 }
 
 function RecommendationBadge({

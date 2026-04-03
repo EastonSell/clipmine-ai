@@ -16,6 +16,7 @@ import { getApiBaseUrl, getJob } from "@/lib/api";
 import type { JobResponse } from "@/lib/types";
 
 import { BulkSelectionBar } from "./bulk-selection-bar";
+import { ClipComparisonPanel } from "./clip-comparison-panel";
 import { ClipDetailPanel } from "./clip-detail-panel";
 import { ClipListPanel } from "./clip-list-panel";
 import { ExportPanel } from "./export-panel";
@@ -53,11 +54,13 @@ export function ResultsWorkspace({ jobId }: ResultsWorkspaceProps) {
   const viewModel = useWorkspaceViewModel(jobId, data);
   const selectedClip = viewModel.selectedClip;
   const resolvedClipId = viewModel.resolvedClipId;
+  const comparedClips = viewModel.comparedClips;
   const reviewSequence = useMemo(
     () => (viewModel.filters.pinnedOnly ? viewModel.shortlistedClips : [...viewModel.shortlistedClips, ...viewModel.rankedClips]),
     [viewModel.filters.pinnedOnly, viewModel.rankedClips, viewModel.shortlistedClips]
   );
   const selectedClipIndex = reviewSequence.findIndex((clip) => clip.id === resolvedClipId);
+  const comparisonActive = comparedClips.length === 2 && viewModel.activeTab !== "export";
 
   function handleSeek(start: number, clipId?: string | null) {
     if (videoRef.current) {
@@ -183,33 +186,44 @@ export function ResultsWorkspace({ jobId }: ResultsWorkspaceProps) {
             <div id="source-video">
               <SourceVideoPanel videoRef={videoRef} videoUrl={videoUrl} />
             </div>
-            {viewModel.activeTab !== "export" ? (
-              <ClipDetailPanel
-                clip={selectedClip}
-                onSeek={handleSeek}
-                isPinned={selectedClip ? viewModel.isPinned(selectedClip.id) : false}
-                isSelected={selectedClip ? viewModel.isSelected(selectedClip.id) : false}
-                onTogglePinned={viewModel.togglePinned}
-                onToggleSelected={viewModel.toggleSelected}
-                onPrevious={() => {
-                  const previousClip = selectedClipIndex > 0 ? reviewSequence[selectedClipIndex - 1] : null;
-                  if (previousClip) {
-                    handleSeek(previousClip.start, previousClip.id);
-                  }
-                }}
-                onNext={() => {
-                  const nextClip =
-                    selectedClipIndex >= 0 && selectedClipIndex < reviewSequence.length - 1
-                      ? reviewSequence[selectedClipIndex + 1]
-                      : null;
-                  if (nextClip) {
-                    handleSeek(nextClip.start, nextClip.id);
-                  }
-                }}
-                hasPrevious={selectedClipIndex > 0}
-                hasNext={selectedClipIndex >= 0 && selectedClipIndex < reviewSequence.length - 1}
-              />
-            ) : null}
+            {viewModel.activeTab !== "export"
+              ? comparisonActive
+                ? (
+                  <ClipComparisonPanel
+                    leftClip={comparedClips[0]}
+                    rightClip={comparedClips[1]}
+                    onSeek={handleSeek}
+                    onClear={viewModel.clearCompared}
+                  />
+                )
+                : (
+                  <ClipDetailPanel
+                    clip={selectedClip}
+                    onSeek={handleSeek}
+                    isPinned={selectedClip ? viewModel.isPinned(selectedClip.id) : false}
+                    isSelected={selectedClip ? viewModel.isSelected(selectedClip.id) : false}
+                    onTogglePinned={viewModel.togglePinned}
+                    onToggleSelected={viewModel.toggleSelected}
+                    onPrevious={() => {
+                      const previousClip = selectedClipIndex > 0 ? reviewSequence[selectedClipIndex - 1] : null;
+                      if (previousClip) {
+                        handleSeek(previousClip.start, previousClip.id);
+                      }
+                    }}
+                    onNext={() => {
+                      const nextClip =
+                        selectedClipIndex >= 0 && selectedClipIndex < reviewSequence.length - 1
+                          ? reviewSequence[selectedClipIndex + 1]
+                          : null;
+                      if (nextClip) {
+                        handleSeek(nextClip.start, nextClip.id);
+                      }
+                    }}
+                    hasPrevious={selectedClipIndex > 0}
+                    hasNext={selectedClipIndex >= 0 && selectedClipIndex < reviewSequence.length - 1}
+                  />
+                )
+              : null}
 
             {viewModel.selectedClipIds.length > 0 ? (
               <div id="workspace-features">
@@ -253,11 +267,14 @@ export function ResultsWorkspace({ jobId }: ResultsWorkspaceProps) {
                       shortlistedClips={viewModel.shortlistedClips}
                       clips={viewModel.rankedClips}
                       activeClipId={resolvedClipId}
+                      comparedClipIds={viewModel.comparedClipIds}
                       selectedClipIds={viewModel.selectedClipIds}
                       totalClipCount={data.clips.length}
                       hasActiveFilters={viewModel.hasActiveFilters}
                       pinnedOnly={viewModel.filters.pinnedOnly}
                       onSelect={handleSeek}
+                      onToggleCompared={viewModel.toggleCompared}
+                      onClearCompared={viewModel.clearCompared}
                       onToggleSelected={viewModel.toggleSelected}
                     />
                   </div>
