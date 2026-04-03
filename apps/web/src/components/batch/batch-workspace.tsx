@@ -38,6 +38,7 @@ import {
   BATCH_QUALITY_THRESHOLD_PRESETS,
   DEFAULT_BATCH_QUALITY_THRESHOLD,
   getBatchEligibleClipCount,
+  getBatchRecoveryTopSource,
   getNextBroaderBatchQualityThresholdPreset,
   getBatchWorkspaceHref,
   getOrderedBatchItems,
@@ -568,6 +569,10 @@ export function BatchWorkspace({
     () => nextBroaderReadySourcePreview.reduce((total, entry) => total + entry.eligibleDuration, 0),
     [nextBroaderReadySourcePreview]
   );
+  const nextBroaderTopRecoverySource = useMemo(
+    () => getBatchRecoveryTopSource(nextBroaderReadySourcePreview),
+    [nextBroaderReadySourcePreview]
+  );
   const nextBroaderReadySourceMessage =
     nextBroaderReadySourcePreview.length === 1
       ? `from ${nextBroaderReadySourcePreview[0]?.fileName}`
@@ -1003,6 +1008,14 @@ export function BatchWorkspace({
                               } without dragging the slider.`
                             : `Jump to ${nextBroaderThresholdPreset.label} ${nextBroaderThresholdPreset.value}+ to keep broadening the export floor.`}
                         </p>
+                        {nextBroaderTopRecoverySource ? (
+                          <div className="rounded-full border border-[var(--line)] bg-white/[0.05] px-3 py-1 text-xs text-[var(--muted)]">
+                            <span className="font-medium text-[var(--muted-strong)]">Top returning source:</span>{" "}
+                            {nextBroaderTopRecoverySource.fileName} restores{" "}
+                            {formatSeconds(nextBroaderTopRecoverySource.eligibleDuration)} of eligible duration (
+                            {formatPercent(nextBroaderTopRecoverySource.eligibleDurationShare)}).
+                          </div>
+                        ) : null}
                         {nextBroaderReadySourcePreviewList.length > 0 ? (
                           <div className="flex flex-wrap items-center gap-2">
                             {nextBroaderReadySourcePreviewList.map((entry) => {

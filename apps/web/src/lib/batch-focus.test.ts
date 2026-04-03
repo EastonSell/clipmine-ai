@@ -4,6 +4,7 @@ import {
   BATCH_QUALITY_THRESHOLD_PRESETS,
   DEFAULT_BATCH_QUALITY_THRESHOLD,
   getBatchEligibleClipCount,
+  getBatchRecoveryTopSource,
   getNextBroaderBatchQualityThresholdPreset,
   getBatchWorkspaceHref,
   getOrderedBatchItems,
@@ -108,6 +109,21 @@ describe("batch-focus", () => {
       value: 72,
     });
     expect(getNextBroaderBatchQualityThresholdPreset(72)).toBeNull();
+  });
+
+  it("summarizes the top broader-threshold recovery source by restored duration", () => {
+    const topSource = getBatchRecoveryTopSource([
+      { fileName: "beta.mp4", eligibleDuration: 4.5 },
+      { fileName: "alpha.mp4", eligibleDuration: 2.5 },
+      { fileName: "gamma.mp4", eligibleDuration: 0 },
+    ]);
+
+    expect(topSource).toMatchObject({
+      fileName: "beta.mp4",
+      eligibleDuration: 4.5,
+    });
+    expect(topSource?.eligibleDurationShare).toBeCloseTo(4.5 / 7);
+    expect(getBatchRecoveryTopSource([{ fileName: "empty.mp4", eligibleDuration: 0 }])).toBeNull();
   });
 
   it("parses the saved batch triage state from search params", () => {

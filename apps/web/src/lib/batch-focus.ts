@@ -20,6 +20,12 @@ export type ReadyBatchItemPosition = {
   isLast: boolean;
 };
 
+export type BatchRecoveryTopSource = {
+  fileName: string;
+  eligibleDuration: number;
+  eligibleDurationShare: number;
+};
+
 export const DEFAULT_BATCH_QUALITY_THRESHOLD = 84;
 const MIN_BATCH_QUALITY_THRESHOLD = 50;
 const MAX_BATCH_QUALITY_THRESHOLD = 100;
@@ -45,6 +51,35 @@ export function getNextBroaderBatchQualityThresholdPreset(threshold: number) {
   return [...BATCH_QUALITY_THRESHOLD_PRESETS]
     .sort((left, right) => right.value - left.value)
     .find((preset) => preset.value < threshold) ?? null;
+}
+
+export function getBatchRecoveryTopSource<T extends { fileName: string; eligibleDuration: number }>(
+  sources: readonly T[]
+): BatchRecoveryTopSource | null {
+  const positiveSources = sources.filter((source) => source.eligibleDuration > 0);
+  if (positiveSources.length === 0) {
+    return null;
+  }
+
+  const totalEligibleDuration = positiveSources.reduce((total, source) => total + source.eligibleDuration, 0);
+  if (totalEligibleDuration <= 0) {
+    return null;
+  }
+
+  const topSource = positiveSources.reduce<T | null>(
+    (currentTopSource, source) =>
+      !currentTopSource || source.eligibleDuration > currentTopSource.eligibleDuration ? source : currentTopSource,
+    null
+  );
+  if (!topSource) {
+    return null;
+  }
+
+  return {
+    fileName: topSource.fileName,
+    eligibleDuration: topSource.eligibleDuration,
+    eligibleDurationShare: topSource.eligibleDuration / totalEligibleDuration,
+  };
 }
 
 export function parseBatchSelectedJobId(jobId: string | null | undefined) {

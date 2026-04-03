@@ -1111,6 +1111,9 @@ test("batch workspace groups jobs and exports thresholded clips", async ({ page 
   await expect(
     page.getByText("Strict 92+ reopens 1 eligible clip and 0:02 of eligible duration from beta.mp4 without dragging the slider.")
   ).toBeVisible();
+  await expect(
+    page.getByText("Top returning source: beta.mp4 restores 0:02 of eligible duration (100%).")
+  ).toBeVisible();
   const broaderPreviewInspectButton = page.getByRole("button", {
     name: "Inspect beta.mp4 from the broader-threshold preview",
   });

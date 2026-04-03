@@ -1,5 +1,29 @@
 # Verification Log
 
+## Batch Threshold Recovery Lead Source Pass
+
+Date: 2026-04-03
+
+- Added a dedicated top-returning-source callout to the empty broader-threshold recovery state so reviewers can see which upload contributes the most restored eligible duration before broadening the export.
+- Extracted the leader-summary calculation into the shared batch-focus helpers, which kept the restored-duration share logic unit-testable alongside the batch threshold utilities.
+- Restored frontend dependencies in this synced checkout with `npm ci`, then reran focused helper tests, scoped lint, and the existing targeted Playwright batch export scenario that exercises the empty recovery summary.
+
+### Checks run
+
+```bash
+npm_config_cache=/tmp/clipmine-npm-cache npm ci
+npm run test:web -- --run src/lib/batch-focus.test.ts
+npm run lint:web -- --file src/components/batch/batch-workspace.tsx --file src/lib/batch-focus.ts --file src/lib/batch-focus.test.ts
+npm run test:e2e -- --grep "batch workspace groups jobs and exports thresholded clips"
+```
+
+### Result
+
+- `19 / 19` focused `batch-focus` unit tests passed
+- targeted frontend lint passed for the touched recovery-summary files
+- `1 / 1` targeted Playwright batch export tests passed
+- empty broader-threshold recovery summaries now identify the top returning source and its share of restored duration
+
 ## Batch Threshold Recovery Total Duration Summary Pass
 
 Date: 2026-04-03
