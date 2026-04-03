@@ -520,8 +520,13 @@ Avoid:
 - [ ] Add browser coverage for single-sample batch ETA anchor details
   Prompt: "Exercise the landing batch queue timing card so the anchor source filename and duration appear when only one completed upload informs the estimate, then disappear after a second completed source is available."
 
-- [ ] Add browser coverage for final-source queue guidance copy
+- [x] Add browser coverage for final-source queue guidance copy
   Prompt: "Exercise the landing queue guidance panel when only the last source remains so the final-source runway and low-confidence ETA copy stay stable."
+  Notes: Completed on 2026-04-03 by extending the landing multipart queue Playwright coverage so it waits for the second source to become the final intake step and then asserts the final-source runway, backend handoff, and low-confidence ETA guidance copy together.
+  Verified: `npm run test:e2e -- --grep "batch queue updates guidance when only the final source remains"`
+
+- [ ] Add browser coverage for queue-guidance recovery after a failed source
+  Prompt: "Exercise the landing queue guidance panel after one source fails mid-queue so the recovery copy stays visible while successful uploads continue."
 
 - [ ] Add large-file benchmark harness
   Prompt: "Create a repeatable local benchmark script that measures transfer time, transcription time, and package-export time for larger fixture files."
@@ -635,3 +640,5 @@ Avoid:
 - 2026-04-03: Added `Add browser coverage for single-sample batch ETA anchor details` as the next queue-estimation regression follow-up.
 - 2026-04-03: Completed `Better live queue guidance for large batch uploads` after adding a dedicated landing queue-guidance panel and passing focused queue-guidance unit plus Playwright verification.
 - 2026-04-03: Added `Add browser coverage for final-source queue guidance copy` as the next landing-queue guidance regression follow-up.
+- 2026-04-03: Completed `Add browser coverage for final-source queue guidance copy` after extending the landing multipart queue Playwright flow to assert the final-source runway, backend handoff, and low-confidence ETA guidance state together.
+- 2026-04-03: Added `Add browser coverage for queue-guidance recovery after a failed source` as the next landing-queue guidance regression follow-up.

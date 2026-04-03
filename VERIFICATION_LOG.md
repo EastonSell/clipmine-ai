@@ -1,5 +1,24 @@
 # Verification Log
 
+## Final-Source Queue Guidance Browser Pass
+
+Date: 2026-04-03
+
+- Extended the landing multipart queue Playwright coverage to run a two-source upload sequence until the second source becomes the final remaining intake step.
+- Asserted the queue guidance panel shows the final-source runway copy, the one-source backend handoff state, and the low-confidence ETA message together after the first upload finishes.
+- Cancelled the still-active second upload after those assertions so the scenario stays focused on the in-flight landing guidance state instead of rolling into workspace navigation.
+
+### Checks run
+
+```bash
+npm run test:e2e -- --grep "batch queue updates guidance when only the final source remains"
+```
+
+### Result
+
+- `1 / 1` targeted Playwright tests passed
+- the landing queue guidance panel now has browser coverage for the final-source runway and low-confidence ETA state
+
 ## Batch Workspace Export Warning Summary Pass
 
 Date: 2026-04-03

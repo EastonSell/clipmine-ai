@@ -818,6 +818,95 @@ test("batch queue shows current source progress before completion", async ({ pag
   await expect(page.getByText("The batch queue was cancelled before any upload reached the processing stage.")).toBeVisible();
 });
 
+test("batch queue updates guidance when only the final source remains", async ({ page }) => {
+  let uploadCount = 0;
+  const uploadSessions = [
+    {
+      uploadSessionId: "session-final-guidance-alpha",
+      jobId: "job-final-guidance-alpha",
+      fileName: "alpha.mp4",
+      uploadPartUrl: buildMultipartPartUrl("session-final-guidance-alpha", 1),
+      partDelayMs: 0,
+    },
+    {
+      uploadSessionId: "session-final-guidance-beta",
+      jobId: "job-final-guidance-beta",
+      fileName: "beta.mp4",
+      uploadPartUrl: buildMultipartPartUrl("session-final-guidance-beta", 1),
+      partDelayMs: 5_000,
+    },
+  ];
+
+  await page.route("**/api/uploads/init", async (route) => {
+    const payload = uploadSessions[uploadCount];
+    uploadCount += 1;
+
+    await route.fulfill({
+      status: 201,
+      contentType: "application/json",
+      body: JSON.stringify({
+        uploadSessionId: payload.uploadSessionId,
+        jobId: payload.jobId,
+        fileName: payload.fileName,
+        partSizeBytes: 16 * 1024 * 1024,
+        expiresAt: "2026-04-02T12:30:00.000Z",
+        parts: [{ partNumber: 1, url: payload.uploadPartUrl }],
+      }),
+    });
+  });
+
+  for (const session of uploadSessions) {
+    await page.route(session.uploadPartUrl, async (route) => {
+      if (session.partDelayMs > 0) {
+        await new Promise((resolve) => setTimeout(resolve, session.partDelayMs));
+      }
+
+      await route.fulfill({
+        status: 200,
+        headers: {
+          ETag: "\"etag-" + session.uploadSessionId + "\"",
+        },
+        body: "",
+      });
+    });
+
+    await page.route("**/api/uploads/" + session.uploadSessionId + "/complete", async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          jobId: session.jobId,
+          status: "queued",
+          fileName: session.fileName,
+        }),
+      });
+    });
+  }
+
+  await page.goto("/");
+  await page.locator("input[type=\"file\"]").setInputFiles([
+    {
+      name: "alpha.mp4",
+      mimeType: "video/mp4",
+      buffer: Buffer.alloc(2 * 1024 * 1024, 7),
+    },
+    {
+      name: "beta.mp4",
+      mimeType: "video/mp4",
+      buffer: Buffer.alloc(2 * 1024 * 1024, 8),
+    },
+  ]);
+  await page.getByRole("button", { name: "Queue 2 videos" }).click();
+
+  await expect(page.getByText("Source 2 of 2")).toBeVisible();
+  await expect(page.getByText("Final source in intake")).toBeVisible();
+  await expect(page.getByText("beta.mp4 is the last intake step.")).toBeVisible();
+  await expect(page.getByText("1 source already in backend")).toBeVisible();
+  await expect(page.getByText("ETA is still low confidence")).toBeVisible();
+
+  await page.getByRole("button", { name: "Cancel", exact: true }).click();
+});
+
 test("timeline tab is shareable with query params", async ({ page }) => {
   const job = createMockJob();
 
