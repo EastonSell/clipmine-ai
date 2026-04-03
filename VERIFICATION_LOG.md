@@ -1379,3 +1379,23 @@ npm run test:e2e -- --grep "batch workspace groups jobs and exports thresholded 
 - `npm ci`: completed successfully to restore frontend dependencies after the sync reset removed them from this worktree
 - `npm run lint:web -- --file src/components/batch/batch-workspace.tsx`: passed
 - `npm run test:e2e -- --grep "batch workspace groups jobs and exports thresholded clips"`: 1 / 1 test passed
+
+## Ready-Only Batch Queue Filter Pass
+
+- Added a ready-only visibility mode to the shared batch-queue ordering helper so the workspace can hide failed and still-processing sources without forking its queue logic.
+- Added a queue-focus toggle to the batch workspace that switches between the full queue and ready-only review mode while keeping the currently selected ready workspace active.
+- Extended the browser coverage with a targeted batch-workspace scenario that proves the queue collapses to ready sources and expands back to the full queue.
+
+## Ready-Only Batch Queue Filter Checks Run
+
+```bash
+npm ci
+npm run test:web -- --run src/lib/batch-focus.test.ts
+npm run test:e2e -- --grep "batch workspace can collapse the queue to ready sources only"
+```
+
+## Ready-Only Batch Queue Filter Results
+
+- `npm ci`: completed successfully to restore frontend dependencies after the sync reset removed them from this worktree
+- `npm run test:web -- --run src/lib/batch-focus.test.ts`: 16 / 16 tests passed
+- `npm run test:e2e -- --grep "batch workspace can collapse the queue to ready sources only"`: 1 / 1 test passed

@@ -1345,6 +1345,129 @@ test("batch workspace navigates ready sources from the selected panel", async ({
   await expect(lastSourceButton).toBeEnabled();
 });
 
+test("batch workspace can collapse the queue to ready sources only", async ({ page }) => {
+  const jobAlpha = createMockJob({
+    jobId: "job-alpha",
+    sourceVideo: {
+      id: "video-alpha",
+      file_name: "alpha.mp4",
+      content_type: "video/mp4",
+      size_bytes: 12_000_000,
+      duration_seconds: 164,
+      url: "/api/jobs/job-alpha/video",
+    },
+  });
+  const jobBeta = createMockJob({
+    jobId: "job-beta",
+    sourceVideo: {
+      id: "video-beta",
+      file_name: "beta.mp4",
+      content_type: "video/mp4",
+      size_bytes: 14_000_000,
+      duration_seconds: 201,
+      url: "/api/jobs/job-beta/video",
+    },
+  });
+
+  await page.addInitScript(
+    ({ batchSessionsKey, session }) => {
+      window.localStorage.setItem(batchSessionsKey, JSON.stringify([session]));
+    },
+    {
+      batchSessionsKey,
+      session: {
+        batchId: "demo-batch-ready-filter",
+        label: "4 sources queued",
+        createdAt: "2026-04-02T12:00:00.000Z",
+        updatedAt: "2026-04-02T12:10:00.000Z",
+        qualityThreshold: 84,
+        items: [
+          {
+            id: "upload-1",
+            fileName: "alpha.mp4",
+            sizeBytes: 12_000_000,
+            jobId: "job-alpha",
+            status: "ready",
+            uploadPhase: "complete",
+            uploadProgress: 100,
+            error: null,
+            updatedAt: "2026-04-02T12:10:00.000Z",
+          },
+          {
+            id: "upload-2",
+            fileName: "broken-intro.mov",
+            sizeBytes: 10_500_000,
+            jobId: null,
+            status: "failed",
+            uploadPhase: "queued",
+            uploadProgress: 34,
+            error: "Upload failed.",
+            updatedAt: "2026-04-02T12:11:00.000Z",
+          },
+          {
+            id: "upload-3",
+            fileName: "gamma.mp4",
+            sizeBytes: 13_250_000,
+            jobId: null,
+            status: "processing",
+            uploadPhase: "processing",
+            uploadProgress: 62,
+            error: null,
+            updatedAt: "2026-04-02T12:12:00.000Z",
+          },
+          {
+            id: "upload-4",
+            fileName: "beta.mp4",
+            sizeBytes: 14_000_000,
+            jobId: "job-beta",
+            status: "ready",
+            uploadPhase: "complete",
+            uploadProgress: 100,
+            error: null,
+            updatedAt: "2026-04-02T12:13:00.000Z",
+          },
+        ],
+      },
+    }
+  );
+
+  await page.route("**/api/jobs/job-alpha", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(jobAlpha),
+    });
+  });
+  await page.route("**/api/jobs/job-beta", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(jobBeta),
+    });
+  });
+
+  await page.goto("/batches/demo-batch-ready-filter");
+
+  const queueItems = page.getByTestId("batch-queue-item");
+  await expect(page.getByRole("heading", { name: "alpha.mp4" })).toBeVisible();
+  await expect(queueItems).toHaveCount(4);
+  await expect(page.getByText("2 ready sources are available for focused review.")).toBeVisible();
+
+  await page.getByRole("button", { name: "Ready only" }).click();
+  await expect(page).toHaveURL(/\/batches\/demo-batch-ready-filter\?job=job-alpha$/);
+  await expect(page.getByText("Showing 2 ready sources out of 4 in the full queue.")).toBeVisible();
+  await expect(queueItems).toHaveCount(2);
+  await expect(queueItems.nth(0)).toContainText("alpha.mp4");
+  await expect(queueItems.nth(1)).toContainText("beta.mp4");
+  await expect(page.locator('[data-testid="batch-queue-item"]').filter({ hasText: "broken-intro.mov" })).toHaveCount(0);
+  await expect(page.locator('[data-testid="batch-queue-item"]').filter({ hasText: "gamma.mp4" })).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: "alpha.mp4" })).toBeVisible();
+
+  await page.getByRole("button", { name: "Full queue" }).click();
+  await expect(queueItems).toHaveCount(4);
+  await expect(page.getByText("2 ready sources are available for focused review.")).toBeVisible();
+});
+
 test("saved batch workspace retries a failed source after reload", async ({ page }) => {
   const beta = createMockJob({
     jobId: "job-beta",

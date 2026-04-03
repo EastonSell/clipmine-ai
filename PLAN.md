@@ -399,8 +399,13 @@ Avoid:
   Notes: Completed on 2026-04-03 by deriving ready-source positions from the visible batch queue order, surfacing queue-card badges for ready position plus first/current/last state, and extending the existing ready-source navigation coverage to assert those badges update with selection changes.
   Verified: `npm ci`, `npm run test:web -- --run src/lib/batch-focus.test.ts`, `npm run test:e2e -- --grep "batch workspace navigates ready sources from the selected panel"`
 
-- [ ] Add a ready-only filter to the batch queue
+- [x] Add a ready-only filter to the batch queue
   Prompt: "Let reviewers collapse the batch queue to only ready workspaces so large saved sessions can focus on clip review without scanning failed or still-processing sources."
+  Notes: Completed on 2026-04-03 by extending the batch queue visibility helper with a ready-only mode, adding a dedicated queue-focus toggle to the workspace, and preserving the selected ready job while hidden failed and processing sources drop out of the visible queue.
+  Verified: `npm ci`, `npm run test:web -- --run src/lib/batch-focus.test.ts`, `npm run test:e2e -- --grep "batch workspace can collapse the queue to ready sources only"`
+
+- [ ] Persist ready-only batch queue scope in the URL
+  Prompt: "Keep the ready-only queue focus in the batch workspace URL so reopened saved sessions can return directly to review mode instead of expanding back to the full queue."
 
 ## Backend Tasks
 
@@ -520,3 +525,5 @@ Avoid:
 - 2026-04-03: Added `Preview which ready sources return after a broader-threshold recovery jump` as the next aggregate-export recovery follow-up.
 - 2026-04-03: Completed `Preview which ready sources return after a broader-threshold recovery jump` after installing frontend dependencies in the worktree, passing focused lint, and rerunning the targeted batch export Playwright flow.
 - 2026-04-03: Added `Add inspect actions to broader-threshold recovery previews` as the next aggregate-export recovery follow-up.
+- 2026-04-03: Completed `Add a ready-only filter to the batch queue` after reinstalling frontend dependencies in the worktree and passing focused web-unit and Playwright verification.
+- 2026-04-03: Added `Persist ready-only batch queue scope in the URL` as the next batch-review deep-link follow-up.

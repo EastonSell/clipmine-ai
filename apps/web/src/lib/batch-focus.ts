@@ -131,6 +131,10 @@ export function isBatchIssueItem(item: BatchUploadItemRecord) {
   return item.status === "failed" || item.status === "cancelled";
 }
 
+export function isReadyBatchItem(item: BatchUploadItemRecord) {
+  return item.status === "ready";
+}
+
 function getBatchIssueRank(item: BatchUploadItemRecord) {
   if (item.status === "failed") {
     return 0;
@@ -146,9 +150,20 @@ function getBatchIssueRank(item: BatchUploadItemRecord) {
 export function getOrderedBatchItems(
   items: BatchUploadItemRecord[],
   prioritizeIssues: boolean,
-  issuesOnly = false
+  issuesOnly = false,
+  readyOnly = false
 ): BatchUploadItemRecord[] {
-  const visibleItems = issuesOnly ? items.filter(isBatchIssueItem) : items;
+  const visibleItems = items.filter((item) => {
+    if (issuesOnly) {
+      return isBatchIssueItem(item);
+    }
+
+    if (readyOnly) {
+      return isReadyBatchItem(item);
+    }
+
+    return true;
+  });
 
   if (!prioritizeIssues) {
     return visibleItems;

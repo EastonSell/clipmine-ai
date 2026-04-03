@@ -13,6 +13,7 @@ import {
   getReadyBatchJobShortcutDirection,
   hasBatchIssues,
   isBatchIssueItem,
+  isReadyBatchItem,
   parseBatchQualityThreshold,
   parseBatchSelectedJobId,
   parseBatchSelectedPreset,
@@ -218,6 +219,24 @@ describe("batch-focus", () => {
     expect(items.filter(isBatchIssueItem).map((item) => item.fileName)).toEqual([
       "broken-intro.mov",
       "retake.mp4",
+    ]);
+  });
+
+  it("can collapse the queue to only ready sources", () => {
+    const items = [
+      createItem({ id: "ready-1", fileName: "alpha.mp4", status: "ready", jobId: "job-alpha" }),
+      createItem({ id: "failed-1", fileName: "broken-intro.mov", status: "failed", error: "Upload failed." }),
+      createItem({ id: "processing-1", fileName: "gamma.mp4", status: "processing", jobId: "job-gamma" }),
+      createItem({ id: "ready-2", fileName: "delta.mp4", status: "ready", jobId: "job-delta" }),
+    ];
+
+    expect(getOrderedBatchItems(items, true, false, true).map((item) => item.fileName)).toEqual([
+      "alpha.mp4",
+      "delta.mp4",
+    ]);
+    expect(items.filter(isReadyBatchItem).map((item) => item.fileName)).toEqual([
+      "alpha.mp4",
+      "delta.mp4",
     ]);
   });
 

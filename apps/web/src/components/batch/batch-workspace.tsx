@@ -42,6 +42,7 @@ import {
   getReadyBatchJobShortcutDirection,
   hasBatchIssues,
   isBatchIssueItem,
+  isReadyBatchItem,
 } from "@/lib/batch-focus";
 import {
   buildBatchPackageRootName,
@@ -106,6 +107,7 @@ export function BatchWorkspace({
   const [session, setSession] = useState<BatchSessionRecord | null>(null);
   const [activeJobId, setActiveJobId] = useState<string | null>(null);
   const [issuesOnly, setIssuesOnly] = useState(prioritizeIssues && initialIssuesOnly);
+  const [readyOnly, setReadyOnly] = useState(false);
   const [qualityThreshold, setQualityThreshold] = useState(DEFAULT_BATCH_QUALITY_THRESHOLD);
   const [selectedPreset, setSelectedPreset] = useState<PackageExportPreset>(initialSelectedPreset ?? "full-av");
   const [showContributorsOnly, setShowContributorsOnly] = useState(false);
@@ -127,6 +129,7 @@ export function BatchWorkspace({
     setSession(nextSession);
     sessionRef.current = nextSession;
     setIssuesOnly(nextIssuesOnly);
+    setReadyOnly(false);
     setQualityThreshold(initialQualityThreshold ?? nextSession?.qualityThreshold ?? DEFAULT_BATCH_QUALITY_THRESHOLD);
     setSelectedPreset(initialSelectedPreset ?? nextSession?.batchExportPreset ?? "full-av");
     setActiveJobId(nextActiveJobId);
@@ -178,8 +181,8 @@ export function BatchWorkspace({
   const retryingItemIdSet = useMemo(() => new Set(retryingItemIds), [retryingItemIds]);
   const cachedSourceFileItemIdSet = useMemo(() => new Set(cachedSourceFileItemIds), [cachedSourceFileItemIds]);
   const queueItems = useMemo(
-    () => getOrderedBatchItems(session?.items ?? [], prioritizeIssues, issuesOnly),
-    [issuesOnly, prioritizeIssues, session?.items]
+    () => getOrderedBatchItems(session?.items ?? [], prioritizeIssues, issuesOnly, readyOnly && !issuesOnly),
+    [issuesOnly, prioritizeIssues, readyOnly, session?.items]
   );
   const selectedQueueItem = useMemo(
     () => (activeJobId ? queueItems.find((item) => item.jobId === activeJobId) ?? null : null),
@@ -196,6 +199,10 @@ export function BatchWorkspace({
   const queueHasIssues = useMemo(() => hasBatchIssues(session?.items ?? []), [session?.items]);
   const issueCount = useMemo(
     () => (session?.items ?? []).filter(isBatchIssueItem).length,
+    [session?.items]
+  );
+  const readyCount = useMemo(
+    () => (session?.items ?? []).filter(isReadyBatchItem).length,
     [session?.items]
   );
 
@@ -222,6 +229,14 @@ export function BatchWorkspace({
 
   function setBatchTriageScope(nextIssuesOnly: boolean) {
     setIssuesOnly(nextIssuesOnly);
+  }
+
+  function setBatchReadyScope(nextReadyOnly: boolean) {
+    if (nextReadyOnly && (issuesOnly || readyCount === 0)) {
+      return;
+    }
+
+    setReadyOnly(nextReadyOnly);
   }
 
   function updateQualityThreshold(nextThreshold: number) {
@@ -325,6 +340,12 @@ export function BatchWorkspace({
 
     setActiveJobId(getPreferredBatchJobId(queueItems, false));
   }, [activeJobId, queueItems]);
+
+  useEffect(() => {
+    if (readyOnly && (issuesOnly || readyCount === 0)) {
+      setReadyOnly(false);
+    }
+  }, [issuesOnly, readyCount, readyOnly]);
 
   const selectedJob =
     (activeJobId ? jobs.find((job) => job.jobId === activeJobId) : null) ??
@@ -496,7 +517,6 @@ export function BatchWorkspace({
         ? `across ${nextBroaderReadySourcePreview.length} ready sources`
         : "";
   const activePreset = getPackageExportPresetOption(selectedPreset);
-  const readyCount = session?.items.filter((item) => item.status === "ready").length ?? 0;
   const failedCount = session?.items.filter((item) => item.status === "failed").length ?? 0;
   const processingCount = session?.items.filter((item) => item.status === "processing").length ?? 0;
   const queueProgress =
@@ -1050,6 +1070,45 @@ export function BatchWorkspace({
                   {issuesOnly
                     ? `Showing ${issueCount} issue ${issueCount === 1 ? "source" : "sources"} out of ${session.items.length}.`
                     : "Ready and processing jobs are visible again, with issue items still pinned first."}
+                </p>
+              </div>
+            ) : null}
+
+            {!issuesOnly ? (
+              <div className="mt-6 rounded-[1.1rem] border border-[var(--line)] bg-white/[0.03] px-4 py-4">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div className="min-w-0 flex-1">
+                    <div className="font-medium text-[var(--text)]">Queue focus</div>
+                    <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
+                      Collapse the queue to ready workspaces when you want to stay in clip review mode without scanning uploads that are still processing or need cleanup.
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      size="sm"
+                      variant={readyOnly ? "secondary" : "primary"}
+                      onClick={() => setBatchReadyScope(false)}
+                      aria-pressed={!readyOnly}
+                    >
+                      Full queue
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant={readyOnly ? "primary" : "secondary"}
+                      onClick={() => setBatchReadyScope(true)}
+                      disabled={readyCount === 0}
+                      aria-pressed={readyOnly}
+                    >
+                      Ready only
+                    </Button>
+                  </div>
+                </div>
+                <p className="mt-3 text-xs text-[var(--muted)]">
+                  {readyOnly
+                    ? `Showing ${queueItems.length} ready ${queueItems.length === 1 ? "source" : "sources"} out of ${session.items.length} in the full queue.`
+                    : readyCount > 0
+                      ? `${readyCount} ready ${readyCount === 1 ? "source is" : "sources are"} available for focused review.`
+                      : "Ready sources will appear here as soon as processing finishes."}
                 </p>
               </div>
             ) : null}
