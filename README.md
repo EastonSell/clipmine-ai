@@ -1,27 +1,22 @@
 # ClipMine AI
 
-> Upload one talking-head video or a full batch, surface the strongest speech clips, and export training-ready packages with linked media, spectrograms, and metadata.
+> Production-ready speech clip curation for dataset builders. Review ranked clips against the original source, then export linked media, spectrograms, and manifest metadata in one handoff.
 
-ClipMine AI is a multimodal speech curation tool for dataset builders. It sits between raw footage and downstream training pipelines: upload source video, let the backend extract and score candidate clips, then review the result through ranked clips, timeline coverage, and export flows built for annotation and training prep.
+ClipMine AI turns raw talking-head footage into cleaner training inputs. Upload one source or a full batch, let the backend extract and score candidate speech windows, then review the output through ranked clips, timeline coverage, and export flows designed for annotation and model-training preparation.
 
 ![ClipMine AI overview](docs/readme/landing-overview.svg)
 
-## Release checklist
+## Release status
+
+This repository is prepared as a production-grade release handoff for the shipped application surface.
+
+- The single-job workspace, batch workspace, package export flow, and README visuals were refreshed together for this release.
+- Local verification passed with `npm run test:web`, `npm run test:api`, `npm run build:web`, `npm run test:e2e`, and `npm run generate:readme-assets`.
+- Remaining live-environment checks are explicitly tracked in [PLAN.md](PLAN.md) instead of being hidden or implied.
+
+## Production release checklist
 
 [PLAN.md](PLAN.md) is the release checklist for this repo. It tracks the shipped surface area, automated coverage, remaining live-environment validation, and any explicit release deferrals.
-
-## Repository publishing note
-
-Use the workspace-local repository normally:
-
-```bash
-git pull --ff-only origin main
-git add <files>
-git commit -m "..."
-git push origin main
-```
-
-Pushes to `main` can trigger a follow-up `docs/readme` asset refresh commit. After that workflow lands, pull `main` again before stacking the next change.
 
 ## Why this is useful
 
@@ -51,7 +46,7 @@ The app now supports both single-source review and batch intake.
 | --- | --- |
 | ![Export workspace](docs/readme/export-workspace.png) | ![Batch queue](docs/readme/batch-workspace.png) |
 
-## What shipped
+## Production release scope
 
 ### Intake and processing
 
@@ -137,7 +132,7 @@ clipmine-batch-export-<label>/
 - make export structure practical for annotation and training workflows
 - support both one-off uploads and higher-throughput batch review
 
-## Release validation
+## Local release validation
 
 Use [PLAN.md](PLAN.md) for the final release checklist, especially the live backend, large-file, and object-storage validation steps that still require a real deployment target.
 
@@ -183,6 +178,19 @@ GitHub README pages cannot embed live iframe renders reliably, so this repo uses
 - that workflow may create a follow-up commit on `main`, so pull again before the next publish if UI or README assets changed
 
 That keeps the README visuals aligned to the current UI in a GitHub-compatible way. The repo includes seeded screenshots for convenience, and the GitHub Action remains the reliable refresh path for keeping those assets current on `main`.
+
+## Maintainer publishing note
+
+Use the workspace-local repository normally:
+
+```bash
+git pull --ff-only origin main
+git add <files>
+git commit -m "..."
+git push origin main
+```
+
+Pushes to `main` can trigger a follow-up `docs/readme` asset refresh commit. After that workflow lands, pull `main` again before stacking the next change.
 
 ## Repository layout
 
