@@ -20,11 +20,20 @@ export default defineConfig({
       },
     },
   ],
-  webServer: {
-    command:
-      "env -u FORCE_COLOR -u NO_COLOR NEXT_PUBLIC_UPLOAD_MODE=multipart npm_config_cache=/tmp/clipmine-npm-cache npm run preview:web",
-    url: "http://127.0.0.1:3000",
-    reuseExistingServer: !process.env.CI,
-    timeout: 180_000,
-  },
+  webServer: [
+    {
+      command:
+        "env -u FORCE_COLOR -u NO_COLOR NEXT_PUBLIC_UPLOAD_MODE=multipart npm_config_cache=/tmp/clipmine-npm-cache npm run preview:web",
+      url: "http://127.0.0.1:3000",
+      reuseExistingServer: !process.env.CI,
+      timeout: 180_000,
+    },
+    {
+      command:
+        "cd backend && .venv/bin/python -m uvicorn clipmine_api.main:app --host 127.0.0.1 --port 8000",
+      url: "http://127.0.0.1:8000/api/health",
+      reuseExistingServer: !process.env.CI,
+      timeout: 180_000,
+    },
+  ],
 });

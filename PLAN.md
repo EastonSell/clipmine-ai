@@ -46,44 +46,44 @@ ClipMine AI is production-ready when all of the following are true:
 
 ## Bugs to Fix
 
-- [ ] Resolve the unreliable workspace-local `.git` behavior so normal commit workflows do not require the temp-checkout workaround.
+- [x] Resolve the unreliable workspace-local `.git` behavior so normal commit workflows do not require the temp-checkout workaround.
 
 ## Must Be Tested Before Release
 
-- [ ] Run a real-world batch queue with at least three medium-size videos against the live backend without mocked browser routes.
-- [ ] Verify multipart upload retry behavior across a flaky network path.
-- [ ] Verify batch export behavior when one source fails and one source is ready in the same session.
-- [ ] Compare large-file runtime timing for direct and multipart uploads using a source larger than 1 GB.
-- [ ] Verify package export correctness for S3-backed source playback and trimming.
+- [ ] Deferred: run a real-world batch queue with at least three medium-size videos against the live backend without mocked browser routes.
+- [x] Verify multipart upload retry behavior across a flaky network path.
+- [x] Verify batch export behavior when one source fails and one source is ready in the same session.
+- [ ] Deferred: compare large-file runtime timing for direct and multipart uploads using a source larger than 1 GB. Harness added in `scripts/benchmark-large-uploads.mjs`.
+- [x] Verify package export correctness for S3-backed source playback and trimming.
 
 ## Remaining Tasks
 
 ### Frontend
 
-- [ ] Improve live queue guidance for large batch uploads.
-- [ ] Add per-job retry from the batch workspace.
-- [ ] Add side-by-side shortlisted clip comparison.
-- [ ] Add an export preset selector for package outputs beyond the current default zip flow.
-- [ ] Add a dismiss action for stale finished batch shortcuts.
-- [ ] Add per-source ETA hints to the active queue card.
+- [x] Improve live queue guidance for large batch uploads.
+- [x] Add per-job retry from the batch workspace.
+- [x] Add side-by-side shortlisted clip comparison.
+- [x] Add an export preset selector for package outputs beyond the current default zip flow.
+- [x] Add a dismiss action for stale finished batch shortcuts.
+- [x] Add per-source ETA hints to the active queue card.
 
 ### Backend
 
-- [ ] Resume multipart uploads across browser refresh or restart.
-- [ ] Strengthen object-storage health reporting in deployment environments.
-- [ ] Add an audio-only export companion.
-- [ ] Add batch export partial-failure manifest warnings.
-- [ ] Add an object-storage playback verification endpoint.
+- [x] Resume multipart uploads across browser refresh or restart.
+- [x] Strengthen object-storage health reporting in deployment environments.
+- [x] Add an audio-only export companion.
+- [x] Add batch export partial-failure manifest warnings.
+- [x] Add an object-storage playback verification endpoint.
 
 ### Testing
 
-- [ ] Add a smoke assertion for the finished batch summary action row.
-- [ ] Add a console-warning guard around the browser smoke runner.
-- [ ] Add non-mocked browser verification against the local API.
-- [ ] Add regression coverage for batch queue cancellation.
-- [ ] Add a large-file benchmark harness.
+- [x] Add a smoke assertion for the finished batch summary action row.
+- [x] Add a console-warning guard around the browser smoke runner.
+- [x] Add non-mocked browser verification against the local API.
+- [x] Add regression coverage for batch queue cancellation.
+- [x] Add a large-file benchmark harness.
 
 ### Docs / Ops
 
-- [ ] Link this plan more prominently from the repo docs.
-- [ ] Document README asset workflow churn on `main`.
+- [x] Link this plan more prominently from the repo docs.
+- [x] Document README asset workflow churn on `main`.

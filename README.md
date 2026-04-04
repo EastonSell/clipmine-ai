@@ -6,22 +6,22 @@ ClipMine AI is a multimodal speech curation tool for dataset builders. It sits b
 
 ![ClipMine AI overview](docs/readme/landing-overview.svg)
 
-## Live execution plan
+## Release checklist
 
-The active implementation backlog lives in [PLAN.md](PLAN.md). It tracks shipped work, tested status, open bugs, milestone phases, and the next task the agent should take on.
+[PLAN.md](PLAN.md) is the release checklist for this repo. It tracks the shipped surface area, automated coverage, remaining live-environment validation, and any explicit release deferrals.
 
 ## Repository publishing note
 
-If the workspace-local `.git` is not writable in the current Codex environment, publish from a clean temp checkout instead:
+Use the workspace-local repository normally:
 
 ```bash
-git fetch origin
-git checkout main
-git reset --hard origin/main
-gh auth setup-git
+git pull --ff-only origin main
+git add <files>
+git commit -m "..."
+git push origin main
 ```
 
-Copy the changed tracked files into that temp checkout, then commit and push from there. The README asset workflow may add follow-up commits on `main`, so always fetch and reset the temp checkout before each publish.
+Pushes to `main` can trigger a follow-up `docs/readme` asset refresh commit. After that workflow lands, pull `main` again before stacking the next change.
 
 ## Why this is useful
 
@@ -59,6 +59,7 @@ The app now supports both single-source review and batch intake.
 - support large uploads up to `1 GB` by default
 - keep direct uploads for local development
 - support multipart object-storage upload mode for production
+- resume multipart uploads after a browser refresh or restart
 - queue multiple uploads into one batch session
 - keep every upload tied to its own persistent review workspace
 
@@ -78,16 +79,22 @@ The app now supports both single-source review and batch intake.
 - selected clip inspector with detailed signals
 - full-video usefulness timeline
 - shortlist state per job
+- side-by-side comparison for two shortlisted clips
 - separate batch-selection state for export
+- per-job retry inside the batch workspace
+- saved finished-batch shortcuts that can reopen ready review or be dismissed
+- live queue guidance with per-source ETA hints
 - recent jobs and recent batch sessions stored locally in the browser
 
 ### Export workflow
 
 - `export.json` for the full machine-readable job payload
 - selected clip package export as a zip archive
+- full AV, audio-only, and metadata-only package presets
 - stable naming like `clip_001__<clipId>.mp4`
 - linked `manifest.json` that maps every exported clip file back to clip metadata
 - cross-job batch export above a user-defined quality threshold
+- batch export warning summaries when one selected source is skipped
 
 ## Training package structure
 
@@ -123,13 +130,9 @@ clipmine-batch-export-<label>/
 - make export structure practical for annotation and training workflows
 - support both one-off uploads and higher-throughput batch review
 
-## Upcoming improvements
+## Release validation
 
-- resume multipart uploads across browser restarts
-- richer export presets such as CSV or JSONL companions
-- side-by-side comparison of shortlisted clips
-- stronger production observability and queue analytics
-- more flexible packaging targets for audio-only or multimodal training sets
+Use [PLAN.md](PLAN.md) for the final release checklist, especially the live backend, large-file, and object-storage validation steps that still require a real deployment target.
 
 ## Architecture
 
@@ -170,6 +173,7 @@ GitHub README pages cannot embed live iframe renders reliably, so this repo uses
 - `.github/workflows/readme-assets.yml` rebuilds the web app on pushes to `main`
 - `scripts/generate-readme-assets.mjs` captures product screenshots and rewrites visual assets
 - updated files are committed back into `docs/readme`
+- that workflow may create a follow-up commit on `main`, so pull again before the next publish if UI or README assets changed
 
 That keeps the README visuals aligned to the current UI in a GitHub-compatible way. The repo includes seeded screenshots for convenience, and the GitHub Action remains the reliable refresh path for keeping those assets current on `main`.
 
@@ -242,6 +246,7 @@ npm run build:web
 npm run start:web
 npm run lint:web
 npm run test:web
+npm run benchmark:uploads -- --direct-base-url http://127.0.0.1:8000 --multipart-base-url https://your-multipart-backend.example.com
 npm run generate:readme-assets
 npm run dev:api
 npm run test:api

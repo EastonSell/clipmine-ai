@@ -566,6 +566,50 @@ def test_complete_multipart_upload_writes_manifest_and_enqueues_job(tmp_path: Pa
     assert artifact_store.completed_uploads[0]["upload_id"] == "upload-123"
 
 
+def test_get_multipart_upload_session_returns_fresh_part_urls(tmp_path: Path) -> None:
+    with TestClient(app) as client:
+        settings = client.app.state.settings
+        original_storage = settings.storage_dir
+        original_model_cache = settings.model_cache_dir
+        original_storage_backend = settings.storage_backend
+        original_artifact_store = client.app.state.artifact_store
+        settings.storage_dir = tmp_path / "storage"
+        settings.model_cache_dir = tmp_path / "models"
+        settings.storage_backend = "s3"
+        artifact_store = FakeMultipartArtifactStore()
+        client.app.state.artifact_store = artifact_store
+
+        try:
+            store = client.app.state.job_store
+            session = store.build_upload_session(
+                file_name="sample.mp4",
+                content_type="video/mp4",
+                size_bytes=(16 * 1024 * 1024) + 512,
+                part_size_bytes=settings.upload_part_size_bytes,
+                ttl_minutes=settings.upload_session_ttl_minutes,
+            )
+            session = store.save_upload_session(session.model_copy(update={"upload_id": "upload-123"}))
+            response = client.get(f"/api/uploads/{session.session_id}")
+        finally:
+            settings.storage_dir = original_storage
+            settings.model_cache_dir = original_model_cache
+            settings.storage_backend = original_storage_backend
+            client.app.state.artifact_store = original_artifact_store
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "uploadSessionId": session.session_id,
+        "jobId": session.job_id,
+        "fileName": "sample.mp4",
+        "partSizeBytes": 16 * 1024 * 1024,
+        "expiresAt": session.expires_at,
+        "parts": [
+            {"partNumber": 1, "url": "https://uploads.example/upload-123/part/1"},
+            {"partNumber": 2, "url": "https://uploads.example/upload-123/part/2"},
+        ],
+    }
+
+
 def test_abort_multipart_upload_removes_session(tmp_path: Path) -> None:
     with TestClient(app) as client:
         settings = client.app.state.settings

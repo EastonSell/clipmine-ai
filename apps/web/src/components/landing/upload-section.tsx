@@ -19,11 +19,16 @@ import {
   isLowConfidenceUploadEta,
 } from "@/lib/batch-upload-eta";
 import { buildBatchQueueGuidance } from "@/lib/batch-queue-guidance";
-import { loadLatestCompletedBatchSession, removeBatchSession, saveBatchSession } from "@/lib/batch-sessions";
-import { clearBatchSourceFiles, removeBatchSourceFile, saveBatchSourceFile } from "@/lib/batch-source-files";
+import { loadBatchSession, loadLatestCompletedBatchSession, removeBatchSession, saveBatchSession } from "@/lib/batch-sessions";
+import { clearBatchSourceFiles, loadBatchSourceFile, removeBatchSourceFile, saveBatchSourceFile } from "@/lib/batch-source-files";
 import { ApiError, createJob, getUploadMode, isRetryableApiError } from "@/lib/api";
 import { getBatchWorkspaceHref, getPreferredReadyBatchJobId, hasBatchIssues } from "@/lib/batch-focus";
 import { formatBytes, formatDateTime } from "@/lib/format";
+import {
+  listMultipartUploadCheckpoints,
+  removeMultipartUploadCheckpoint,
+  type MultipartUploadCheckpointRecord,
+} from "@/lib/multipart-upload-checkpoints";
 import type {
   BatchCompletionSummary,
   BatchSessionRecord,
@@ -217,6 +222,7 @@ export function UploadSection() {
   const [completedBatchSummary, setCompletedBatchSummary] = useState<BatchCompletionSummary | null>(null);
   const [latestCompletedBatch, setLatestCompletedBatch] = useState<BatchSessionRecord | null>(null);
   const [dismissedBatchId, setDismissedBatchId] = useState<string | null>(null);
+  const [pendingUploadCheckpoints, setPendingUploadCheckpoints] = useState<MultipartUploadCheckpointRecord[]>([]);
   const activeUploadCancelRef = useRef<(() => void) | null>(null);
   const batchCancelledRef = useRef(false);
   const batchUploadTimingRef = useRef<{
@@ -296,6 +302,14 @@ export function UploadSection() {
     setLatestCompletedBatch(loadLatestCompletedBatchSession());
   }, []);
 
+  useEffect(() => {
+    void refreshPendingUploadCheckpoints();
+  }, []);
+
+  async function refreshPendingUploadCheckpoints() {
+    setPendingUploadCheckpoints(await listMultipartUploadCheckpoints());
+  }
+
   function replaceQueueItem(index: number, updater: (current: BatchUploadItemRecord) => BatchUploadItemRecord) {
     setBatchQueue((currentItems) => {
       const nextItems = currentItems.map((item, itemIndex) =>
@@ -367,9 +381,13 @@ export function UploadSection() {
           setUploadProgress(progress.percentage);
           setUploadStats(progress);
         },
+        multipartCheckpoint: {
+          kind: "single",
+        },
       });
       activeUploadCancelRef.current = uploadTask.cancel;
       const job = await uploadTask.promise;
+      await refreshPendingUploadCheckpoints();
       startTransition(() => {
         router.push(`/jobs/${job.jobId}`);
       });
@@ -379,6 +397,7 @@ export function UploadSection() {
           ? uploadError
           : new ApiError({ code: "request_failed", message: "Upload failed.", retryable: false })
       );
+      await refreshPendingUploadCheckpoints();
       resetUploadState();
     }
   }
@@ -462,6 +481,11 @@ export function UploadSection() {
               updatedAt: new Date().toISOString(),
             }));
           },
+          multipartCheckpoint: {
+            kind: "batch",
+            batchId,
+            itemId: workingItems[index].id,
+          },
         });
         activeUploadCancelRef.current = uploadTask.cancel;
         const job = await uploadTask.promise;
@@ -524,6 +548,7 @@ export function UploadSection() {
       setLatestCompletedBatch(nextSnapshot);
       setCompletedBatchSummary(completionSummary);
       setSelectedFiles([]);
+      await refreshPendingUploadCheckpoints();
       return;
     }
 
@@ -536,6 +561,216 @@ export function UploadSection() {
         retryable: true,
       })
     );
+    await refreshPendingUploadCheckpoints();
+  }
+
+  async function resumeBatchUpload(checkpoint: MultipartUploadCheckpointRecord) {
+    if (checkpoint.scope !== "batch" || !checkpoint.batchId || !checkpoint.itemId) {
+      return;
+    }
+
+    const session = loadBatchSession(checkpoint.batchId);
+    if (!session) {
+      await removeMultipartUploadCheckpoint(checkpoint.id);
+      await refreshPendingUploadCheckpoints();
+      return;
+    }
+
+    const startIndex = session.items.findIndex((item) => item.id === checkpoint.itemId);
+    if (startIndex < 0) {
+      await removeMultipartUploadCheckpoint(checkpoint.id);
+      await refreshPendingUploadCheckpoints();
+      return;
+    }
+
+    const filesByItemId = new Map<string, File>([[checkpoint.itemId, checkpoint.file]]);
+    for (const item of session.items.slice(startIndex + 1)) {
+      if (item.jobId || item.status === "ready" || item.status === "processing") {
+        continue;
+      }
+
+      const file = await loadBatchSourceFile(checkpoint.batchId, item.id);
+      if (file) {
+        filesByItemId.set(item.id, file);
+      }
+    }
+
+    batchCancelledRef.current = false;
+    setDismissedBatchId(null);
+    setCompletedBatchSummary(null);
+    setError(null);
+    setIsUploading(true);
+    setBatchQueue(session.items);
+    setCurrentBatchIndex(startIndex);
+    setSelectedFiles([...filesByItemId.values()]);
+
+    const workingItems = [...session.items];
+    batchUploadTimingRef.current = {
+      sourceStartedAtByItemId: {},
+      completedSourceDurationsMsByItemId: {},
+    };
+
+    for (let index = startIndex; index < workingItems.length; index += 1) {
+      if (batchCancelledRef.current) {
+        break;
+      }
+
+      const file = filesByItemId.get(workingItems[index].id) ?? null;
+      const updateItem = (updater: (current: BatchUploadItemRecord) => BatchUploadItemRecord) => {
+        const nextItem = updater(workingItems[index]);
+        workingItems[index] = nextItem;
+        replaceQueueItem(index, () => nextItem);
+        saveBatchSession({
+          ...session,
+          items: [...workingItems],
+        });
+      };
+
+      if (workingItems[index].jobId && workingItems[index].status !== "failed") {
+        continue;
+      }
+
+      if (!file) {
+        updateItem((current) => ({
+          ...current,
+          status: "failed",
+          error: "The original source is no longer cached in this browser. Re-queue it from home.",
+          updatedAt: new Date().toISOString(),
+        }));
+        continue;
+      }
+
+      setCurrentBatchIndex(index);
+      setUploadPhase("validating");
+      setUploadProgress(0);
+      setUploadStats({
+        loaded: 0,
+        total: file.size,
+        percentage: 0,
+      });
+      batchUploadTimingRef.current.sourceStartedAtByItemId[workingItems[index].id] = Date.now();
+
+      updateItem((current) => ({
+        ...current,
+        status: "uploading",
+        uploadPhase: "validating",
+        uploadProgress: 0,
+        error: null,
+        updatedAt: new Date().toISOString(),
+      }));
+
+      try {
+        const uploadTask = createJob(file, {
+          onPhaseChange(phase) {
+            setUploadPhase(phase);
+            updateItem((current) => ({
+              ...current,
+              uploadPhase: phase,
+              uploadProgress: phase === "processing" ? 100 : current.uploadProgress,
+              updatedAt: new Date().toISOString(),
+            }));
+          },
+          onUploadProgress(progress) {
+            setUploadProgress(progress.percentage);
+            setUploadStats(progress);
+            updateItem((current) => ({
+              ...current,
+              uploadProgress: progress.percentage,
+              updatedAt: new Date().toISOString(),
+            }));
+          },
+          multipartCheckpoint: {
+            kind: "batch",
+            batchId: checkpoint.batchId,
+            itemId: workingItems[index].id,
+          },
+        });
+        activeUploadCancelRef.current = uploadTask.cancel;
+        const job = await uploadTask.promise;
+        const currentItemId = workingItems[index].id;
+        const startedAt = batchUploadTimingRef.current.sourceStartedAtByItemId[currentItemId];
+        if (startedAt) {
+          batchUploadTimingRef.current.completedSourceDurationsMsByItemId[currentItemId] = Date.now() - startedAt;
+        }
+        updateItem((current) => ({
+          ...current,
+          jobId: job.jobId,
+          status: "processing",
+          uploadPhase: "complete",
+          uploadProgress: 100,
+          updatedAt: new Date().toISOString(),
+        }));
+        void removeBatchSourceFile(checkpoint.batchId, workingItems[index].id);
+      } catch (uploadError) {
+        const resolvedError =
+          uploadError instanceof ApiError
+            ? uploadError
+            : new ApiError({ code: "request_failed", message: "Upload failed.", retryable: false });
+
+        updateItem((current) => ({
+          ...current,
+          status: batchCancelledRef.current ? "cancelled" : "failed",
+          error: resolvedError.message,
+          updatedAt: new Date().toISOString(),
+        }));
+
+        if (batchCancelledRef.current) {
+          break;
+        }
+      } finally {
+        activeUploadCancelRef.current = null;
+      }
+    }
+
+    if (batchCancelledRef.current) {
+      for (let index = 0; index < workingItems.length; index += 1) {
+        if (workingItems[index].status === "queued" || workingItems[index].status === "uploading") {
+          const nextItem = {
+            ...workingItems[index],
+            status: "cancelled" as const,
+            error: "Queue was cancelled before this source finished uploading.",
+            updatedAt: new Date().toISOString(),
+          };
+          workingItems[index] = nextItem;
+        }
+      }
+      setBatchQueue([...workingItems]);
+      saveBatchSession({
+        ...session,
+        items: [...workingItems],
+      });
+    }
+
+    resetUploadState();
+
+    if (workingItems.some((item) => item.jobId)) {
+      const completionSummary = buildBatchCompletionSummary(session.batchId, session.label, workingItems);
+      const nextSnapshot = saveBatchSession({
+        ...session,
+        items: [...workingItems],
+        lastCompletionSummary: completionSummary,
+      })[0] ?? {
+        ...session,
+        items: [...workingItems],
+        lastCompletionSummary: completionSummary,
+      };
+      setLatestCompletedBatch(nextSnapshot);
+      setCompletedBatchSummary(completionSummary);
+      setSelectedFiles([]);
+      await refreshPendingUploadCheckpoints();
+      return;
+    }
+
+    setError(
+      new ApiError({
+        code: "upload_cancelled",
+        message: batchCancelledRef.current
+          ? "The batch queue was cancelled before any upload reached the processing stage."
+          : "The batch queue finished without creating any jobs.",
+        retryable: true,
+      })
+    );
+    await refreshPendingUploadCheckpoints();
   }
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -578,6 +813,30 @@ export function UploadSection() {
     }
 
     void (selectedFiles.length > 1 ? runBatchUpload(selectedFiles) : runSingleUpload(selectedFiles[0]));
+  }
+
+  async function handleResumePendingUpload(checkpoint: MultipartUploadCheckpointRecord) {
+    if (checkpoint.scope === "batch") {
+      await resumeBatchUpload(checkpoint);
+      return;
+    }
+
+    setSelectedFiles([checkpoint.file]);
+    setBatchQueue([]);
+    setCompletedBatchSummary(null);
+    setError(null);
+    await runSingleUpload(checkpoint.file);
+  }
+
+  async function handleDiscardPendingUpload(checkpoint: MultipartUploadCheckpointRecord) {
+    await removeMultipartUploadCheckpoint(checkpoint.id);
+    if (checkpoint.scope === "batch" && checkpoint.batchId) {
+      await clearBatchSourceFiles(checkpoint.batchId);
+      removeBatchSession(checkpoint.batchId);
+      setLatestCompletedBatch(loadLatestCompletedBatchSession());
+      setBatchQueue([]);
+    }
+    await refreshPendingUploadCheckpoints();
   }
 
   function handleOpenBatchWorkspace(batchId: string, prioritizeIssues = false) {
@@ -628,8 +887,10 @@ export function UploadSection() {
     setCompletedBatchSummary(null);
   }
 
-  const queueSummary = isBatchMode
-    ? `${selectedFiles.length} sources selected`
+  const queueSummary = isUploading && batchQueue.length > 0
+    ? `${batchQueue.length} sources in the active queue`
+    : isBatchMode
+      ? `${selectedFiles.length} sources selected`
     : completedBatchSummary
       ? "The latest queue finished successfully. Open the batch workspace or replace it with a new queue."
       : "Use the dropzone below to start a new review job.";
@@ -909,6 +1170,21 @@ export function UploadSection() {
                 ) : null}
               </form>
 
+              {pendingUploadCheckpoints.length > 0 && !isUploading ? (
+                <div className="mt-5 border-t border-[var(--line)] pt-5">
+                  <div className="space-y-3">
+                    {pendingUploadCheckpoints.map((checkpoint) => (
+                      <ResumeUploadShortcut
+                        key={checkpoint.id}
+                        checkpoint={checkpoint}
+                        onDiscard={() => void handleDiscardPendingUpload(checkpoint)}
+                        onResume={() => void handleResumePendingUpload(checkpoint)}
+                      />
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+
               {error ? (
                 <div className="mt-5 border-t border-[var(--line)] pt-5">
                   <div className="rounded-[1.25rem] border border-red-500/30 bg-[var(--danger-soft)] px-4 py-4 text-sm text-red-200">
@@ -1113,7 +1389,7 @@ function BatchCompletionShortcut({
             </div>
           ) : null}
         </div>
-        <div className="flex flex-wrap gap-2">
+        <div data-testid="batch-completion-action-row" className="flex flex-wrap gap-2">
           <Button type="button" variant="secondary" size="lg" onClick={onDismiss}>
             {dismissLabel}
           </Button>
@@ -1140,6 +1416,51 @@ function BatchCompletionShortcut({
         <QueueMetric label="Workspace ready" value={String(summary.readyCount)} />
         <QueueMetric label="Failed" value={String(summary.failedCount)} />
         <QueueMetric label="Cancelled" value={String(summary.cancelledCount)} />
+      </div>
+    </div>
+  );
+}
+
+function ResumeUploadShortcut({
+  checkpoint,
+  onDiscard,
+  onResume,
+}: {
+  checkpoint: MultipartUploadCheckpointRecord;
+  onDiscard: () => void;
+  onResume: () => void;
+}) {
+  return (
+    <div className="rounded-[1.25rem] border border-[var(--line)] bg-[var(--surface-overlay)] px-4 py-4">
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div className="max-w-2xl">
+          <div className="metric-label text-[var(--accent)]">Interrupted upload</div>
+          <h3 className="mt-2 text-xl font-semibold tracking-[-0.04em] text-[var(--text)]">
+            {checkpoint.scope === "batch" ? "Resume the active batch source" : "Resume the last multipart upload"}
+          </h3>
+          <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
+            {checkpoint.fileName} still has a saved multipart checkpoint from {formatDateTime(checkpoint.updatedAt)}.{" "}
+            {checkpoint.scope === "batch"
+              ? "Continue the current source and keep the rest of the queue intact."
+              : "Continue transferring the source without restarting the uploaded parts."}
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <Button type="button" variant="secondary" size="lg" onClick={onDiscard}>
+            Discard upload
+          </Button>
+          <Button type="button" variant="primary" size="lg" onClick={onResume}>
+            <ArrowUpRight className="size-4" />
+            {checkpoint.scope === "batch" ? "Resume queue" : "Resume upload"}
+          </Button>
+        </div>
+      </div>
+
+      <div className="mt-4 grid gap-3 sm:grid-cols-4">
+        <QueueMetric label="Saved parts" value={`${checkpoint.completedParts.length} / ${checkpoint.totalParts}`} />
+        <QueueMetric label="File size" value={formatBytes(checkpoint.sizeBytes)} />
+        <QueueMetric label="Target job" value={checkpoint.jobId} />
+        <QueueMetric label="Mode" value={checkpoint.scope === "batch" ? "Batch queue" : "Single source"} />
       </div>
     </div>
   );

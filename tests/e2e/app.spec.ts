@@ -905,6 +905,195 @@ test("batch queue updates guidance when only the final source remains", async ({
   await expect(page.getByText("ETA is still low confidence")).toBeVisible();
 
   await page.getByRole("button", { name: "Cancel", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Batch review session is ready" })).toBeVisible();
+  await expect(page.getByText("1 of 2 sources reached the workspace stage.")).toBeVisible();
+  await expect(page.getByTestId("batch-completion-action-row").getByRole("button", { name: "Queue more sources" })).toBeVisible();
+  await expect(page.getByTestId("batch-completion-action-row").getByRole("button", { name: "Open batch workspace" })).toBeVisible();
+});
+
+test("multipart upload can resume after a page reload", async ({ page }) => {
+  const job = createMockJob({ jobId: "job-resume" });
+  const uploadSessionId = "session-resume";
+  const uploadPartUrl = buildMultipartPartUrl(uploadSessionId, 1);
+  let uploadPartAttempts = 0;
+  let resumedSessionLookups = 0;
+
+  await page.route("**/api/uploads/init", async (route) => {
+    await route.fulfill({
+      status: 201,
+      contentType: "application/json",
+      body: JSON.stringify({
+        uploadSessionId,
+        jobId: job.jobId,
+        fileName: job.sourceVideo.file_name,
+        partSizeBytes: 16 * 1024 * 1024,
+        expiresAt: "2026-04-02T12:30:00.000Z",
+        parts: [{ partNumber: 1, url: uploadPartUrl }],
+      }),
+    });
+  });
+
+  await page.route(`**/api/uploads/${uploadSessionId}`, async (route) => {
+    resumedSessionLookups += 1;
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        uploadSessionId,
+        jobId: job.jobId,
+        fileName: job.sourceVideo.file_name,
+        partSizeBytes: 16 * 1024 * 1024,
+        expiresAt: "2026-04-02T12:45:00.000Z",
+        parts: [{ partNumber: 1, url: uploadPartUrl }],
+      }),
+    });
+  });
+
+  await page.route(uploadPartUrl, async (route) => {
+    uploadPartAttempts += 1;
+    if (uploadPartAttempts === 1) {
+      await new Promise((resolve) => setTimeout(resolve, 5_000));
+    }
+
+    await route.fulfill({
+      status: 200,
+      headers: {
+        ETag: '"etag-resume"',
+      },
+      body: "",
+    });
+  });
+
+  await page.route(`**/api/uploads/${uploadSessionId}/complete`, async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        jobId: job.jobId,
+        status: "queued",
+        fileName: job.sourceVideo.file_name,
+      }),
+    });
+  });
+
+  await page.route(`**/api/jobs/${job.jobId}`, async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(job),
+    });
+  });
+
+  await page.route(`**/api/jobs/${job.jobId}/video`, async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "video/mp4",
+      body: "",
+    });
+  });
+
+  await page.goto("/");
+  await page.locator('input[type="file"]').setInputFiles({
+    name: job.sourceVideo.file_name,
+    mimeType: "video/mp4",
+    buffer: Buffer.alloc(2 * 1024 * 1024, 7),
+  });
+  await page.getByRole("button", { name: "Upload video" }).click();
+
+  await expect(page.getByText("Upload progress")).toBeVisible();
+  await expect.poll(() => uploadPartAttempts).toBe(1);
+  await page.reload();
+
+  await expect(page.getByRole("heading", { name: "Resume the last multipart upload" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Resume upload" })).toBeVisible();
+
+  await page.getByRole("button", { name: "Resume upload" }).click();
+
+  await page.waitForURL(`**/jobs/${job.jobId}`);
+  await expect(page.getByRole("heading", { name: job.sourceVideo.file_name })).toBeVisible();
+  expect(uploadPartAttempts).toBeGreaterThanOrEqual(2);
+  expect(resumedSessionLookups).toBe(1);
+});
+
+test("multipart upload retries a failed part before opening the workspace", async ({ page }) => {
+  const job = createMockJob({ jobId: "job-retry-part" });
+  const uploadSessionId = "session-retry-part";
+  const uploadPartUrl = buildMultipartPartUrl(uploadSessionId, 1);
+  let uploadPartAttempts = 0;
+
+  await page.route("**/api/uploads/init", async (route) => {
+    await route.fulfill({
+      status: 201,
+      contentType: "application/json",
+      body: JSON.stringify({
+        uploadSessionId,
+        jobId: job.jobId,
+        fileName: job.sourceVideo.file_name,
+        partSizeBytes: 16 * 1024 * 1024,
+        expiresAt: "2026-04-02T12:30:00.000Z",
+        parts: [{ partNumber: 1, url: uploadPartUrl }],
+      }),
+    });
+  });
+
+  await page.route(uploadPartUrl, async (route) => {
+    uploadPartAttempts += 1;
+    if (uploadPartAttempts === 1) {
+      await route.fulfill({
+        status: 500,
+        body: "",
+      });
+      return;
+    }
+
+    await route.fulfill({
+      status: 200,
+      headers: {
+        ETag: '"etag-retry-part"',
+      },
+      body: "",
+    });
+  });
+
+  await page.route(`**/api/uploads/${uploadSessionId}/complete`, async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        jobId: job.jobId,
+        status: "queued",
+        fileName: job.sourceVideo.file_name,
+      }),
+    });
+  });
+
+  await page.route(`**/api/jobs/${job.jobId}`, async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(job),
+    });
+  });
+
+  await page.route(`**/api/jobs/${job.jobId}/video`, async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "video/mp4",
+      body: "",
+    });
+  });
+
+  await page.goto("/");
+  await page.locator('input[type="file"]').setInputFiles({
+    name: job.sourceVideo.file_name,
+    mimeType: "video/mp4",
+    buffer: Buffer.alloc(2 * 1024 * 1024, 7),
+  });
+  await page.getByRole("button", { name: "Upload video" }).click();
+
+  await page.waitForURL(`**/jobs/${job.jobId}`);
+  await expect(page.getByRole("heading", { name: job.sourceVideo.file_name })).toBeVisible();
+  expect(uploadPartAttempts).toBe(2);
 });
 
 test("timeline tab is shareable with query params", async ({ page }) => {

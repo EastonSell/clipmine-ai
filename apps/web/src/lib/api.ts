@@ -10,6 +10,15 @@ import type {
   UploadPhase,
   UploadProgress,
 } from "./types";
+import {
+  doesMultipartUploadCheckpointMatchFile,
+  getMultipartUploadCheckpointId,
+  loadMultipartUploadCheckpoint,
+  removeMultipartUploadCheckpoint,
+  saveMultipartUploadCheckpoint,
+  type MultipartUploadCheckpointPart,
+  type MultipartUploadCheckpointScope,
+} from "./multipart-upload-checkpoints";
 
 const DEFAULT_API_BASE_URL = "http://localhost:8000";
 const SAME_ORIGIN_API_BASE_URL = "";
@@ -49,6 +58,7 @@ const API_ERROR_MESSAGES: Record<string, string> = {
 type CreateJobOptions = {
   onPhaseChange?: (phase: UploadPhase) => void;
   onUploadProgress?: (progress: UploadProgress) => void;
+  multipartCheckpoint?: MultipartUploadCheckpointScope;
 };
 
 type MultipartCompletedPart = {
@@ -386,6 +396,8 @@ function createMultipartJobAtBaseUrl(baseUrl: string, file: File, options: Creat
   let cancelled = false;
   let uploadSessionId: string | null = null;
   let sessionClosed = false;
+  const checkpointScope = options.multipartCheckpoint ?? null;
+  const checkpointId = checkpointScope ? getMultipartUploadCheckpointId(checkpointScope) : null;
 
   async function abortUploadSession() {
     if (!uploadSessionId || sessionClosed) {
@@ -407,10 +419,49 @@ function createMultipartJobAtBaseUrl(baseUrl: string, file: File, options: Creat
     }
   }
 
-  const promise = (async () => {
+  async function clearCheckpoint() {
+    if (!checkpointId) {
+      return;
+    }
+
+    await removeMultipartUploadCheckpoint(checkpointId);
+  }
+
+  async function saveCheckpoint(
+    initResponse: UploadInitResponse,
+    completedParts: MultipartUploadCheckpointPart[],
+    createdAt: string
+  ) {
+    if (!checkpointId) {
+      return;
+    }
+
+    await saveMultipartUploadCheckpoint({
+      id: checkpointId,
+      scope: checkpointScope?.kind ?? "single",
+      batchId: checkpointScope?.kind === "batch" ? checkpointScope.batchId : null,
+      itemId: checkpointScope?.kind === "batch" ? checkpointScope.itemId : null,
+      file,
+      fileName: file.name,
+      mimeType: file.type || "application/octet-stream",
+      sizeBytes: file.size,
+      lastModified: file.lastModified,
+      baseUrl,
+      uploadSessionId: initResponse.uploadSessionId,
+      jobId: initResponse.jobId,
+      partSizeBytes: initResponse.partSizeBytes,
+      totalParts: initResponse.parts.length,
+      expiresAt: initResponse.expiresAt,
+      completedParts,
+      createdAt,
+      updatedAt: new Date().toISOString(),
+    });
+  }
+
+  async function initializeMultipartUploadSession() {
+    const initController = new AbortController();
+    activeControllers.add(initController);
     try {
-      const initController = new AbortController();
-      activeControllers.add(initController);
       const initResponse = await requestJson<UploadInitResponse>(`${baseUrl}/api/uploads/init`, {
         method: "POST",
         headers: {
@@ -423,17 +474,65 @@ function createMultipartJobAtBaseUrl(baseUrl: string, file: File, options: Creat
         }),
         signal: initController.signal,
       });
-      activeControllers.delete(initController);
-
       uploadSessionId = initResponse.uploadSessionId;
+      return initResponse;
+    } finally {
+      activeControllers.delete(initController);
+    }
+  }
+
+  async function resumeMultipartUploadSession() {
+    if (!checkpointId) {
+      return null;
+    }
+
+    const checkpoint = await loadMultipartUploadCheckpoint(checkpointId);
+    if (!checkpoint) {
+      return null;
+    }
+    if (!doesMultipartUploadCheckpointMatchFile(checkpoint, file)) {
+      await removeMultipartUploadCheckpoint(checkpointId);
+      return null;
+    }
+
+    try {
+      const resumeResponse = await requestJson<UploadInitResponse>(`${baseUrl}/api/uploads/${checkpoint.uploadSessionId}`, {
+        cache: "no-store",
+      });
+      uploadSessionId = resumeResponse.uploadSessionId;
+      return {
+        initResponse: resumeResponse,
+        completedParts: checkpoint.completedParts,
+        createdAt: checkpoint.createdAt,
+      };
+    } catch (error) {
+      const apiError = toApiError(error);
+      if (apiError.code !== "upload_session_expired") {
+        throw apiError;
+      }
+
+      await removeMultipartUploadCheckpoint(checkpointId);
+      return null;
+    }
+  }
+
+  const promise = (async () => {
+    try {
+      const resumedSession = await resumeMultipartUploadSession();
+      const initResponse = resumedSession?.initResponse ?? (await initializeMultipartUploadSession());
+      const createdAt = resumedSession?.createdAt ?? new Date().toISOString();
       options.onPhaseChange?.("transferring");
-      options.onUploadProgress?.({ loaded: 0, total: file.size, percentage: 0 });
+      await saveCheckpoint(initResponse, resumedSession?.completedParts ?? [], createdAt);
 
       const completedParts = await uploadMultipartParts({
         file,
         initResponse,
         activeXhrs,
         onUploadProgress: options.onUploadProgress,
+        completedParts: resumedSession?.completedParts ?? [],
+        onCompletedPartsChange(nextCompletedParts) {
+          void saveCheckpoint(initResponse, nextCompletedParts, createdAt);
+        },
       });
 
       if (cancelled) {
@@ -458,6 +557,7 @@ function createMultipartJobAtBaseUrl(baseUrl: string, file: File, options: Creat
       );
       activeControllers.delete(completeController);
       sessionClosed = true;
+      await clearCheckpoint();
 
       options.onUploadProgress?.({ loaded: file.size, total: file.size, percentage: 100 });
       options.onPhaseChange?.("processing");
@@ -469,7 +569,10 @@ function createMultipartJobAtBaseUrl(baseUrl: string, file: File, options: Creat
       });
       return payload;
     } catch (error) {
-      if (uploadSessionId && !sessionClosed) {
+      if (cancelled) {
+        await clearCheckpoint();
+      }
+      if (cancelled && uploadSessionId && !sessionClosed) {
         void abortUploadSession();
       }
 
@@ -484,6 +587,7 @@ function createMultipartJobAtBaseUrl(baseUrl: string, file: File, options: Creat
       activeControllers.forEach((controller) => controller.abort());
       activeXhrs.forEach((xhr) => xhr.abort());
       void abortUploadSession();
+      void clearCheckpoint();
     },
   };
 }
@@ -493,19 +597,40 @@ async function uploadMultipartParts({
   initResponse,
   activeXhrs,
   onUploadProgress,
+  completedParts = [],
+  onCompletedPartsChange,
 }: {
   file: File;
   initResponse: UploadInitResponse;
   activeXhrs: Set<XMLHttpRequest>;
   onUploadProgress?: (progress: UploadProgress) => void;
+  completedParts?: MultipartCompletedPart[];
+  onCompletedPartsChange?: (parts: MultipartCompletedPart[]) => void;
 }): Promise<MultipartCompletedPart[]> {
   const progressByPart = new Map<number, number>();
-  const completedParts = new Array<MultipartCompletedPart>(initResponse.parts.length);
+  const completedPartMap = new Map<number, MultipartCompletedPart>();
   let nextIndex = 0;
 
   const emitProgress = () => {
     onUploadProgress?.(aggregateUploadProgress(progressByPart.values(), file.size));
   };
+
+  const normalizedCompletedParts = completedParts
+    .filter((part) => part.partNumber >= 1 && part.partNumber <= initResponse.parts.length)
+    .toSorted((left, right) => left.partNumber - right.partNumber);
+
+  normalizedCompletedParts.forEach((part) => {
+    completedPartMap.set(part.partNumber, part);
+    progressByPart.set(
+      part.partNumber,
+      getMultipartPartSizeBytes({
+        fileSizeBytes: file.size,
+        partSizeBytes: initResponse.partSizeBytes,
+        partNumber: part.partNumber,
+      })
+    );
+  });
+  emitProgress();
 
   async function worker() {
     while (true) {
@@ -516,6 +641,9 @@ async function uploadMultipartParts({
       }
 
       const descriptor = initResponse.parts[partIndex];
+      if (completedPartMap.has(descriptor.partNumber)) {
+        continue;
+      }
       const start = (descriptor.partNumber - 1) * initResponse.partSizeBytes;
       const end = Math.min(start + initResponse.partSizeBytes, file.size);
       const blob = file.slice(start, end);
@@ -534,16 +662,33 @@ async function uploadMultipartParts({
       });
       progressByPart.set(descriptor.partNumber, blob.size);
       emitProgress();
-      completedParts[partIndex] = {
+      completedPartMap.set(descriptor.partNumber, {
         partNumber: descriptor.partNumber,
         etag,
-      };
+      });
+      onCompletedPartsChange?.(
+        Array.from(completedPartMap.values()).toSorted((left, right) => left.partNumber - right.partNumber)
+      );
     }
   }
 
   const workers = Array.from({ length: Math.min(MULTIPART_CONCURRENCY, initResponse.parts.length) }, () => worker());
   await Promise.all(workers);
-  return completedParts.toSorted((left, right) => left.partNumber - right.partNumber);
+  return Array.from(completedPartMap.values()).toSorted((left, right) => left.partNumber - right.partNumber);
+}
+
+function getMultipartPartSizeBytes({
+  fileSizeBytes,
+  partSizeBytes,
+  partNumber,
+}: {
+  fileSizeBytes: number;
+  partSizeBytes: number;
+  partNumber: number;
+}) {
+  const start = (partNumber - 1) * partSizeBytes;
+  const end = Math.min(start + partSizeBytes, fileSizeBytes);
+  return Math.max(0, end - start);
 }
 
 async function uploadPartWithRetries({

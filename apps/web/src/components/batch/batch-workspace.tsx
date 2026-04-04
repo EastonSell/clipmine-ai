@@ -743,6 +743,11 @@ export function BatchWorkspace({
             updatedAt: new Date().toISOString(),
           }));
         },
+        multipartCheckpoint: {
+          kind: "batch",
+          batchId,
+          itemId: item.id,
+        },
       });
       const job = await uploadTask.promise;
       await removeBatchSourceFile(batchId, item.id);

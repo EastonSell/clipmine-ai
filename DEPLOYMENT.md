@@ -6,6 +6,7 @@
 - Backend deploy target: Render Web Service
 - Production upload target: S3-compatible object storage
 - Persistence requirement: Render persistent disk for manifests, temporary processing artifacts, and Whisper model cache
+- Release checklist and live validation ledger: [PLAN.md](PLAN.md)
 
 The deployment split avoids serverless timeouts and keeps video processing off the frontend platform.
 
@@ -56,12 +57,13 @@ S3_FORCE_PATH_STYLE=false
 ```
 
 7. Deploy and verify `GET /api/health`.
-8. Confirm `/api/health` shows `checks.objectStoreReachable=true`.
+8. Confirm `/api/health` shows `checks.objectStoreReachable=true` and `checks.tempDiskWritable=true`.
 9. Upload a short test video through the frontend to confirm:
    - `/api/uploads/init` succeeds
    - the browser uploads parts directly to object storage
    - `/api/uploads/{uploadSessionId}/complete` returns a queued job
    - `/api/jobs/{jobId}/video` streams playback through the backend proxy
+10. For object-storage-backed jobs, verify `GET /api/jobs/{jobId}/video/verify` returns `status=ok` before testing export and review.
 
 ## Required Environment Variables
 
@@ -90,7 +92,6 @@ S3_FORCE_PATH_STYLE=false
 
 - First-run transcription is slower because the model downloads on first use.
 - CPU transcription is optimized for reliability, not batch throughput.
-- Multipart upload retries only cover the current browser session. Uploads do not yet resume after a full tab or browser restart.
 - Temporary audio and remote-source cache files still use the Render disk during processing.
 - The app uses source-video seeking for playback instead of pre-rendered clip assets.
 
@@ -111,6 +112,7 @@ S3_FORCE_PATH_STYLE=false
 - Confirm the bucket allows multipart uploads and returns `ETag` headers for uploaded parts.
 - Check backend logs for `upload.init_failed` or `upload.complete_failed`.
 - If your provider requires path-style URLs, set `S3_FORCE_PATH_STYLE=true`.
+- If the browser was refreshed mid-transfer, reopen the landing page and use the saved multipart resume action instead of re-uploading the file from scratch.
 
 ### Backend job never reaches `ready`
 
@@ -118,6 +120,12 @@ S3_FORCE_PATH_STYLE=false
 - Confirm the persistent disk is mounted and writable.
 - Confirm the backend can download the source object from storage into the temporary processing cache.
 - Confirm enough disk space remains for uploads and model files.
+
+### Remote playback or export behaves incorrectly for S3-backed jobs
+
+- Check `/api/health` first and confirm `checks.objectStoreReachable=true`.
+- Run `GET /api/jobs/{jobId}/video/verify` and confirm `checks.playbackRangeReadable=true`.
+- If the playback probe passes but exports fail, inspect backend logs for `package.object_store_failed` or `batch_package.job_skipped`.
 
 ### Export button is disabled
 

@@ -145,7 +145,23 @@ await browser.close();
 
 async function capturePage(context, pathname, fileName) {
   const page = await context.newPage();
+  const problems = [];
+  page.on("console", (message) => {
+    if (message.type() === "warning" || message.type() === "error") {
+      problems.push(`[console:${message.type()}] ${message.text()}`);
+    }
+  });
+  page.on("pageerror", (error) => {
+    problems.push(`[pageerror] ${error.message}`);
+  });
+  page.on("requestfailed", (request) => {
+    problems.push(`[requestfailed] ${request.method()} ${request.url()} :: ${request.failure()?.errorText ?? "unknown error"}`);
+  });
   await page.goto(`${baseUrl}${pathname}`, { waitUntil: "networkidle" });
+  if (problems.length > 0) {
+    await page.close();
+    throw new Error(`Browser smoke failed for ${pathname}:\n${problems.join("\n")}`);
+  }
   await page.screenshot({
     path: path.join(outputDir, fileName),
     fullPage: true,

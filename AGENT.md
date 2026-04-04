@@ -63,23 +63,16 @@ npm run test:e2e
 
 ## Git Publishing Note
 
-- The workspace-local `.git` may be unusable in this environment. If normal staging fails, use a clean temp checkout of `origin/main`, copy the changed tracked files into that checkout, then commit and push from there.
-- Before staging in the temp checkout, always run:
+- The workspace-local `.git` is expected to work normally. Publish from this checkout with the standard workflow:
 
 ```bash
-git fetch origin
-git checkout main
-git reset --hard origin/main
+git pull --ff-only origin main
+git add <files>
+git commit -m "..."
+git push origin main
 ```
 
-- The README asset workflow can land follow-up commits on `main`, so do not assume the temp checkout is still current between tasks.
-- If HTTPS push hangs on the macOS keychain helper, run:
-
-```bash
-gh auth setup-git
-```
-
-- After that, retry `git push origin main` from the temp checkout.
+- The README asset workflow can land a follow-up asset-refresh commit on `main`, so pull again before the next publish if you changed UI or README visuals.
 
 ## Code Guidance
 

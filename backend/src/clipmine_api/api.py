@@ -234,34 +234,70 @@ async def initialize_multipart_upload(
         ) from exc
 
     saved_session = store.save_upload_session(session.model_copy(update={"upload_id": upload_id}))
-    expires_in_seconds = max(60, settings.upload_session_ttl_minutes * 60)
-    parts = [
-        {
-            "partNumber": part_number,
-            "url": artifact_store.get_presigned_part_url(
-                source,
-                upload_id=upload_id,
-                part_number=part_number,
-                expires_in_seconds=expires_in_seconds,
-            ),
-        }
-        for part_number in range(1, saved_session.total_parts + 1)
-    ]
     logger.info(
         "upload.init_ready session_id=%s job_id=%s file_name=%s parts=%s",
         saved_session.session_id,
         saved_session.job_id,
         saved_session.file_name,
-        len(parts),
+        saved_session.total_parts,
     )
-    return {
-        "uploadSessionId": saved_session.session_id,
-        "jobId": saved_session.job_id,
-        "fileName": saved_session.file_name,
-        "partSizeBytes": saved_session.part_size_bytes,
-        "expiresAt": saved_session.expires_at,
-        "parts": parts,
-    }
+    return _serialize_upload_session(
+        saved_session,
+        source=source,
+        artifact_store=artifact_store,
+        expires_in_seconds=max(60, settings.upload_session_ttl_minutes * 60),
+    )
+
+
+@router.get("/uploads/{upload_session_id}")
+async def get_multipart_upload_session(
+    upload_session_id: str,
+    request: Request,
+    store: JobStore = Depends(get_job_store),
+    artifact_store: ArtifactStore = Depends(get_artifact_store),
+) -> dict[str, object]:
+    settings = request.app.state.settings
+
+    try:
+        session = store.load_upload_session(upload_session_id)
+    except FileNotFoundError as exc:
+        raise build_http_error(
+            status_code=status.HTTP_404_NOT_FOUND,
+            code="upload_session_expired",
+            message="The upload session expired or was not found.",
+            retryable=False,
+        ) from exc
+
+    if settings.storage_backend != "s3" or not artifact_store.supports_multipart_uploads:
+        raise build_http_error(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            code="object_store_unavailable",
+            message="Multipart uploads are unavailable because object storage is not configured.",
+            retryable=False,
+        )
+    if not artifact_store.is_reachable():
+        raise build_http_error(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            code="object_store_unavailable",
+            message="Object storage is unavailable right now.",
+            retryable=True,
+        )
+
+    source = _build_source_video_for_session(session, storage_backend=artifact_store.backend_name)
+    refreshed_session = store.save_upload_session(session)
+    logger.info(
+        "upload.resume_ready session_id=%s job_id=%s file_name=%s parts=%s",
+        refreshed_session.session_id,
+        refreshed_session.job_id,
+        refreshed_session.file_name,
+        refreshed_session.total_parts,
+    )
+    return _serialize_upload_session(
+        refreshed_session,
+        source=source,
+        artifact_store=artifact_store,
+        expires_in_seconds=max(60, settings.upload_session_ttl_minutes * 60),
+    )
 
 
 @router.post("/uploads/{upload_session_id}/complete")
@@ -820,3 +856,32 @@ def _build_source_video_for_session(session: UploadSessionRecord, *, storage_bac
         relative_path=session.relative_path,
         storage_backend=storage_backend,
     )
+
+
+def _serialize_upload_session(
+    session: UploadSessionRecord,
+    *,
+    source: SourceVideoRecord,
+    artifact_store: ArtifactStore,
+    expires_in_seconds: int,
+) -> dict[str, object]:
+    parts = [
+        {
+            "partNumber": part_number,
+            "url": artifact_store.get_presigned_part_url(
+                source,
+                upload_id=session.upload_id or "",
+                part_number=part_number,
+                expires_in_seconds=expires_in_seconds,
+            ),
+        }
+        for part_number in range(1, session.total_parts + 1)
+    ]
+    return {
+        "uploadSessionId": session.session_id,
+        "jobId": session.job_id,
+        "fileName": session.file_name,
+        "partSizeBytes": session.part_size_bytes,
+        "expiresAt": session.expires_at,
+        "parts": parts,
+    }

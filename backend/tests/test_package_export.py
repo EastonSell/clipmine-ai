@@ -16,6 +16,23 @@ from clipmine_api.presentation import build_summary, build_timeline
 from clipmine_api.schemas import ClipRecord, JobStatus, PlaybackMetadata, ProgressPhase
 
 
+class FakeRemoteArtifactStore:
+    backend_name = "s3"
+    supports_multipart_uploads = True
+
+    def __init__(self, source_fixture_path: Path):
+        self.source_fixture_path = source_fixture_path
+        self.downloaded_sources: list[str] = []
+
+    def is_reachable(self) -> bool:
+        return True
+
+    def download_source_video(self, source, destination: Path) -> None:
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        destination.write_bytes(self.source_fixture_path.read_bytes())
+        self.downloaded_sources.append(source.relative_path)
+
+
 def test_package_export_returns_zip_with_manifest_and_clip_files(tmp_path: Path) -> None:
     with TestClient(app) as client:
         settings = client.app.state.settings
@@ -192,6 +209,64 @@ def test_package_export_supports_metadata_only_preset(tmp_path: Path) -> None:
     assert manifest_payload["includesMediaFiles"] is False
     assert manifest_payload["clips"][0]["fileName"] is None
     assert manifest_payload["clips"][0]["relativePath"] is None
+
+
+def test_package_export_downloads_remote_s3_source_before_trimming(tmp_path: Path) -> None:
+    with TestClient(app) as client:
+        settings = client.app.state.settings
+        original_storage = settings.storage_dir
+        original_model_cache = settings.model_cache_dir
+        original_storage_backend = settings.storage_backend
+        original_artifact_store = client.app.state.artifact_store
+        settings.storage_dir = tmp_path / "storage"
+        settings.model_cache_dir = tmp_path / "models"
+        settings.storage_backend = "s3"
+        source_fixture_path = tmp_path / "remote-source.mp4"
+        create_sample_video(source_fixture_path)
+        artifact_store = FakeRemoteArtifactStore(source_fixture_path)
+        client.app.state.artifact_store = artifact_store
+
+        try:
+            job_id = "remote-package-job"
+            clip = build_clip_record(job_id=job_id, clip_id="remote-package-job-clip-001", start=0.0, end=1.1, score=94.0)
+            manifest = client.app.state.job_store.create_manifest_for_job(
+                job_id=job_id,
+                file_name="remote.mp4",
+                content_type="video/mp4",
+                size_bytes=2048,
+                relative_path="jobs/remote-package-job/source/remote.mp4",
+                storage_backend="s3",
+            )
+            client.app.state.job_store.save_job(
+                manifest.model_copy(
+                    update={
+                        "status": JobStatus.READY,
+                        "progress_phase": ProgressPhase.READY,
+                        "clips": [clip],
+                        "summary": build_summary([clip], duration_seconds=2.0, transcript_text="Remote transcript"),
+                        "timeline": build_timeline([clip], duration_seconds=2.0),
+                    }
+                )
+            )
+
+            response = client.post(
+                f"/api/jobs/{job_id}/exports/package",
+                json={"clipIds": [clip.id]},
+            )
+        finally:
+            settings.storage_dir = original_storage
+            settings.model_cache_dir = original_model_cache
+            settings.storage_backend = original_storage_backend
+            client.app.state.artifact_store = original_artifact_store
+
+    assert response.status_code == 200
+    assert artifact_store.downloaded_sources == ["jobs/remote-package-job/source/remote.mp4"]
+
+    archive = zipfile.ZipFile(BytesIO(response.content))
+    archive_names = set(archive.namelist())
+    clip_path = "clipmine-export-remote-package-job/clips/clip_001__remote-package-job-clip-001.mp4"
+    assert clip_path in archive_names
+    assert len(archive.read(clip_path)) > 0
 
 
 def test_package_export_rejects_empty_selection(tmp_path: Path) -> None:
