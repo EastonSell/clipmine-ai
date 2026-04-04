@@ -9,6 +9,7 @@ const outputDir = path.resolve(__dirname, "../docs/readme");
 const baseUrl = process.env.README_CAPTURE_BASE_URL ?? "http://127.0.0.1:3000";
 const recentJobsKey = "clipmine:recent-jobs:v1";
 const batchSessionsKey = "clipmine:batches:v1";
+const selectedClipsKeyPrefix = "clipmine:selected:";
 
 const jobAlpha = createDemoJob({
   jobId: "demo-job-alpha",
@@ -76,13 +77,15 @@ const context = await browser.newContext({
 });
 
 await context.addInitScript(
-  ({ recentJobsKey, batchSessionsKey, recentJobs, batchSession }) => {
+  ({ recentJobsKey, batchSessionsKey, selectedClipsKeyPrefix, recentJobs, batchSession }) => {
     window.localStorage.setItem(recentJobsKey, JSON.stringify(recentJobs));
     window.localStorage.setItem(batchSessionsKey, JSON.stringify([batchSession]));
+    window.localStorage.setItem(`${selectedClipsKeyPrefix}demo-job-alpha`, JSON.stringify(["demo-job-alpha-clip-001"]));
   },
   {
     recentJobsKey,
     batchSessionsKey,
+    selectedClipsKeyPrefix,
     recentJobs: [
       {
         jobId: jobAlpha.jobId,
@@ -155,7 +158,12 @@ async function capturePage(context, pathname, fileName) {
     problems.push(`[pageerror] ${error.message}`);
   });
   page.on("requestfailed", (request) => {
-    problems.push(`[requestfailed] ${request.method()} ${request.url()} :: ${request.failure()?.errorText ?? "unknown error"}`);
+    const errorText = request.failure()?.errorText ?? "unknown error";
+    const requestUrl = request.url();
+    if (errorText === "net::ERR_ABORTED" && requestUrl.includes("_rsc=")) {
+      return;
+    }
+    problems.push(`[requestfailed] ${request.method()} ${requestUrl} :: ${errorText}`);
   });
   await page.goto(`${baseUrl}${pathname}`, { waitUntil: "networkidle" });
   if (problems.length > 0) {
@@ -336,32 +344,31 @@ function buildLandingOverviewSvg() {
   <text x="1102" y="83" fill="#B9C7D7" font-family="Arial, sans-serif" font-size="16">Roadmap</text>
   <text x="1226" y="83" fill="#08202A" font-family="Arial, sans-serif" font-size="16" font-weight="700">Upload video</text>
   <text x="72" y="194" fill="#7BD9F3" font-family="Arial, sans-serif" font-size="15" letter-spacing="3">TRAINING-READY SPEECH CURATION</text>
-  <text x="72" y="282" fill="#F0F5FA" font-family="Arial, sans-serif" font-size="78" font-weight="700">Queue uploads.</text>
-  <text x="72" y="358" fill="#F0F5FA" font-family="Arial, sans-serif" font-size="78" font-weight="700">Review ranked clips.</text>
-  <text x="72" y="434" fill="#F0F5FA" font-family="Arial, sans-serif" font-size="78" font-weight="700">Export one package.</text>
-  <text x="74" y="492" fill="#8FA0B5" font-family="Arial, sans-serif" font-size="24">ClipMine AI turns raw talking-head video into a review surface with scoring,</text>
-  <text x="74" y="528" fill="#8FA0B5" font-family="Arial, sans-serif" font-size="24">timeline coverage, queue status, and training-package exports.</text>
+  <text x="72" y="274" fill="#F0F5FA" font-family="Arial, sans-serif" font-size="66" font-weight="700">One workspace for upload review</text>
+  <text x="72" y="340" fill="#F0F5FA" font-family="Arial, sans-serif" font-size="66" font-weight="700">and package handoff.</text>
+  <text x="74" y="404" fill="#8FA0B5" font-family="Arial, sans-serif" font-size="22">Queue one source or a full batch, inspect ranked clips against the original video,</text>
+  <text x="74" y="438" fill="#8FA0B5" font-family="Arial, sans-serif" font-size="22">and export media, spectrograms, and manifest metadata from one operator surface.</text>
   <rect x="72" y="578" width="184" height="56" rx="22" fill="#82DFFF"/>
   <rect x="272" y="578" width="204" height="56" rx="22" fill="#121C28" stroke="#29384A"/>
   <text x="118" y="613" fill="#08202A" font-family="Arial, sans-serif" font-size="20" font-weight="700">Upload video</text>
   <text x="319" y="613" fill="#C2CEDA" font-family="Arial, sans-serif" font-size="20">Explore workspace</text>
   <rect x="72" y="676" width="210" height="96" rx="24" fill="#121C28" stroke="#29384A"/>
   <rect x="290" y="676" width="210" height="96" rx="24" fill="#121C28" stroke="#29384A"/>
-  <rect x="508" y="676" width="210" height="96" rx="24" fill="#121C28" stroke="#29384A"/>
+  <rect x="508" y="676" width="226" height="96" rx="24" fill="#121C28" stroke="#29384A"/>
   <text x="96" y="714" fill="#7BD9F3" font-family="Arial, sans-serif" font-size="13" letter-spacing="2">BEST CLIPS</text>
   <text x="96" y="748" fill="#E9F0F7" font-family="Arial, sans-serif" font-size="22" font-weight="700">Rank strong speech</text>
   <text x="314" y="714" fill="#7BD9F3" font-family="Arial, sans-serif" font-size="13" letter-spacing="2">BATCH QUEUE</text>
   <text x="314" y="748" fill="#E9F0F7" font-family="Arial, sans-serif" font-size="22" font-weight="700">Keep sources grouped</text>
   <text x="532" y="714" fill="#7BD9F3" font-family="Arial, sans-serif" font-size="13" letter-spacing="2">TRAINING PACKAGE</text>
-  <text x="532" y="748" fill="#E9F0F7" font-family="Arial, sans-serif" font-size="22" font-weight="700">Export clips + manifest</text>
+  <text x="532" y="748" fill="#E9F0F7" font-family="Arial, sans-serif" font-size="22" font-weight="700">Export media + spectrograms</text>
   <rect x="816" y="156" width="520" height="566" rx="30" fill="#101823" stroke="#223247"/>
   <rect x="848" y="188" width="456" height="70" rx="20" fill="#121D2A" stroke="#25354A"/>
   <text x="878" y="220" fill="#7BD9F3" font-family="Arial, sans-serif" font-size="13" letter-spacing="2">WORKSPACE PREVIEW</text>
-  <text x="878" y="247" fill="#E9F0F7" font-family="Arial, sans-serif" font-size="28" font-weight="700">Single app surface</text>
+  <text x="878" y="247" fill="#E9F0F7" font-family="Arial, sans-serif" font-size="28" font-weight="700">Operator workspace</text>
   <rect x="848" y="286" width="176" height="220" rx="24" fill="#121C28" stroke="#26384D"/>
   <text x="874" y="320" fill="#8FA0B5" font-family="Arial, sans-serif" font-size="14">SELECTED PACKAGE</text>
   <text x="874" y="398" fill="#F0F5FA" font-family="Arial, sans-serif" font-size="76" font-weight="700">08</text>
-  <text x="874" y="440" fill="#8FA0B5" font-family="Arial, sans-serif" font-size="16">Linked clip files and manifest</text>
+  <text x="874" y="440" fill="#8FA0B5" font-family="Arial, sans-serif" font-size="16">Linked media, spectrograms, and manifest</text>
   <rect x="1048" y="286" width="256" height="92" rx="22" fill="#121C28" stroke="#26384D"/>
   <rect x="1048" y="392" width="256" height="92" rx="22" fill="#121C28" stroke="#26384D"/>
   <text x="1072" y="322" fill="#7BD9F3" font-family="Arial, sans-serif" font-size="13" letter-spacing="2">QUEUE</text>
@@ -442,20 +449,21 @@ function buildPackageStructureSvg() {
   <rect width="1200" height="560" rx="28" fill="#0B1118"/>
   <rect x="24" y="24" width="1152" height="512" rx="24" fill="#101822" stroke="#1E2C3C"/>
   <text x="72" y="96" fill="#E8EEF6" font-family="Arial, sans-serif" font-size="34" font-weight="700">Training package structure</text>
-  <text x="72" y="132" fill="#91A2B7" font-family="Arial, sans-serif" font-size="18">The primary export bundles selected clip video files with a manifest that keeps every file linked to clip-level metadata.</text>
+  <text x="72" y="132" fill="#91A2B7" font-family="Arial, sans-serif" font-size="18">The primary export bundles selected clip media, optional spectrograms, and a manifest that keeps every file linked to clip-level metadata.</text>
   <rect x="72" y="184" width="486" height="288" rx="24" fill="#121C28" stroke="#27384B"/>
   <text x="100" y="226" fill="#7BD9F3" font-family="Arial, sans-serif" font-size="14" letter-spacing="2">ZIP LAYOUT</text>
   <text x="100" y="272" fill="#E8EEF6" font-family="Courier New, monospace" font-size="22">clipmine-export-&lt;jobId&gt;/</text>
   <text x="132" y="312" fill="#D6E0EA" font-family="Courier New, monospace" font-size="20">manifest.json</text>
   <text x="132" y="348" fill="#D6E0EA" font-family="Courier New, monospace" font-size="20">clips/</text>
-  <text x="164" y="384" fill="#D6E0EA" font-family="Courier New, monospace" font-size="20">clip_001__dc07547b698b-clip-011.mp4</text>
-  <text x="164" y="420" fill="#D6E0EA" font-family="Courier New, monospace" font-size="20">clip_002__dc07547b698b-clip-023.mp4</text>
+  <text x="164" y="384" fill="#D6E0EA" font-family="Courier New, monospace" font-size="20">clip_001__&lt;clipId&gt;.mp4</text>
+  <text x="164" y="420" fill="#D6E0EA" font-family="Courier New, monospace" font-size="20">clip_002__&lt;clipId&gt;.mp4</text>
+  <text x="132" y="456" fill="#D6E0EA" font-family="Courier New, monospace" font-size="20">spectrograms/clip_001__&lt;clipId&gt;.png</text>
   <rect x="622" y="184" width="506" height="288" rx="24" fill="#121C28" stroke="#27384B"/>
   <text x="650" y="226" fill="#7BD9F3" font-family="Arial, sans-serif" font-size="14" letter-spacing="2">MANIFEST LINKS</text>
   <text x="650" y="276" fill="#E8EEF6" font-family="Arial, sans-serif" font-size="20" font-weight="700">Each clip keeps:</text>
   <text x="650" y="316" fill="#91A2B7" font-family="Arial, sans-serif" font-size="18">• ordinal and stable file name</text>
   <text x="650" y="348" fill="#91A2B7" font-family="Arial, sans-serif" font-size="18">• relative path inside the package</text>
   <text x="650" y="380" fill="#91A2B7" font-family="Arial, sans-serif" font-size="18">• transcript, timings, scores, and tags</text>
-  <text x="650" y="412" fill="#91A2B7" font-family="Arial, sans-serif" font-size="18">• selection recommendation and penalties</text>
+  <text x="650" y="412" fill="#91A2B7" font-family="Arial, sans-serif" font-size="18">• selection recommendation, penalties, and spectrogram path</text>
 </svg>`;
 }

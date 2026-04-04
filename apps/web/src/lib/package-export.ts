@@ -1,4 +1,4 @@
-import type { PackageExportPreset } from "./types";
+import type { PackageExportAssetOptions, PackageExportPreset } from "./types";
 
 export type PackageExportPresetOption = {
   value: PackageExportPreset;
@@ -11,11 +11,19 @@ export type PackageExportPresetOption = {
   listLabel: string;
 };
 
+export type PackageExportIncludeItem = {
+  id: "manifest" | "media" | "spectrograms";
+  label: string;
+  description: string;
+  checked: boolean;
+  disabled: boolean;
+};
+
 export const PACKAGE_EXPORT_PRESET_OPTIONS: PackageExportPresetOption[] = [
   {
     value: "full-av",
     title: "Full AV package",
-    description: "Trim selected clips into mp4 files plus a linked manifest for training and review handoff.",
+    description: "Trim selected clips into mp4 files, keep the linked manifest, and optionally bundle spectrogram companions.",
     accent: "mp4 clips + manifest",
     buttonLabel: "Download selected package",
     batchButtonLabel: "Export full AV package",
@@ -25,7 +33,7 @@ export const PACKAGE_EXPORT_PRESET_OPTIONS: PackageExportPresetOption[] = [
   {
     value: "audio-only",
     title: "Audio-only package",
-    description: "Export each selected clip as a mono wav segment while keeping the same manifest linkage.",
+    description: "Export each selected clip as a mono wav segment with the same manifest linkage and optional spectrogram companions.",
     accent: "wav clips + manifest",
     buttonLabel: "Download audio-only package",
     batchButtonLabel: "Export audio-only package",
@@ -46,6 +54,68 @@ export const PACKAGE_EXPORT_PRESET_OPTIONS: PackageExportPresetOption[] = [
 
 export function getPackageExportPresetOption(preset: PackageExportPreset) {
   return PACKAGE_EXPORT_PRESET_OPTIONS.find((option) => option.value === preset) ?? PACKAGE_EXPORT_PRESET_OPTIONS[0];
+}
+
+export function buildDefaultPackageExportAssetOptions(preset: PackageExportPreset): PackageExportAssetOptions {
+  return {
+    includeSpectrograms: preset !== "metadata-only",
+  };
+}
+
+export function resolvePackageExportAssetOptions(
+  preset: PackageExportPreset,
+  options?: Partial<PackageExportAssetOptions>
+): PackageExportAssetOptions {
+  const defaults = buildDefaultPackageExportAssetOptions(preset);
+  if (preset === "metadata-only") {
+    return { includeSpectrograms: false };
+  }
+
+  return {
+    includeSpectrograms: options?.includeSpectrograms ?? defaults.includeSpectrograms,
+  };
+}
+
+export function getPackageExportIncludeItems(
+  preset: PackageExportPreset,
+  options?: Partial<PackageExportAssetOptions>
+): PackageExportIncludeItem[] {
+  const resolvedOptions = resolvePackageExportAssetOptions(preset, options);
+  const mediaLabel = preset === "audio-only" ? "Mono wav clip files" : "Trimmed clip media";
+  const mediaDescription =
+    preset === "audio-only"
+      ? "Exports one mono wav per selected clip with stable file naming."
+      : "Exports one mp4 per selected clip with stable file naming.";
+
+  return [
+    {
+      id: "manifest",
+      label: "manifest.json",
+      description: "Always included so clip timing, scores, tags, and linkage stay intact.",
+      checked: true,
+      disabled: true,
+    },
+    {
+      id: "media",
+      label: mediaLabel,
+      description:
+        preset === "metadata-only"
+          ? "Metadata-only preset skips trimmed media files."
+          : mediaDescription,
+      checked: preset !== "metadata-only",
+      disabled: true,
+    },
+    {
+      id: "spectrograms",
+      label: "Spectrogram PNGs",
+      description:
+        preset === "metadata-only"
+          ? "Available on full AV and audio-only presets."
+          : "Adds one spectral reference image per selected clip for faster audio review.",
+      checked: resolvedOptions.includeSpectrograms,
+      disabled: preset === "metadata-only",
+    },
+  ];
 }
 
 export function buildJobPackageRootName(jobId: string, preset: PackageExportPreset) {
@@ -75,6 +145,20 @@ export function buildPackageClipFileName(ordinal: number, clipId: string, preset
 
   const extension = preset === "audio-only" ? "wav" : "mp4";
   return `clip_${String(ordinal).padStart(3, "0")}__${clipId}.${extension}`;
+}
+
+export function getPackageSpectrogramDirectory(
+  preset: PackageExportPreset,
+  options?: Partial<PackageExportAssetOptions>
+) {
+  return resolvePackageExportAssetOptions(preset, options).includeSpectrograms ? "spectrograms" : null;
+}
+
+export function buildPackageSpectrogramFileName(
+  ordinal: number,
+  clipId: string
+) {
+  return `clip_${String(ordinal).padStart(3, "0")}__${clipId}.png`;
 }
 
 function getPackageArchiveSuffix(preset: PackageExportPreset) {

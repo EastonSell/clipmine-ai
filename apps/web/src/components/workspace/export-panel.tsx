@@ -1,23 +1,28 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
 import { AlertCircle, FileArchive, FileJson2, Film, LoaderCircle, PackageOpen, Waves } from "lucide-react";
 
 import { downloadClipPackage, isRetryableApiError, ApiError } from "@/lib/api";
+import { PackageIncludeList } from "@/components/ui/package-include-list";
 import {
+  buildDefaultPackageExportAssetOptions,
   buildJobPackageRootName,
   buildPackageClipFileName,
+  buildPackageSpectrogramFileName,
   getPackageAssetDirectory,
   getPackageExportPresetOption,
+  getPackageSpectrogramDirectory,
   PACKAGE_EXPORT_PRESET_OPTIONS,
+  resolvePackageExportAssetOptions,
 } from "@/lib/package-export";
 import { buttonClassName, Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { SectionHeader } from "@/components/ui/section-header";
 import { formatSeconds, formatTokenLabel } from "@/lib/format";
-import type { ClipRecord, JobResponse, PackageExportPreset } from "@/lib/types";
+import type { ClipRecord, JobResponse, PackageExportAssetOptions, PackageExportPreset } from "@/lib/types";
 
 type ExportPanelProps = {
   job: JobResponse;
@@ -28,6 +33,9 @@ type ExportPanelProps = {
 
 export function ExportPanel({ job, exportUrl, disabled, selectedClips }: ExportPanelProps) {
   const [selectedPreset, setSelectedPreset] = useState<PackageExportPreset>("full-av");
+  const [assetOptions, setAssetOptions] = useState<PackageExportAssetOptions>(
+    buildDefaultPackageExportAssetOptions("full-av")
+  );
   const [isDownloadingPackage, setIsDownloadingPackage] = useState(false);
   const [packageError, setPackageError] = useState<ApiError | null>(null);
 
@@ -40,7 +48,11 @@ export function ExportPanel({ job, exportUrl, disabled, selectedClips }: ExportP
   );
   const selectedDuration = selectedClips.reduce((total, clip) => total + clip.duration, 0);
   const activePreset = getPackageExportPresetOption(selectedPreset);
-  const packageTree = buildPackageTree(job.jobId, selectedClips, selectedPreset);
+  const resolvedAssetOptions = useMemo(
+    () => resolvePackageExportAssetOptions(selectedPreset, assetOptions),
+    [assetOptions, selectedPreset]
+  );
+  const packageTree = buildPackageTree(job.jobId, selectedClips, selectedPreset, resolvedAssetOptions);
 
   async function handleDownloadPackage() {
     if (selectedClips.length === 0) {
@@ -53,7 +65,8 @@ export function ExportPanel({ job, exportUrl, disabled, selectedClips }: ExportP
       const response = await downloadClipPackage(
         job.jobId,
         selectedClips.map((clip) => clip.id),
-        selectedPreset
+        selectedPreset,
+        resolvedAssetOptions
       );
       const objectUrl = URL.createObjectURL(response.blob);
       const anchor = document.createElement("a");
@@ -112,6 +125,11 @@ export function ExportPanel({ job, exportUrl, disabled, selectedClips }: ExportP
                 aria-pressed={isActive}
                 onClick={() => {
                   setSelectedPreset(option.value);
+                  setAssetOptions(
+                    selectedPreset === "metadata-only"
+                      ? buildDefaultPackageExportAssetOptions(option.value)
+                      : resolvePackageExportAssetOptions(option.value, assetOptions)
+                  );
                   setPackageError(null);
                 }}
                 className={[
@@ -138,6 +156,20 @@ export function ExportPanel({ job, exportUrl, disabled, selectedClips }: ExportP
 
         {selectedClips.length > 0 ? (
           <>
+            <div className="mt-6">
+              <PackageIncludeList
+                preset={selectedPreset}
+                options={resolvedAssetOptions}
+                onIncludeSpectrogramsChange={(nextValue) => {
+                  setAssetOptions((currentValue) => ({
+                    ...currentValue,
+                    includeSpectrograms: nextValue,
+                  }));
+                  setPackageError(null);
+                }}
+              />
+            </div>
+
             <div className="mt-6 grid gap-6 lg:grid-cols-[0.82fr_1.18fr]">
               <div className="rounded-[1.25rem] border border-[var(--line)] bg-white/[0.03] px-4 py-4">
                 <div className="metric-label text-[var(--muted)]">{activePreset.treeLabel}</div>
@@ -151,17 +183,25 @@ export function ExportPanel({ job, exportUrl, disabled, selectedClips }: ExportP
                 <p className="mt-3 text-sm leading-6 text-[var(--muted)]">
                   {selectedPreset === "metadata-only"
                     ? "The manifest keeps clip IDs, timings, scores, tags, and alignment metadata without re-encoding any media."
-                    : "Each selected clip keeps a deterministic file name so downstream tools can join media files back to manifest metadata by clip ID."}
+                    : resolvedAssetOptions.includeSpectrograms
+                      ? "Each selected clip keeps a deterministic file name for media and a matching spectrogram companion so downstream review can join every asset back to one clip ID."
+                      : "Each selected clip keeps a deterministic file name so downstream tools can join media files back to manifest metadata by clip ID."}
                 </p>
                 <div className="mt-4 space-y-3">
                   {selectedClips.slice(0, 4).map((clip, index) => {
                     const fileName = buildPackageClipFileName(index + 1, clip.id, selectedPreset);
+                    const spectrogramFileName = resolvedAssetOptions.includeSpectrograms
+                      ? buildPackageSpectrogramFileName(index + 1, clip.id)
+                      : null;
                     return (
                       <div key={clip.id} className="rounded-[1rem] border border-[var(--line)] bg-white/[0.03] px-4 py-4">
                         <div className="flex flex-wrap items-center justify-between gap-3">
                           <div className="font-mono text-xs text-[var(--accent)]">{fileName ?? "manifest-only entry"}</div>
                           <div className="text-xs text-[var(--muted)]">{clip.id}</div>
                         </div>
+                        {spectrogramFileName ? (
+                          <div className="mt-2 font-mono text-xs text-[var(--muted)]">{spectrogramFileName}</div>
+                        ) : null}
                         <p className="mt-3 text-sm font-medium text-[var(--text)]">{clip.text}</p>
                         <div className="mt-3 flex flex-wrap gap-2">
                           {clip.tags.slice(0, 2).map((tag) => (
@@ -306,15 +346,27 @@ export function ExportPanel({ job, exportUrl, disabled, selectedClips }: ExportP
   );
 }
 
-function buildPackageTree(jobId: string, clips: ClipRecord[], preset: PackageExportPreset) {
+function buildPackageTree(
+  jobId: string,
+  clips: ClipRecord[],
+  preset: PackageExportPreset,
+  options: PackageExportAssetOptions
+) {
   const rootName = buildJobPackageRootName(jobId, preset);
   const folderName = getPackageAssetDirectory(preset);
+  const spectrogramFolderName = getPackageSpectrogramDirectory(preset, options);
   const previewEntries = clips
     .slice(0, 4)
     .map((clip, index) => buildPackageClipFileName(index + 1, clip.id, preset))
     .filter((value): value is string => Boolean(value))
     .map((fileName) => `    ${fileName}`);
+  const spectrogramEntries = clips
+    .slice(0, 4)
+    .map((clip, index) => (spectrogramFolderName ? buildPackageSpectrogramFileName(index + 1, clip.id) : null))
+    .filter((value): value is string => Boolean(value))
+    .map((fileName) => `    ${fileName}`);
   const extraCount = Math.max(0, clips.length - previewEntries.length);
+  const extraSpectrogramCount = Math.max(0, clips.length - spectrogramEntries.length);
   const lines = [`${rootName}/`, "  manifest.json"];
 
   if (folderName && previewEntries.length > 0) {
@@ -323,6 +375,14 @@ function buildPackageTree(jobId: string, clips: ClipRecord[], preset: PackageExp
 
   if (folderName && extraCount > 0) {
     lines.push(`    ... ${extraCount} more ${preset === "audio-only" ? "audio" : "clip"} files`);
+  }
+
+  if (spectrogramFolderName && spectrogramEntries.length > 0) {
+    lines.push(`  ${spectrogramFolderName}/`, ...spectrogramEntries);
+  }
+
+  if (spectrogramFolderName && extraSpectrogramCount > 0) {
+    lines.push(`    ... ${extraSpectrogramCount} more spectrogram files`);
   }
 
   return lines.join("\n");

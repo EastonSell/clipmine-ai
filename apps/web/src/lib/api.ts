@@ -3,6 +3,7 @@ import type {
   BatchPackageExportWarningSummary,
   BatchPackageJobSelection,
   JobResponse,
+  PackageExportAssetOptions,
   PackageExportPreset,
   UploadInitResponse,
   UploadJobResponse,
@@ -238,7 +239,8 @@ export async function retryJob(jobId: string) {
 export async function downloadClipPackage(
   jobId: string,
   clipIds: string[],
-  preset: PackageExportPreset = "full-av"
+  preset: PackageExportPreset = "full-av",
+  options: PackageExportAssetOptions = { includeSpectrograms: preset !== "metadata-only" }
 ) {
   let lastError: ApiError | null = null;
 
@@ -252,6 +254,7 @@ export async function downloadClipPackage(
         body: JSON.stringify({
           clipIds,
           preset,
+          includeSpectrograms: options.includeSpectrograms,
         }),
       });
       return response;
@@ -273,6 +276,7 @@ export async function downloadBatchClipPackage(
     batchLabel?: string;
     preset?: PackageExportPreset;
     qualityThreshold?: number;
+    includeSpectrograms?: boolean;
   } = {}
 ) {
   let lastError: ApiError | null = null;
@@ -289,6 +293,7 @@ export async function downloadBatchClipPackage(
           batchLabel: options.batchLabel,
           preset: options.preset ?? "full-av",
           qualityThreshold: options.qualityThreshold,
+          includeSpectrograms: options.includeSpectrograms ?? (options.preset ?? "full-av") !== "metadata-only",
         }),
       });
     } catch (error) {

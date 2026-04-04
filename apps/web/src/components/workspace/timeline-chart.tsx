@@ -14,7 +14,7 @@ type TimelineChartProps = {
   clips: ClipRecord[];
   activeClipId: string | null;
   selectedClipIds: string[];
-  onSeek: (start: number, clipId?: string | null) => void;
+  onSeek: (start: number, end?: number | null, clipId?: string | null) => void;
 };
 
 export function TimelineChart({ bins, clips, activeClipId, selectedClipIds, onSeek }: TimelineChartProps) {
@@ -110,7 +110,7 @@ export function TimelineChart({ bins, clips, activeClipId, selectedClipIds, onSe
                   <button
                     key={`${bin.start}-${bin.end}-${index}`}
                     type="button"
-                    onClick={() => onSeek(clip?.start ?? bin.start, clip?.id ?? null)}
+                    onClick={() => onSeek(clip?.start ?? bin.start, clip?.end ?? bin.end, clip?.id ?? null)}
                     onMouseEnter={() => setHoveredBinIndex(index)}
                     onFocus={() => setHoveredBinIndex(index)}
                     onMouseLeave={() => setHoveredBinIndex(null)}
@@ -184,7 +184,7 @@ export function TimelineChart({ bins, clips, activeClipId, selectedClipIds, onSe
                 <button
                   key={`${bin.start}-${bin.end}`}
                   type="button"
-                  onClick={() => onSeek(clip?.start ?? bin.start, clip?.id ?? null)}
+                  onClick={() => onSeek(clip?.start ?? bin.start, clip?.end ?? bin.end, clip?.id ?? null)}
                   className="w-full rounded-[1.25rem] border border-[var(--line)] bg-white/[0.04] px-4 py-4 text-left transition duration-200 hover:-translate-y-0.5 hover:border-[var(--line-strong)] hover:bg-white/[0.05]"
                 >
                   <div className="flex items-center justify-between gap-3">

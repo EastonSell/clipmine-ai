@@ -12,7 +12,7 @@ from pathlib import Path
 import orjson
 
 from .artifact_store import ArtifactStore
-from .media import extract_audio_clip, extract_video_clip
+from .media import extract_audio_clip, extract_audio_spectrogram, extract_video_clip
 from .schemas import ClipRecord, JobManifest, PackageExportPreset
 from .storage import JobStore
 
@@ -25,7 +25,6 @@ class PackageExportLayout:
     asset_directory: str | None
     asset_extension: str | None
     media_kind: str
-    includes_media_files: bool
 
 
 @dataclass(slots=True)
@@ -42,29 +41,47 @@ class BatchPackageSelection:
     clips: list[ClipRecord]
 
 
+@dataclass(frozen=True, slots=True)
+class PackageExportOptions:
+    include_media_files: bool
+    include_spectrograms: bool
+
+
 PACKAGE_EXPORT_LAYOUTS: dict[PackageExportPreset, PackageExportLayout] = {
     PackageExportPreset.FULL_AV: PackageExportLayout(
         archive_suffix="",
         asset_directory="clips",
         asset_extension=".mp4",
         media_kind="video",
-        includes_media_files=True,
     ),
     PackageExportPreset.AUDIO_ONLY: PackageExportLayout(
         archive_suffix="-audio",
         asset_directory="audio",
         asset_extension=".wav",
         media_kind="audio",
-        includes_media_files=True,
     ),
     PackageExportPreset.METADATA_ONLY: PackageExportLayout(
         archive_suffix="-metadata",
         asset_directory=None,
         asset_extension=None,
         media_kind="metadata",
-        includes_media_files=False,
     ),
 }
+
+
+def resolve_package_export_options(
+    preset: PackageExportPreset,
+    *,
+    include_spectrograms: bool | None = None,
+) -> PackageExportOptions:
+    include_media_files = preset is not PackageExportPreset.METADATA_ONLY
+    if preset is PackageExportPreset.METADATA_ONLY:
+        return PackageExportOptions(include_media_files=False, include_spectrograms=False)
+
+    return PackageExportOptions(
+        include_media_files=include_media_files,
+        include_spectrograms=True if include_spectrograms is None else include_spectrograms,
+    )
 
 
 def build_package_export(
@@ -74,24 +91,35 @@ def build_package_export(
     store: JobStore,
     artifact_store: ArtifactStore,
     preset: PackageExportPreset = PackageExportPreset.FULL_AV,
+    include_spectrograms: bool | None = None,
 ) -> PackageExportArtifact:
     layout = PACKAGE_EXPORT_LAYOUTS[preset]
+    options = resolve_package_export_options(
+        preset,
+        include_spectrograms=include_spectrograms,
+    )
     cleanup_root = Path(tempfile.mkdtemp(prefix=f"clipmine-export-{job.job_id}-"))
     package_root = cleanup_root / build_package_root_name(job.job_id, preset)
     package_root.mkdir(parents=True, exist_ok=True)
 
     asset_dir: Path | None = None
+    spectrogram_dir: Path | None = None
     source_path: Path | None = None
-    if layout.includes_media_files:
+    if options.include_media_files and layout.asset_directory:
         asset_dir = package_root / layout.asset_directory
         asset_dir.mkdir(parents=True, exist_ok=True)
+    if options.include_spectrograms:
+        spectrogram_dir = package_root / "spectrograms"
+        spectrogram_dir.mkdir(parents=True, exist_ok=True)
+    if options.include_media_files or options.include_spectrograms:
         source_path = _resolve_source_video_path(job, store=store, artifact_store=artifact_store, cleanup_root=cleanup_root)
 
     manifest_payload = {
         "jobId": job.job_id,
         "preset": preset.value,
         "mediaKind": layout.media_kind,
-        "includesMediaFiles": layout.includes_media_files,
+        "includesMediaFiles": options.include_media_files,
+        "includesSpectrograms": options.include_spectrograms,
         "sourceVideo": {
             "id": job.source_video.id,
             "file_name": job.source_video.file_name,
@@ -105,19 +133,36 @@ def build_package_export(
     }
 
     for ordinal, clip in enumerate(clips, start=1):
-        clip_file_name = build_clip_file_name(ordinal, clip.id, extension=layout.asset_extension)
+        clip_file_name = (
+            build_clip_file_name(ordinal, clip.id, extension=layout.asset_extension)
+            if options.include_media_files
+            else None
+        )
         relative_path = (
             f"{layout.asset_directory}/{clip_file_name}"
             if layout.asset_directory and clip_file_name
             else None
         )
+        spectrogram_file_name = build_spectrogram_file_name(ordinal, clip.id) if options.include_spectrograms else None
+        spectrogram_relative_path = (
+            f"spectrograms/{spectrogram_file_name}"
+            if spectrogram_file_name
+            else None
+        )
 
-        if layout.includes_media_files and asset_dir and source_path and clip_file_name:
+        if options.include_media_files and asset_dir and source_path and clip_file_name:
             output_path = asset_dir / clip_file_name
             if preset is PackageExportPreset.FULL_AV:
                 extract_video_clip(source_path, output_path, start_time=clip.start, end_time=clip.end)
             elif preset is PackageExportPreset.AUDIO_ONLY:
                 extract_audio_clip(source_path, output_path, start_time=clip.start, end_time=clip.end)
+        if options.include_spectrograms and spectrogram_dir and source_path and spectrogram_file_name:
+            extract_audio_spectrogram(
+                source_path,
+                spectrogram_dir / spectrogram_file_name,
+                start_time=clip.start,
+                end_time=clip.end,
+            )
 
         manifest_payload["clips"].append(
             {
@@ -125,6 +170,8 @@ def build_package_export(
                 "clipId": clip.id,
                 "fileName": clip_file_name,
                 "relativePath": relative_path,
+                "spectrogramFileName": spectrogram_file_name,
+                "spectrogramRelativePath": spectrogram_relative_path,
                 "text": clip.text,
                 "start": clip.start,
                 "end": clip.end,
@@ -169,8 +216,13 @@ def build_batch_package_export(
     batch_label: str | None = None,
     preset: PackageExportPreset = PackageExportPreset.FULL_AV,
     quality_threshold: float | None = None,
+    include_spectrograms: bool | None = None,
 ) -> PackageExportArtifact:
     layout = PACKAGE_EXPORT_LAYOUTS[preset]
+    options = resolve_package_export_options(
+        preset,
+        include_spectrograms=include_spectrograms,
+    )
     cleanup_root = Path(tempfile.mkdtemp(prefix="clipmine-batch-export-"))
     package_root_name = build_batch_package_root_name(batch_label, preset)
     package_root = cleanup_root / package_root_name
@@ -183,7 +235,8 @@ def build_batch_package_export(
         "exportedAt": datetime.now(tz=UTC).isoformat(),
         "preset": preset.value,
         "mediaKind": layout.media_kind,
-        "includesMediaFiles": layout.includes_media_files,
+        "includesMediaFiles": options.include_media_files,
+        "includesSpectrograms": options.include_spectrograms,
         "qualityThreshold": quality_threshold,
         "requestedJobCount": len(selections),
         "jobCount": 0,
@@ -201,11 +254,16 @@ def build_batch_package_export(
         try:
             job_dir.mkdir(parents=True, exist_ok=True)
             asset_dir: Path | None = None
+            spectrogram_dir: Path | None = None
             source_path: Path | None = None
 
-            if layout.includes_media_files and layout.asset_directory:
+            if options.include_media_files and layout.asset_directory:
                 asset_dir = job_dir / layout.asset_directory
                 asset_dir.mkdir(parents=True, exist_ok=True)
+            if options.include_spectrograms:
+                spectrogram_dir = job_dir / "spectrograms"
+                spectrogram_dir.mkdir(parents=True, exist_ok=True)
+            if options.include_media_files or options.include_spectrograms:
                 source_path = _resolve_source_video_path(
                     selection.job,
                     store=store,
@@ -227,19 +285,36 @@ def build_batch_package_export(
             }
 
             for ordinal, clip in enumerate(selection.clips, start=1):
-                clip_file_name = build_clip_file_name(ordinal, clip.id, extension=layout.asset_extension)
+                clip_file_name = (
+                    build_clip_file_name(ordinal, clip.id, extension=layout.asset_extension)
+                    if options.include_media_files
+                    else None
+                )
                 relative_path = (
                     f"jobs/{selection.job.job_id}/{layout.asset_directory}/{clip_file_name}"
                     if layout.asset_directory and clip_file_name
                     else None
                 )
+                spectrogram_file_name = build_spectrogram_file_name(ordinal, clip.id) if options.include_spectrograms else None
+                spectrogram_relative_path = (
+                    f"jobs/{selection.job.job_id}/spectrograms/{spectrogram_file_name}"
+                    if spectrogram_file_name
+                    else None
+                )
 
-                if layout.includes_media_files and asset_dir and source_path and clip_file_name:
+                if options.include_media_files and asset_dir and source_path and clip_file_name:
                     output_path = asset_dir / clip_file_name
                     if preset is PackageExportPreset.FULL_AV:
                         extract_video_clip(source_path, output_path, start_time=clip.start, end_time=clip.end)
                     elif preset is PackageExportPreset.AUDIO_ONLY:
                         extract_audio_clip(source_path, output_path, start_time=clip.start, end_time=clip.end)
+                if options.include_spectrograms and spectrogram_dir and source_path and spectrogram_file_name:
+                    extract_audio_spectrogram(
+                        source_path,
+                        spectrogram_dir / spectrogram_file_name,
+                        start_time=clip.start,
+                        end_time=clip.end,
+                    )
 
                 job_manifest["clips"].append(
                     {
@@ -247,6 +322,8 @@ def build_batch_package_export(
                         "clipId": clip.id,
                         "fileName": clip_file_name,
                         "relativePath": relative_path,
+                        "spectrogramFileName": spectrogram_file_name,
+                        "spectrogramRelativePath": spectrogram_relative_path,
                         "text": clip.text,
                         "start": clip.start,
                         "end": clip.end,
@@ -332,6 +409,10 @@ def build_clip_file_name(ordinal: int, clip_id: str, *, extension: str | None = 
     if not extension:
         return None
     return f"clip_{ordinal:03d}__{clip_id}{extension}"
+
+
+def build_spectrogram_file_name(ordinal: int, clip_id: str) -> str:
+    return f"clip_{ordinal:03d}__{clip_id}.png"
 
 
 def build_batch_package_root_name(

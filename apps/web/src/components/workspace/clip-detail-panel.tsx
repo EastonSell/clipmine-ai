@@ -13,7 +13,7 @@ import { QualityBadge } from "./quality-badge";
 
 type ClipDetailPanelProps = {
   clip: ClipRecord | null;
-  onSeek: (start: number, clipId?: string | null) => void;
+  onSeek: (start: number, end?: number | null, clipId?: string | null) => void;
   isPinned: boolean;
   isSelected: boolean;
   onTogglePinned: (clipId: string) => void;
@@ -109,7 +109,7 @@ export function ClipDetailPanel({
             {isSelected ? <Check className="size-4" /> : <Square className="size-4" />}
             {isSelected ? "Remove from package" : "Add to package"}
           </Button>
-          <Button variant="secondary" onClick={() => onSeek(clip.start, clip.id)}>
+          <Button variant="secondary" onClick={() => onSeek(clip.start, clip.end, clip.id)}>
             <Play className="size-4" />
             Play clip
           </Button>

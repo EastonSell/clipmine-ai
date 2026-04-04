@@ -82,18 +82,24 @@ def test_package_export_returns_zip_with_manifest_and_clip_files(tmp_path: Path)
     assert "clipmine-export-package-job/manifest.json" in archive_names
     assert "clipmine-export-package-job/clips/clip_001__package-job-clip-001.mp4" in archive_names
     assert "clipmine-export-package-job/clips/clip_002__package-job-clip-002.mp4" in archive_names
+    assert "clipmine-export-package-job/spectrograms/clip_001__package-job-clip-001.png" in archive_names
+    assert "clipmine-export-package-job/spectrograms/clip_002__package-job-clip-002.png" in archive_names
     assert archive.getinfo("clipmine-export-package-job/clips/clip_001__package-job-clip-001.mp4").compress_type == zipfile.ZIP_STORED
+    assert archive.read("clipmine-export-package-job/spectrograms/clip_001__package-job-clip-001.png")[:8] == b"\x89PNG\r\n\x1a\n"
 
     manifest_payload = orjson.loads(archive.read("clipmine-export-package-job/manifest.json"))
     assert manifest_payload["jobId"] == job_id
     assert manifest_payload["preset"] == "full-av"
     assert manifest_payload["mediaKind"] == "video"
     assert manifest_payload["includesMediaFiles"] is True
+    assert manifest_payload["includesSpectrograms"] is True
     assert manifest_payload["clipCount"] == 2
     assert manifest_payload["clips"][0]["clipId"] == clip_one.id
     assert manifest_payload["clips"][0]["relativePath"] == "clips/clip_001__package-job-clip-001.mp4"
+    assert manifest_payload["clips"][0]["spectrogramRelativePath"] == "spectrograms/clip_001__package-job-clip-001.png"
     assert manifest_payload["clips"][1]["clipId"] == clip_two.id
     assert manifest_payload["clips"][1]["relativePath"] == "clips/clip_002__package-job-clip-002.mp4"
+    assert manifest_payload["clips"][1]["spectrogramRelativePath"] == "spectrograms/clip_002__package-job-clip-002.png"
 
 
 def test_package_export_supports_audio_only_preset(tmp_path: Path) -> None:
@@ -142,19 +148,75 @@ def test_package_export_supports_audio_only_preset(tmp_path: Path) -> None:
     archive = zipfile.ZipFile(BytesIO(response.content))
     archive_names = set(archive.namelist())
     audio_path = "clipmine-export-package-job-audio/audio/clip_001__package-job-clip-001.wav"
+    spectrogram_path = "clipmine-export-package-job-audio/spectrograms/clip_001__package-job-clip-001.png"
     assert "clipmine-export-package-job-audio/manifest.json" in archive_names
     assert audio_path in archive_names
+    assert spectrogram_path in archive_names
 
     audio_bytes = archive.read(audio_path)
     assert audio_bytes[:4] == b"RIFF"
     assert audio_bytes[8:12] == b"WAVE"
+    assert archive.read(spectrogram_path)[:8] == b"\x89PNG\r\n\x1a\n"
 
     manifest_payload = orjson.loads(archive.read("clipmine-export-package-job-audio/manifest.json"))
     assert manifest_payload["preset"] == "audio-only"
     assert manifest_payload["mediaKind"] == "audio"
     assert manifest_payload["includesMediaFiles"] is True
+    assert manifest_payload["includesSpectrograms"] is True
     assert manifest_payload["clips"][0]["fileName"] == "clip_001__package-job-clip-001.wav"
     assert manifest_payload["clips"][0]["relativePath"] == "audio/clip_001__package-job-clip-001.wav"
+    assert manifest_payload["clips"][0]["spectrogramRelativePath"] == "spectrograms/clip_001__package-job-clip-001.png"
+
+
+def test_package_export_can_skip_spectrograms(tmp_path: Path) -> None:
+    with TestClient(app) as client:
+        settings = client.app.state.settings
+        original_storage = settings.storage_dir
+        original_model_cache = settings.model_cache_dir
+        settings.storage_dir = tmp_path / "storage"
+        settings.model_cache_dir = tmp_path / "models"
+
+        try:
+            job_id = "package-job"
+            clip = build_clip_record(job_id=job_id, clip_id="package-job-clip-001", start=0.0, end=1.1, score=94.0)
+            manifest = client.app.state.job_store.create_manifest_for_job(
+                job_id=job_id,
+                file_name="sample.mp4",
+                content_type="video/mp4",
+                size_bytes=2048,
+                relative_path="jobs/package-job/source/sample.mp4",
+            )
+            create_sample_video(client.app.state.job_store.source_video_path(manifest))
+            client.app.state.job_store.save_job(
+                manifest.model_copy(
+                    update={
+                        "status": JobStatus.READY,
+                        "progress_phase": ProgressPhase.READY,
+                        "clips": [clip],
+                        "summary": build_summary([clip], duration_seconds=2.0, transcript_text="Example transcript"),
+                        "timeline": build_timeline([clip], duration_seconds=2.0),
+                    }
+                )
+            )
+
+            response = client.post(
+                f"/api/jobs/{job_id}/exports/package",
+                json={"clipIds": [clip.id], "includeSpectrograms": False},
+            )
+        finally:
+            settings.storage_dir = original_storage
+            settings.model_cache_dir = original_model_cache
+
+    assert response.status_code == 200
+    archive = zipfile.ZipFile(BytesIO(response.content))
+    archive_names = set(archive.namelist())
+    assert "clipmine-export-package-job/clips/clip_001__package-job-clip-001.mp4" in archive_names
+    assert "clipmine-export-package-job/spectrograms/clip_001__package-job-clip-001.png" not in archive_names
+
+    manifest_payload = orjson.loads(archive.read("clipmine-export-package-job/manifest.json"))
+    assert manifest_payload["includesSpectrograms"] is False
+    assert manifest_payload["clips"][0]["spectrogramFileName"] is None
+    assert manifest_payload["clips"][0]["spectrogramRelativePath"] is None
 
 
 def test_package_export_supports_metadata_only_preset(tmp_path: Path) -> None:
@@ -207,8 +269,11 @@ def test_package_export_supports_metadata_only_preset(tmp_path: Path) -> None:
     assert manifest_payload["preset"] == "metadata-only"
     assert manifest_payload["mediaKind"] == "metadata"
     assert manifest_payload["includesMediaFiles"] is False
+    assert manifest_payload["includesSpectrograms"] is False
     assert manifest_payload["clips"][0]["fileName"] is None
     assert manifest_payload["clips"][0]["relativePath"] is None
+    assert manifest_payload["clips"][0]["spectrogramFileName"] is None
+    assert manifest_payload["clips"][0]["spectrogramRelativePath"] is None
 
 
 def test_package_export_downloads_remote_s3_source_before_trimming(tmp_path: Path) -> None:
@@ -415,13 +480,18 @@ def test_batch_package_export_returns_grouped_zip(tmp_path: Path) -> None:
     assert "clipmine-batch-export-april-batch/manifest.json" in archive_names
     assert "clipmine-batch-export-april-batch/jobs/job-alpha/clips/clip_001__job-alpha-clip-001.mp4" in archive_names
     assert "clipmine-batch-export-april-batch/jobs/job-beta/clips/clip_001__job-beta-clip-001.mp4" in archive_names
+    assert "clipmine-batch-export-april-batch/jobs/job-alpha/spectrograms/clip_001__job-alpha-clip-001.png" in archive_names
+    assert "clipmine-batch-export-april-batch/jobs/job-beta/spectrograms/clip_001__job-beta-clip-001.png" in archive_names
 
     manifest_payload = orjson.loads(archive.read("clipmine-batch-export-april-batch/manifest.json"))
     assert manifest_payload["jobCount"] == 2
     assert manifest_payload["clipCount"] == 2
     assert manifest_payload["qualityThreshold"] == 84
+    assert manifest_payload["includesSpectrograms"] is True
     assert manifest_payload["jobs"][0]["clips"][0]["relativePath"] == "jobs/job-alpha/clips/clip_001__job-alpha-clip-001.mp4"
+    assert manifest_payload["jobs"][0]["clips"][0]["spectrogramRelativePath"] == "jobs/job-alpha/spectrograms/clip_001__job-alpha-clip-001.png"
     assert manifest_payload["jobs"][1]["clips"][0]["relativePath"] == "jobs/job-beta/clips/clip_001__job-beta-clip-001.mp4"
+    assert manifest_payload["jobs"][1]["clips"][0]["spectrogramRelativePath"] == "jobs/job-beta/spectrograms/clip_001__job-beta-clip-001.png"
 
 
 def test_batch_package_export_keeps_successful_jobs_when_one_source_is_missing(tmp_path: Path) -> None:
@@ -599,18 +669,27 @@ def test_batch_package_export_supports_audio_only_preset(tmp_path: Path) -> None
     archive_names = set(archive.namelist())
     alpha_audio_path = "clipmine-batch-export-april-batch-audio/jobs/job-alpha/audio/clip_001__job-alpha-clip-001.wav"
     beta_audio_path = "clipmine-batch-export-april-batch-audio/jobs/job-beta/audio/clip_001__job-beta-clip-001.wav"
+    alpha_spectrogram_path = "clipmine-batch-export-april-batch-audio/jobs/job-alpha/spectrograms/clip_001__job-alpha-clip-001.png"
+    beta_spectrogram_path = "clipmine-batch-export-april-batch-audio/jobs/job-beta/spectrograms/clip_001__job-beta-clip-001.png"
     assert "clipmine-batch-export-april-batch-audio/manifest.json" in archive_names
     assert alpha_audio_path in archive_names
     assert beta_audio_path in archive_names
+    assert alpha_spectrogram_path in archive_names
+    assert beta_spectrogram_path in archive_names
     assert archive.read(alpha_audio_path)[:4] == b"RIFF"
     assert archive.read(beta_audio_path)[:4] == b"RIFF"
+    assert archive.read(alpha_spectrogram_path)[:8] == b"\x89PNG\r\n\x1a\n"
+    assert archive.read(beta_spectrogram_path)[:8] == b"\x89PNG\r\n\x1a\n"
 
     manifest_payload = orjson.loads(archive.read("clipmine-batch-export-april-batch-audio/manifest.json"))
     assert manifest_payload["preset"] == "audio-only"
     assert manifest_payload["mediaKind"] == "audio"
     assert manifest_payload["includesMediaFiles"] is True
+    assert manifest_payload["includesSpectrograms"] is True
     assert manifest_payload["jobs"][0]["clips"][0]["relativePath"] == "jobs/job-alpha/audio/clip_001__job-alpha-clip-001.wav"
+    assert manifest_payload["jobs"][0]["clips"][0]["spectrogramRelativePath"] == "jobs/job-alpha/spectrograms/clip_001__job-alpha-clip-001.png"
     assert manifest_payload["jobs"][1]["clips"][0]["relativePath"] == "jobs/job-beta/audio/clip_001__job-beta-clip-001.wav"
+    assert manifest_payload["jobs"][1]["clips"][0]["spectrogramRelativePath"] == "jobs/job-beta/spectrograms/clip_001__job-beta-clip-001.png"
 
 
 def test_batch_package_export_supports_metadata_only_preset(tmp_path: Path) -> None:
@@ -689,10 +768,15 @@ def test_batch_package_export_supports_metadata_only_preset(tmp_path: Path) -> N
     assert manifest_payload["preset"] == "metadata-only"
     assert manifest_payload["mediaKind"] == "metadata"
     assert manifest_payload["includesMediaFiles"] is False
+    assert manifest_payload["includesSpectrograms"] is False
     assert manifest_payload["jobs"][0]["clips"][0]["fileName"] is None
     assert manifest_payload["jobs"][0]["clips"][0]["relativePath"] is None
+    assert manifest_payload["jobs"][0]["clips"][0]["spectrogramFileName"] is None
+    assert manifest_payload["jobs"][0]["clips"][0]["spectrogramRelativePath"] is None
     assert manifest_payload["jobs"][1]["clips"][0]["fileName"] is None
     assert manifest_payload["jobs"][1]["clips"][0]["relativePath"] is None
+    assert manifest_payload["jobs"][1]["clips"][0]["spectrogramFileName"] is None
+    assert manifest_payload["jobs"][1]["clips"][0]["spectrogramRelativePath"] is None
 
 
 def build_clip_record(*, job_id: str, clip_id: str, start: float, end: float, score: float) -> ClipRecord:

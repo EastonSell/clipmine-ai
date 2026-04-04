@@ -38,7 +38,7 @@ test("landing page renders recent jobs and validates unsupported uploads", async
 
   await expect(page.getByRole("heading", { name: "Reopen recent workspaces" })).toBeVisible();
   await expect(page.getByText("team-sync.mp4")).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Research workspace" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Operator workspace" })).toBeVisible();
 
   await page.locator('input[type="file"]').setInputFiles({
     name: "notes.txt",
@@ -1114,6 +1114,51 @@ test("timeline tab is shareable with query params", async ({ page }) => {
   await expect(page).toHaveURL(/tab=timeline/);
 });
 
+test("workspace navigation lands on the active export section and selected clip playback stops at the clip boundary", async ({ page }) => {
+  const job = createMockJob();
+
+  await page.route(`**/api/jobs/${job.jobId}`, async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(job),
+    });
+  });
+  await page.route(`**/api/jobs/${job.jobId}/video`, async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "video/mp4",
+      body: "",
+    });
+  });
+
+  await page.goto(`/jobs/${job.jobId}`);
+
+  await page.getByRole("button", { name: "Export", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Build a training-ready clip archive" })).toBeInViewport();
+
+  await page.getByRole("button", { name: "Best clips", exact: true }).click();
+  await page.getByRole("button", { name: /Keep the labeling steady across every segment\./i }).click();
+  const playbackResult = await page.locator("video").evaluate((videoElement, clipEnd) => {
+    let pauseCalls = 0;
+    Object.defineProperty(videoElement, "pause", {
+      configurable: true,
+      value: () => {
+        pauseCalls += 1;
+      },
+    });
+    videoElement.currentTime = Number(clipEnd) + 0.25;
+    videoElement.dispatchEvent(new Event("timeupdate"));
+    return {
+      currentTime: videoElement.currentTime,
+      pauseCalls,
+    };
+  }, job.clips[0].end);
+
+  expect(playbackResult.pauseCalls).toBe(1);
+  expect(playbackResult.currentTime).toBeCloseTo(job.clips[0].end, 2);
+});
+
 test("export stays disabled while processing is incomplete", async ({ page }) => {
   const job = createMockJob({
     jobId: "job-processing",
@@ -1159,7 +1204,7 @@ test("precision signals are filterable in the clips workspace", async ({ page })
 
 test("selected clips can be batched into a package export", async ({ page }) => {
   const job = createMockJob();
-  let packageRequestBody: { clipIds: string[]; preset?: string } | null = null;
+  let packageRequestBody: { clipIds: string[]; preset?: string; includeSpectrograms?: boolean } | null = null;
 
   await page.route(`**/api/jobs/${job.jobId}`, async (route) => {
     await route.fulfill({
@@ -1190,15 +1235,22 @@ test("selected clips can be batched into a package export", async ({ page }) => 
   await expect(page.getByRole("heading", { name: "Build a training-ready clip archive" })).toBeVisible();
   await expect(page.getByText("clip_001__clip-1.mp4", { exact: true })).toBeVisible();
   await expect(page.getByText("clip_002__clip-2.mp4", { exact: true })).toBeVisible();
+  await expect(page.getByText("clip_001__clip-1.png", { exact: true })).toBeVisible();
   await page.getByRole("button", { name: /Audio-only package/i }).click();
   await expect(page.getByText("clip_001__clip-1.wav", { exact: true })).toBeVisible();
   await expect(page.getByText("clip_002__clip-2.wav", { exact: true })).toBeVisible();
+  await page.getByLabel("Spectrogram PNGs").uncheck();
+  await expect(page.getByText("clip_001__clip-1.png", { exact: true })).toHaveCount(0);
 
   const downloadPromise = page.waitForEvent("download");
   await page.getByRole("button", { name: "Download audio-only package" }).click();
   await downloadPromise;
 
-  expect(packageRequestBody).toEqual({ clipIds: ["clip-1", "clip-2"], preset: "audio-only" });
+  expect(packageRequestBody).toEqual({
+    clipIds: ["clip-1", "clip-2"],
+    preset: "audio-only",
+    includeSpectrograms: false,
+  });
   await expect(page.getByText("Full job JSON")).toBeVisible();
 });
 
@@ -1438,6 +1490,7 @@ test("batch workspace groups jobs and exports thresholded clips", async ({ page 
   await expect(page.getByText(/clipmine-batch-export-3-sources-queued-audio\//i)).toBeVisible();
   await expect(page.getByText(/clip_001__clip-1\.wav/i)).toBeVisible();
   await expect(page.getByText(/clip_001__job-beta-clip-1\.wav/i)).toBeVisible();
+  await expect(page.getByText(/clip_001__clip-1\.png/i)).toBeVisible();
   await expect
     .poll(() =>
       page.evaluate(() => JSON.parse(window.localStorage.getItem("clipmine:batches:v1") ?? "[]")[0]?.batchExportPreset ?? null)
@@ -1482,6 +1535,7 @@ test("batch workspace groups jobs and exports thresholded clips", async ({ page 
 
   expect(batchRequestBody?.preset).toBe("audio-only");
   expect(batchRequestBody?.qualityThreshold).toBe(90);
+  expect(batchRequestBody?.includeSpectrograms).toBe(true);
   expect(batchRequestBody?.selections).toEqual([
     { jobId: "job-alpha", clipIds: ["clip-1"] },
     { jobId: "job-beta", clipIds: ["job-beta-clip-1"] },

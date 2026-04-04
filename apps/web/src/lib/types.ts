@@ -155,6 +155,9 @@ export type CandidateMetrics = {
 
 export type SelectionRecommendation = "shortlist" | "review" | "discard";
 export type PackageExportPreset = "full-av" | "audio-only" | "metadata-only";
+export type PackageExportAssetOptions = {
+  includeSpectrograms: boolean;
+};
 
 export type QualityReasoning = {
   summary: string;

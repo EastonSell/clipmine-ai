@@ -4,6 +4,7 @@ import {
   aggregateUploadProgress,
   ApiError,
   buildApiError,
+  downloadClipPackage,
   downloadBatchClipPackage,
   getApiBaseUrl,
   getJob,
@@ -255,6 +256,32 @@ describe("api upload helpers", () => {
     });
   });
 
+  it("sends the spectrogram include flag for single-job package downloads", async () => {
+    const fetchMock = vi.fn().mockResolvedValueOnce(
+      new Response(new Blob(["zip"]), {
+        status: 200,
+        headers: {
+          "Content-Disposition": 'attachment; filename="clipmine-export-job.zip"',
+        },
+      })
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    await downloadClipPackage("job-123", ["clip-1"], "audio-only", { includeSpectrograms: false });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "http://localhost:8000/api/jobs/job-123/exports/package",
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify({
+          clipIds: ["clip-1"],
+          preset: "audio-only",
+          includeSpectrograms: false,
+        }),
+      })
+    );
+  });
+
   it("decodes skipped-job warning summaries from batch package downloads", async () => {
     const warningSummary = {
       preset: "full-av",
@@ -294,10 +321,29 @@ describe("api upload helpers", () => {
           jobId: "job-alpha",
           clipIds: ["job-alpha-clip-001"],
         },
-      ])
+      ], { includeSpectrograms: false })
     ).resolves.toMatchObject({
       fileName: "clipmine-batch-export.zip",
       batchWarningSummary: warningSummary,
     });
+
+    expect(fetch).toHaveBeenCalledWith(
+      "http://localhost:8000/api/exports/batch-package",
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify({
+          selections: [
+            {
+              jobId: "job-alpha",
+              clipIds: ["job-alpha-clip-001"],
+            },
+          ],
+          batchLabel: undefined,
+          preset: "full-av",
+          qualityThreshold: undefined,
+          includeSpectrograms: false,
+        }),
+      })
+    );
   });
 });

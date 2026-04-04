@@ -25,6 +25,7 @@ import { Card } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ErrorState } from "@/components/ui/error-state";
 import { FooterNotes } from "@/components/ui/footer-notes";
+import { PackageIncludeList } from "@/components/ui/package-include-list";
 import { PageContainer } from "@/components/ui/page-container";
 import { ProgressBar } from "@/components/ui/progress-bar";
 import { SectionHeader } from "@/components/ui/section-header";
@@ -59,11 +60,15 @@ import {
   parseBatchTriageState,
 } from "@/lib/batch-focus";
 import {
+  buildDefaultPackageExportAssetOptions,
   buildBatchPackageRootName,
   buildPackageClipFileName,
+  buildPackageSpectrogramFileName,
   getPackageAssetDirectory,
   getPackageExportPresetOption,
+  getPackageSpectrogramDirectory,
   PACKAGE_EXPORT_PRESET_OPTIONS,
+  resolvePackageExportAssetOptions,
 } from "@/lib/package-export";
 import { createJob, downloadBatchClipPackage, getJob, retryJob, ApiError, isRetryableApiError } from "@/lib/api";
 import { loadBatchSession, saveBatchSession } from "@/lib/batch-sessions";
@@ -75,6 +80,7 @@ import type {
   BatchUploadItemRecord,
   ClipRecord,
   JobResponse,
+  PackageExportAssetOptions,
   PackageExportPreset,
 } from "@/lib/types";
 
@@ -135,6 +141,9 @@ export function BatchWorkspace({
   const [readyOnly, setReadyOnly] = useState(initialReadyOnly && !initialIssuesOnly);
   const [qualityThreshold, setQualityThreshold] = useState(initialQualityThreshold ?? DEFAULT_BATCH_QUALITY_THRESHOLD);
   const [selectedPreset, setSelectedPreset] = useState<PackageExportPreset>(initialSelectedPreset ?? "full-av");
+  const [assetOptions, setAssetOptions] = useState<PackageExportAssetOptions>(
+    buildDefaultPackageExportAssetOptions(initialSelectedPreset ?? "full-av")
+  );
   const [showContributorsOnly, setShowContributorsOnly] = useState(false);
   const [showAllBroaderRecoverySources, setShowAllBroaderRecoverySources] = useState(false);
   const [downloadError, setDownloadError] = useState<ApiError | null>(null);
@@ -187,8 +196,10 @@ export function BatchWorkspace({
     sessionRef.current = nextSession;
     setIssuesOnly(nextIssuesOnly);
     setReadyOnly(nextReadyOnly);
+    const nextSelectedPreset = currentSelectedPreset ?? nextSession?.batchExportPreset ?? "full-av";
     setQualityThreshold(currentQualityThreshold ?? nextSession?.qualityThreshold ?? DEFAULT_BATCH_QUALITY_THRESHOLD);
-    setSelectedPreset(currentSelectedPreset ?? nextSession?.batchExportPreset ?? "full-av");
+    setSelectedPreset(nextSelectedPreset);
+    setAssetOptions(buildDefaultPackageExportAssetOptions(nextSelectedPreset));
     setActiveJobId(nextActiveJobId);
   }, [batchId, initialActiveJobId, initialIssuesOnly, initialQualityThreshold, initialReadyOnly, initialSelectedPreset, prioritizeIssues]);
 
@@ -647,6 +658,10 @@ export function BatchWorkspace({
         ? `across ${nextBroaderReadySourcePreview.length} ready sources`
         : "";
   const activePreset = getPackageExportPresetOption(selectedPreset);
+  const resolvedAssetOptions = useMemo(
+    () => resolvePackageExportAssetOptions(selectedPreset, assetOptions),
+    [assetOptions, selectedPreset]
+  );
   const failedCount = session?.items.filter((item) => item.status === "failed").length ?? 0;
   const processingCount = session?.items.filter((item) => item.status === "processing").length ?? 0;
 
@@ -676,8 +691,8 @@ export function BatchWorkspace({
       .filter((selection) => selection.clipIds.length > 0);
   }, [jobs, qualityThreshold]);
   const batchPackageTree = useMemo(
-    () => buildBatchPackageTree(session?.label || batchId, aggregateSelections, selectedPreset),
-    [aggregateSelections, batchId, selectedPreset, session?.label]
+    () => buildBatchPackageTree(session?.label || batchId, aggregateSelections, selectedPreset, resolvedAssetOptions),
+    [aggregateSelections, batchId, resolvedAssetOptions, selectedPreset, session?.label]
   );
 
   async function handleRetryBatchItem(item: BatchUploadItemRecord) {
@@ -794,6 +809,7 @@ export function BatchWorkspace({
         batchLabel: session.label || batchId,
         preset: selectedPreset,
         qualityThreshold,
+        includeSpectrograms: resolvedAssetOptions.includeSpectrograms,
       });
       setDownloadWarningSummary(response.batchWarningSummary);
       const objectUrl = URL.createObjectURL(response.blob);
@@ -1169,6 +1185,11 @@ export function BatchWorkspace({
                       aria-pressed={isActive}
                       onClick={() => {
                         setSelectedPreset(option.value);
+                        setAssetOptions(
+                          selectedPreset === "metadata-only"
+                            ? buildDefaultPackageExportAssetOptions(option.value)
+                            : resolvePackageExportAssetOptions(option.value, assetOptions)
+                        );
                         setDownloadError(null);
                       }}
                       className={[
@@ -1193,6 +1214,18 @@ export function BatchWorkspace({
                 })}
               </div>
 
+              <PackageIncludeList
+                preset={selectedPreset}
+                options={resolvedAssetOptions}
+                onIncludeSpectrogramsChange={(nextValue) => {
+                  setAssetOptions((currentValue) => ({
+                    ...currentValue,
+                    includeSpectrograms: nextValue,
+                  }));
+                  setDownloadError(null);
+                }}
+              />
+
               <div className="rounded-[1rem] border border-[var(--line)] bg-white/[0.03] px-4 py-4">
                 <div className="metric-label text-[var(--muted)]">{activePreset.treeLabel}</div>
                 <pre className="mt-3 overflow-auto rounded-[0.9rem] border border-[var(--line)] bg-[var(--surface-dark)] p-4 text-xs leading-6 text-white/75">
@@ -1201,7 +1234,9 @@ export function BatchWorkspace({
                 <p className="mt-3 text-sm leading-6 text-[var(--muted)]">
                   {selectedPreset === "metadata-only"
                     ? "The batch manifest keeps each clip grouped under its original job without re-encoding any media."
-                    : "Each selected clip keeps a stable file name inside its job folder so cross-job downloads still map cleanly back to the source workspace."}
+                    : resolvedAssetOptions.includeSpectrograms
+                      ? "Each selected clip keeps a stable file name for media plus a matching spectrogram companion inside its job folder so cross-job downloads stay easy to audit."
+                      : "Each selected clip keeps a stable file name inside its job folder so cross-job downloads still map cleanly back to the source workspace."}
                 </p>
               </div>
             </div>
@@ -1712,32 +1747,50 @@ function getBatchExportActionLabel(clipCount: number, preset: PackageExportPrese
 function buildBatchPackageTree(
   batchLabel: string,
   selections: BatchPackageJobSelection[],
-  preset: PackageExportPreset
+  preset: PackageExportPreset,
+  options: PackageExportAssetOptions
 ) {
   const rootName = buildBatchPackageRootName(batchLabel, preset);
   const assetDirectory = getPackageAssetDirectory(preset);
+  const spectrogramDirectory = getPackageSpectrogramDirectory(preset, options);
   const lines = [`${rootName}/`, "  manifest.json"];
 
-  if (!assetDirectory || selections.length === 0) {
+  if ((!assetDirectory && !spectrogramDirectory) || selections.length === 0) {
     return lines.join("\n");
   }
 
   lines.push("  jobs/");
 
   selections.slice(0, 3).forEach((selection) => {
-    lines.push(`    ${selection.jobId}/`, `      ${assetDirectory}/`);
-    selection.clipIds
-      .slice(0, 2)
-      .forEach((clipId, index) => {
+    lines.push(`    ${selection.jobId}/`);
+    selection.clipIds.slice(0, 2).forEach((clipId, index) => {
+      if (assetDirectory) {
         const fileName = buildPackageClipFileName(index + 1, clipId, preset);
         if (fileName) {
+          if (index === 0) {
+            lines.push(`      ${assetDirectory}/`);
+          }
           lines.push(`        ${fileName}`);
         }
-      });
+      }
+
+      if (spectrogramDirectory) {
+        const spectrogramFileName = buildPackageSpectrogramFileName(index + 1, clipId);
+        if (spectrogramFileName) {
+          if (index === 0) {
+            lines.push(`      ${spectrogramDirectory}/`);
+          }
+          lines.push(`        ${spectrogramFileName}`);
+        }
+      }
+    });
 
     const extraCount = Math.max(0, selection.clipIds.length - 2);
-    if (extraCount > 0) {
+    if (assetDirectory && extraCount > 0) {
       lines.push(`        ... ${extraCount} more ${preset === "audio-only" ? "audio" : "clip"} files`);
+    }
+    if (spectrogramDirectory && extraCount > 0) {
+      lines.push(`        ... ${extraCount} more spectrogram files`);
     }
   });
 

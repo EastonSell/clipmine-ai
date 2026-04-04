@@ -17,6 +17,7 @@ from .package_export import (
     build_batch_package_export,
     build_package_export,
     cleanup_package_export,
+    resolve_package_export_options,
 )
 from .presentation import serialize_export, serialize_job
 from .processor import JobProcessor
@@ -601,11 +602,15 @@ async def export_job_package(
     store: JobStore = Depends(get_job_store),
     artifact_store: ArtifactStore = Depends(get_artifact_store),
 ):
+    export_options = resolve_package_export_options(
+        payload.preset,
+        include_spectrograms=payload.include_spectrograms,
+    )
     job, selected_clips = _resolve_export_selection(
         store,
         job_id,
         payload.clip_ids,
-        requires_source_video=payload.preset is not PackageExportPreset.METADATA_ONLY,
+        requires_source_video=export_options.include_media_files or export_options.include_spectrograms,
     )
 
     try:
@@ -615,6 +620,7 @@ async def export_job_package(
             store=store,
             artifact_store=artifact_store,
             preset=payload.preset,
+            include_spectrograms=payload.include_spectrograms,
         )
     except (BotoCoreError, ClientError) as exc:
         logger.exception(
@@ -700,6 +706,7 @@ async def export_batch_package(
             batch_label=payload.batch_label,
             preset=payload.preset,
             quality_threshold=payload.quality_threshold,
+            include_spectrograms=payload.include_spectrograms,
         )
     except (BotoCoreError, ClientError) as exc:
         logger.exception("batch_package.object_store_failed job_count=%s", len(resolved_selections))

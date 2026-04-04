@@ -2,7 +2,7 @@
 
 import { AnimatePresence, motion } from "framer-motion";
 import { Boxes, RefreshCcw } from "lucide-react";
-import { useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import useSWR from "swr";
 
 import { buttonClassName } from "@/components/ui/button";
@@ -35,6 +35,8 @@ type ResultsWorkspaceProps = {
 
 export function ResultsWorkspace({ jobId }: ResultsWorkspaceProps) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
+  const playbackEndRef = useRef<number | null>(null);
+  const pendingSectionIdRef = useRef<string | null>(null);
 
   const { data, error, isLoading, mutate } = useSWR<JobResponse>(
     ["job", jobId],
@@ -62,8 +64,66 @@ export function ResultsWorkspace({ jobId }: ResultsWorkspaceProps) {
   const selectedClipIndex = reviewSequence.findIndex((clip) => clip.id === resolvedClipId);
   const comparisonActive = comparedClips.length === 2 && viewModel.activeTab !== "export";
 
-  function handleSeek(start: number, clipId?: string | null) {
+  useEffect(() => {
+    const player = videoRef.current;
+    if (player === null) {
+      return;
+    }
+    const boundedPlayer: HTMLVideoElement = player;
+
+    function handleTimeUpdate() {
+      const playbackEnd = playbackEndRef.current;
+      if (playbackEnd === null) {
+        return;
+      }
+
+      if (boundedPlayer.currentTime >= Math.max(0, playbackEnd - 0.04)) {
+        boundedPlayer.currentTime = playbackEnd;
+        boundedPlayer.pause();
+        playbackEndRef.current = null;
+      }
+    }
+
+    function clearPlaybackEnd() {
+      playbackEndRef.current = null;
+    }
+
+    boundedPlayer.addEventListener("timeupdate", handleTimeUpdate);
+    boundedPlayer.addEventListener("ended", clearPlaybackEnd);
+
+    return () => {
+      boundedPlayer.removeEventListener("timeupdate", handleTimeUpdate);
+      boundedPlayer.removeEventListener("ended", clearPlaybackEnd);
+    };
+  }, [data?.sourceVideo.url]);
+
+  useEffect(() => {
+    const targetId = pendingSectionIdRef.current;
+    if (!targetId) {
+      return;
+    }
+
+    pendingSectionIdRef.current = null;
+    const frameId = requestAnimationFrame(() => {
+      scrollToId(targetId);
+    });
+    const delayedScrollId = window.setTimeout(() => {
+      scrollToId(targetId);
+    }, 140);
+    const finalScrollId = window.setTimeout(() => {
+      scrollToId(targetId);
+    }, 320);
+
+    return () => {
+      cancelAnimationFrame(frameId);
+      window.clearTimeout(delayedScrollId);
+      window.clearTimeout(finalScrollId);
+    };
+  }, [viewModel.activeTab]);
+
+  function handleSeek(start: number, end?: number | null, clipId?: string | null) {
     if (videoRef.current) {
+      playbackEndRef.current = end ?? null;
       videoRef.current.currentTime = start;
       void videoRef.current.play().catch(() => undefined);
     }
@@ -74,11 +134,18 @@ export function ResultsWorkspace({ jobId }: ResultsWorkspaceProps) {
   }
 
   function scrollToId(id: string) {
-    document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
+    const element = document.getElementById(id);
+    if (!element) {
+      return false;
+    }
+
+    element.scrollIntoView({ behavior: "smooth", block: "start" });
+    return true;
   }
 
   function handleNavigate(target: "source" | "clips" | "timeline" | "export" | "notes") {
     if (target === "source") {
+      playbackEndRef.current = null;
       scrollToId("source-video");
       return;
     }
@@ -91,10 +158,14 @@ export function ResultsWorkspace({ jobId }: ResultsWorkspaceProps) {
     const nextTab: WorkspaceTab =
       target === "clips" ? "clips" : target === "timeline" ? "timeline" : "export";
 
+    const targetId = getWorkspaceSectionId(nextTab);
+    if (viewModel.activeTab === nextTab) {
+      scrollToId(targetId);
+      return;
+    }
+
+    pendingSectionIdRef.current = targetId;
     viewModel.setActiveTab(nextTab);
-    requestAnimationFrame(() => {
-      scrollToId("workspace-features");
-    });
   }
 
   if (isLoading) {
@@ -207,7 +278,7 @@ export function ResultsWorkspace({ jobId }: ResultsWorkspaceProps) {
                     onPrevious={() => {
                       const previousClip = selectedClipIndex > 0 ? reviewSequence[selectedClipIndex - 1] : null;
                       if (previousClip) {
-                        handleSeek(previousClip.start, previousClip.id);
+                        handleSeek(previousClip.start, previousClip.end, previousClip.id);
                       }
                     }}
                     onNext={() => {
@@ -216,7 +287,7 @@ export function ResultsWorkspace({ jobId }: ResultsWorkspaceProps) {
                           ? reviewSequence[selectedClipIndex + 1]
                           : null;
                       if (nextClip) {
-                        handleSeek(nextClip.start, nextClip.id);
+                        handleSeek(nextClip.start, nextClip.end, nextClip.id);
                       }
                     }}
                     hasPrevious={selectedClipIndex > 0}
@@ -230,7 +301,7 @@ export function ResultsWorkspace({ jobId }: ResultsWorkspaceProps) {
                 <BulkSelectionBar
                   selectedCount={viewModel.selectedClipIds.length}
                   selectedDuration={viewModel.selectedClipDuration}
-                  onOpenExport={() => viewModel.setActiveTab("export")}
+                  onOpenExport={() => handleNavigate("export")}
                   onClear={viewModel.clearSelected}
                 />
               </div>
@@ -247,7 +318,7 @@ export function ResultsWorkspace({ jobId }: ResultsWorkspaceProps) {
                 transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
               >
                 {viewModel.activeTab === "clips" ? (
-                  <div className="space-y-6">
+                  <div id="workspace-clips" className="space-y-6">
                     <ReviewToolbar
                       filters={viewModel.filters}
                       availableSignals={viewModel.availableSignals}
@@ -280,21 +351,25 @@ export function ResultsWorkspace({ jobId }: ResultsWorkspaceProps) {
                   </div>
                 ) : null}
                 {viewModel.activeTab === "timeline" ? (
-                  <TimelineChart
-                    bins={data.timeline}
-                    clips={data.clips}
-                    activeClipId={resolvedClipId}
-                    selectedClipIds={viewModel.selectedClipIds}
-                    onSeek={handleSeek}
-                  />
+                  <div id="workspace-timeline">
+                    <TimelineChart
+                      bins={data.timeline}
+                      clips={data.clips}
+                      activeClipId={resolvedClipId}
+                      selectedClipIds={viewModel.selectedClipIds}
+                      onSeek={handleSeek}
+                    />
+                  </div>
                 ) : null}
                 {viewModel.activeTab === "export" ? (
-                  <ExportPanel
-                    job={data}
-                    exportUrl={exportUrl}
-                    disabled={processing}
-                    selectedClips={viewModel.selectedClips}
-                  />
+                  <div id="workspace-export">
+                    <ExportPanel
+                      job={data}
+                      exportUrl={exportUrl}
+                      disabled={processing}
+                      selectedClips={viewModel.selectedClips}
+                    />
+                  </div>
                 ) : null}
               </motion.section>
             </AnimatePresence>
@@ -310,6 +385,18 @@ export function ResultsWorkspace({ jobId }: ResultsWorkspaceProps) {
       </div>
     </WorkspaceFrame>
   );
+}
+
+function getWorkspaceSectionId(tab: WorkspaceTab) {
+  if (tab === "timeline") {
+    return "workspace-timeline";
+  }
+
+  if (tab === "export") {
+    return "workspace-export";
+  }
+
+  return "workspace-clips";
 }
 
 function WorkspaceFrame({ children }: { children: React.ReactNode }) {

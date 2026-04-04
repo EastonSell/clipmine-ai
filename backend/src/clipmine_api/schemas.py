@@ -232,6 +232,7 @@ class CompleteMultipartUploadRequest(BaseModel):
 class PackageExportRequest(BaseModel):
     clip_ids: list[str] = Field(alias="clipIds")
     preset: PackageExportPreset = Field(default=PackageExportPreset.FULL_AV)
+    include_spectrograms: bool | None = Field(default=None, alias="includeSpectrograms")
 
     model_config = ConfigDict(populate_by_name=True)
 
@@ -247,6 +248,7 @@ class BatchPackageExportRequest(BaseModel):
     batch_label: str | None = Field(default=None, alias="batchLabel")
     preset: PackageExportPreset = Field(default=PackageExportPreset.FULL_AV)
     quality_threshold: float | None = Field(default=None, alias="qualityThreshold")
+    include_spectrograms: bool | None = Field(default=None, alias="includeSpectrograms")
     selections: list[BatchPackageSelection]
 
     model_config = ConfigDict(populate_by_name=True)

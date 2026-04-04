@@ -11,7 +11,7 @@ import { QualityBadge } from "./quality-badge";
 type ClipComparisonPanelProps = {
   leftClip: ClipRecord;
   rightClip: ClipRecord;
-  onSeek: (start: number, clipId?: string | null) => void;
+  onSeek: (start: number, end?: number | null, clipId?: string | null) => void;
   onClear: () => void;
 };
 
@@ -170,13 +170,13 @@ function ClipSummaryCard({
 }: {
   clip: ClipRecord;
   label: string;
-  onSeek: (start: number, clipId?: string | null) => void;
+  onSeek: (start: number, end?: number | null, clipId?: string | null) => void;
 }) {
   return (
     <div className="rounded-[1.3rem] border border-[var(--line)] bg-white/[0.03] p-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="metric-label text-[var(--muted)]">{label}</div>
-        <Button variant="secondary" size="sm" onClick={() => onSeek(clip.start, clip.id)}>
+        <Button variant="secondary" size="sm" onClick={() => onSeek(clip.start, clip.end, clip.id)}>
           <Play className="size-4" />
           Play clip
         </Button>

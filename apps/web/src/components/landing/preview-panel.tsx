@@ -8,19 +8,19 @@ const previewClips = [
     id: "preview-clip-01",
     quality: "Excellent",
     score: "91/100",
-    text: "Shortlist-ready with clean boundary and stable delivery",
+    text: "Shortlist-ready with clean boundary, stable delivery, and export-safe timing",
   },
   {
     id: "preview-clip-02",
     quality: "Good",
     score: "78/100",
-    text: "Review candidate with softer signal but usable pacing",
+    text: "Review candidate with softer signal but usable pacing and intact context",
   },
   {
     id: "preview-clip-03",
     quality: "Weak",
     score: "52/100",
-    text: "Discard candidate because the pause structure is messy",
+    text: "Discard candidate because the pause structure and boundary cleanup stay messy",
   },
 ];
 
@@ -32,7 +32,7 @@ export function PreviewPanel() {
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--line)] px-5 py-4 sm:px-6">
         <div>
           <p className="metric-label text-[var(--accent)]">Workspace preview</p>
-          <h2 className="mt-2 text-2xl font-semibold tracking-[-0.05em]">Research workspace</h2>
+          <h2 className="mt-2 text-2xl font-semibold tracking-[-0.05em]">Operator workspace</h2>
         </div>
         <Badge tone="accent" className="gap-2">
           <CircleDot className="size-3.5" />
@@ -50,15 +50,15 @@ export function PreviewPanel() {
           </div>
           <div className="mt-5 rounded-[1.15rem] border border-[var(--line)] bg-white/[0.03] p-4">
             <div className="metric-label text-[var(--muted)]">Selected package</div>
-            <div className="mt-3 text-6xl font-semibold tracking-[-0.08em]">08</div>
+            <div className="mt-3 text-5xl font-semibold tracking-[-0.08em] sm:text-6xl">08</div>
             <p className="mt-3 text-sm leading-6 text-[var(--muted)]">
-              Clip files and manifest stay linked by clip ID and export order.
+              Clip media, spectrograms, and manifest files stay linked by clip ID and export order.
             </p>
           </div>
           <div className="mt-4 space-y-3 text-sm text-[var(--muted)]">
             <div className="flex items-center justify-between gap-4 rounded-[1rem] border border-[var(--line)] bg-white/[0.03] px-4 py-3">
               <span>Package type</span>
-              <span className="font-medium text-[var(--text)]">ZIP + manifest</span>
+              <span className="font-medium text-[var(--text)]">ZIP + review assets</span>
             </div>
             <div className="flex items-center justify-between gap-4 rounded-[1rem] border border-[var(--line)] bg-white/[0.03] px-4 py-3">
               <span>Clip naming</span>
@@ -66,6 +66,10 @@ export function PreviewPanel() {
                 <FileJson2 className="size-4" />
                 clip_001__id.mp4
               </span>
+            </div>
+            <div className="flex items-center justify-between gap-4 rounded-[1rem] border border-[var(--line)] bg-white/[0.03] px-4 py-3">
+              <span>Spectrograms</span>
+              <span className="font-medium text-[var(--text)]">Included</span>
             </div>
             <div className="flex items-center justify-between gap-4 rounded-[1rem] border border-[var(--line)] bg-white/[0.03] px-4 py-3">
               <span>Timeline bins</span>

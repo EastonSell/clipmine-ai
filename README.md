@@ -1,6 +1,6 @@
 # ClipMine AI
 
-> Upload one talking-head video or a full batch, surface the strongest speech clips, and export training-ready packages with linked metadata.
+> Upload one talking-head video or a full batch, surface the strongest speech clips, and export training-ready packages with linked media, spectrograms, and metadata.
 
 ClipMine AI is a multimodal speech curation tool for dataset builders. It sits between raw footage and downstream training pipelines: upload source video, let the backend extract and score candidate clips, then review the result through ranked clips, timeline coverage, and export flows built for annotation and training prep.
 
@@ -91,6 +91,8 @@ The app now supports both single-source review and batch intake.
 - `export.json` for the full machine-readable job payload
 - selected clip package export as a zip archive
 - full AV, audio-only, and metadata-only package presets
+- package-contents checklist in the export surface before download
+- spectrogram PNG companions for full AV and audio-only packages
 - stable naming like `clip_001__<clipId>.mp4`
 - linked `manifest.json` that maps every exported clip file back to clip metadata
 - cross-job batch export above a user-defined quality threshold
@@ -98,7 +100,7 @@ The app now supports both single-source review and batch intake.
 
 ## Training package structure
 
-The primary export is no longer just a schema preview. It is a package builder designed for real downstream use.
+The primary export is no longer just a schema preview. It is a package builder designed for real downstream use, with a checklist that shows exactly which assets leave the workspace.
 
 ![Training package structure](docs/readme/package-structure.svg)
 
@@ -110,6 +112,9 @@ clipmine-export-<jobId>/
   clips/
     clip_001__<clipId>.mp4
     clip_002__<clipId>.mp4
+  spectrograms/
+    clip_001__<clipId>.png
+    clip_002__<clipId>.png
 ```
 
 Batch package layout:
@@ -120,6 +125,8 @@ clipmine-batch-export-<label>/
   jobs/
     <jobId>/clips/clip_001__<clipId>.mp4
     <jobId>/clips/clip_002__<clipId>.mp4
+    <jobId>/spectrograms/clip_001__<clipId>.png
+    <jobId>/spectrograms/clip_002__<clipId>.png
 ```
 
 ## Project goals

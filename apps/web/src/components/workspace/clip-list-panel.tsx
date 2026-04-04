@@ -19,7 +19,7 @@ type ClipListPanelProps = {
   totalClipCount: number;
   hasActiveFilters: boolean;
   pinnedOnly: boolean;
-  onSelect: (start: number, clipId?: string | null) => void;
+  onSelect: (start: number, end?: number | null, clipId?: string | null) => void;
   onToggleCompared: (clipId: string) => void;
   onClearCompared: () => void;
   onToggleSelected: (clipId: string) => void;
@@ -148,7 +148,7 @@ function renderClipRow(
     activeClipId: string | null;
     compared: boolean;
     selectedClipIds: string[];
-    onSelect: (start: number, clipId?: string | null) => void;
+    onSelect: (start: number, end?: number | null, clipId?: string | null) => void;
     onToggleCompared: ((clipId: string) => void) | null;
     onToggleSelected: (clipId: string) => void;
   }
@@ -202,7 +202,7 @@ function renderClipRow(
 
       <button
         type="button"
-        onClick={() => onSelect(clip.start, clip.id)}
+        onClick={() => onSelect(clip.start, clip.end, clip.id)}
         className="grid w-full gap-4 text-left transition duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-inset xl:grid-cols-[minmax(0,1fr)_14rem] xl:items-start"
         aria-pressed={active}
       >

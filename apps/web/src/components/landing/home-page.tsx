@@ -21,17 +21,17 @@ const proofPoints = [
   {
     id: "best-clips",
     title: "Best clips",
-    body: "Review ranked short speech windows by confidence, pace, signal strength, and continuity.",
+    body: "Pull the strongest speech windows forward with score, reasoning, and transcript context.",
   },
   {
     id: "batch-queue",
     title: "Batch queue",
-    body: "Queue multiple uploads into one review run and keep every source grouped under the same session.",
+    body: "Keep multiple uploads inside one review run so retries, ready jobs, and exports stay grouped.",
   },
   {
     id: "export",
     title: "Training package",
-    body: "Export top clips from one job or the whole batch with manifest metadata and stable file names.",
+    body: "Ship mp4 or wav clips, spectrograms, and linked manifest metadata from one export surface.",
   },
 ];
 
@@ -46,7 +46,7 @@ const footerNotes = [
   },
     {
       label: "Output",
-      body: "Best clips, timeline bins, package export, and raw JSON all stay aligned to the same source video and scoring pass.",
+      body: "Best clips, timeline bins, spectrogram companions, package export, and raw JSON all stay aligned to the same source video and scoring pass.",
     },
   ];
 
@@ -92,14 +92,14 @@ export function HomePageView() {
 
               <div className="space-y-5">
                 <div className="rounded-[1.25rem] border border-[var(--line)] bg-[var(--surface-overlay)] px-4 py-3 text-sm text-[var(--muted)] shadow-[var(--shadow-soft)] sm:max-w-xl">
-                  Upload one source or queue a full batch, inspect ranked clips, and export cleaner training signals from one app-like workspace.
+                  Upload one source or queue a full batch, review ranked clips against the original media, and export cleaner training packages from one workspace.
                 </div>
-                <h1 className="max-w-5xl text-[3.15rem] font-semibold leading-[0.94] tracking-[-0.08em] sm:text-[4.2rem] lg:text-[5.15rem]">
-                  Review clips and queued uploads in one operator workspace.
+                <h1 className="max-w-4xl text-[2.85rem] font-semibold leading-[0.96] tracking-[-0.075em] sm:text-[3.75rem] lg:text-[4.45rem]">
+                  One workspace for upload review and package handoff.
                 </h1>
-                <p className="max-w-2xl text-lg leading-8 text-[var(--muted-strong)] sm:text-[1.08rem]">
+                <p className="max-w-2xl text-base leading-7 text-[var(--muted-strong)] sm:text-[1.05rem]">
                   ClipMine AI turns one source or a full batch into ranked review surfaces with clip scoring, timeline
-                  coverage, queue status, and package-ready metadata for training and annotation workflows.
+                  coverage, queue status, spectrogram references, and package-ready metadata for training and annotation workflows.
                 </p>
               </div>
 
