@@ -25,6 +25,8 @@ class PackageExportLayout:
     asset_directory: str | None
     asset_extension: str | None
     media_kind: str
+    metadata_file_name: str = "manifest.json"
+    standardized_media_names: bool = False
 
 
 @dataclass(slots=True)
@@ -66,6 +68,14 @@ PACKAGE_EXPORT_LAYOUTS: dict[PackageExportPreset, PackageExportLayout] = {
         asset_extension=None,
         media_kind="metadata",
     ),
+    PackageExportPreset.TRAINING_DATASET: PackageExportLayout(
+        archive_suffix="-dataset",
+        asset_directory="video",
+        asset_extension=".mp4",
+        media_kind="video",
+        metadata_file_name="metadata.jsonl",
+        standardized_media_names=True,
+    ),
 }
 
 
@@ -74,12 +84,13 @@ def resolve_package_export_options(
     *,
     include_spectrograms: bool | None = None,
 ) -> PackageExportOptions:
-    include_media_files = preset is not PackageExportPreset.METADATA_ONLY
     if preset is PackageExportPreset.METADATA_ONLY:
         return PackageExportOptions(include_media_files=False, include_spectrograms=False)
+    if preset is PackageExportPreset.TRAINING_DATASET:
+        return PackageExportOptions(include_media_files=True, include_spectrograms=False)
 
     return PackageExportOptions(
-        include_media_files=include_media_files,
+        include_media_files=True,
         include_spectrograms=True if include_spectrograms is None else include_spectrograms,
     )
 
@@ -131,10 +142,16 @@ def build_package_export(
         "clipCount": len(clips),
         "clips": [],
     }
+    dataset_rows: list[dict[str, object]] = []
 
     for ordinal, clip in enumerate(clips, start=1):
         clip_file_name = (
-            build_clip_file_name(ordinal, clip.id, extension=layout.asset_extension)
+            build_export_clip_file_name(
+                ordinal,
+                clip.id,
+                preset=preset,
+                extension=layout.asset_extension,
+            )
             if options.include_media_files
             else None
         )
@@ -152,7 +169,7 @@ def build_package_export(
 
         if options.include_media_files and asset_dir and source_path and clip_file_name:
             output_path = asset_dir / clip_file_name
-            if preset is PackageExportPreset.FULL_AV:
+            if preset in (PackageExportPreset.FULL_AV, PackageExportPreset.TRAINING_DATASET):
                 extract_video_clip(source_path, output_path, start_time=clip.start, end_time=clip.end)
             elif preset is PackageExportPreset.AUDIO_ONLY:
                 extract_audio_clip(source_path, output_path, start_time=clip.start, end_time=clip.end)
@@ -164,31 +181,45 @@ def build_package_export(
                 end_time=clip.end,
             )
 
-        manifest_payload["clips"].append(
-            {
-                "ordinal": ordinal,
-                "clipId": clip.id,
-                "fileName": clip_file_name,
-                "relativePath": relative_path,
-                "spectrogramFileName": spectrogram_file_name,
-                "spectrogramRelativePath": spectrogram_relative_path,
-                "text": clip.text,
-                "start": clip.start,
-                "end": clip.end,
-                "duration": clip.duration,
-                "score": clip.score,
-                "quality_label": clip.quality_label,
-                "selection_recommendation": clip.selection_recommendation,
-                "tags": clip.tags,
-                "quality_penalties": clip.quality_penalties,
-                "candidate_metrics": clip.candidate_metrics.model_dump(mode="json"),
-                "quality_breakdown": clip.quality_breakdown.model_dump(mode="json"),
-                "word_alignments": [alignment.model_dump(mode="json") for alignment in clip.word_alignments],
-            }
-        )
+        if preset is PackageExportPreset.TRAINING_DATASET:
+            dataset_rows.append(
+                build_training_dataset_row(
+                    dataset_ordinal=ordinal,
+                    job=job,
+                    clip=clip,
+                    file_path=relative_path or "",
+                    media_kind=layout.media_kind,
+                )
+            )
+        else:
+            manifest_payload["clips"].append(
+                {
+                    "ordinal": ordinal,
+                    "clipId": clip.id,
+                    "fileName": clip_file_name,
+                    "relativePath": relative_path,
+                    "spectrogramFileName": spectrogram_file_name,
+                    "spectrogramRelativePath": spectrogram_relative_path,
+                    "text": clip.text,
+                    "start": clip.start,
+                    "end": clip.end,
+                    "duration": clip.duration,
+                    "score": clip.score,
+                    "quality_label": clip.quality_label,
+                    "selection_recommendation": clip.selection_recommendation,
+                    "tags": clip.tags,
+                    "quality_penalties": clip.quality_penalties,
+                    "candidate_metrics": clip.candidate_metrics.model_dump(mode="json"),
+                    "quality_breakdown": clip.quality_breakdown.model_dump(mode="json"),
+                    "word_alignments": [alignment.model_dump(mode="json") for alignment in clip.word_alignments],
+                }
+            )
 
-    manifest_path = package_root / "manifest.json"
-    manifest_path.write_bytes(orjson.dumps(manifest_payload, option=orjson.OPT_INDENT_2))
+    metadata_path = package_root / layout.metadata_file_name
+    if preset is PackageExportPreset.TRAINING_DATASET:
+        metadata_path.write_bytes(serialize_jsonl(dataset_rows))
+    else:
+        metadata_path.write_bytes(orjson.dumps(manifest_payload, option=orjson.OPT_INDENT_2))
 
     archive_name = f"{package_root.name}.zip"
     archive_path = cleanup_root / archive_name
@@ -227,8 +258,10 @@ def build_batch_package_export(
     package_root_name = build_batch_package_root_name(batch_label, preset)
     package_root = cleanup_root / package_root_name
     package_root.mkdir(parents=True, exist_ok=True)
-    jobs_dir = package_root / "jobs"
-    jobs_dir.mkdir(parents=True, exist_ok=True)
+    jobs_dir: Path | None = None
+    if not layout.standardized_media_names:
+        jobs_dir = package_root / "jobs"
+        jobs_dir.mkdir(parents=True, exist_ok=True)
 
     manifest_payload = {
         "batchLabel": batch_label or "ClipMine batch export",
@@ -246,19 +279,26 @@ def build_batch_package_export(
         "warnings": [],
         "jobs": [],
     }
+    dataset_rows: list[dict[str, object]] = []
     first_error: Exception | None = None
 
     for selection in selections:
-        job_dir = jobs_dir / selection.job.job_id
+        job_dir = jobs_dir / selection.job.job_id if jobs_dir else package_root
 
         try:
             job_dir.mkdir(parents=True, exist_ok=True)
             asset_dir: Path | None = None
             spectrogram_dir: Path | None = None
             source_path: Path | None = None
+            created_paths: list[Path] = []
+            job_dataset_rows: list[dict[str, object]] = []
+            starting_dataset_count = len(dataset_rows)
 
-            if options.include_media_files and layout.asset_directory:
+            if options.include_media_files and layout.asset_directory and not layout.standardized_media_names:
                 asset_dir = job_dir / layout.asset_directory
+                asset_dir.mkdir(parents=True, exist_ok=True)
+            elif options.include_media_files and layout.asset_directory:
+                asset_dir = package_root / layout.asset_directory
                 asset_dir.mkdir(parents=True, exist_ok=True)
             if options.include_spectrograms:
                 spectrogram_dir = job_dir / "spectrograms"
@@ -285,13 +325,23 @@ def build_batch_package_export(
             }
 
             for ordinal, clip in enumerate(selection.clips, start=1):
+                dataset_ordinal = len(dataset_rows) + len(job_dataset_rows) + 1
                 clip_file_name = (
-                    build_clip_file_name(ordinal, clip.id, extension=layout.asset_extension)
+                    build_export_clip_file_name(
+                        dataset_ordinal if layout.standardized_media_names else ordinal,
+                        clip.id,
+                        preset=preset,
+                        extension=layout.asset_extension,
+                    )
                     if options.include_media_files
                     else None
                 )
                 relative_path = (
-                    f"jobs/{selection.job.job_id}/{layout.asset_directory}/{clip_file_name}"
+                    (
+                        f"{layout.asset_directory}/{clip_file_name}"
+                        if layout.standardized_media_names
+                        else f"jobs/{selection.job.job_id}/{layout.asset_directory}/{clip_file_name}"
+                    )
                     if layout.asset_directory and clip_file_name
                     else None
                 )
@@ -304,16 +354,30 @@ def build_batch_package_export(
 
                 if options.include_media_files and asset_dir and source_path and clip_file_name:
                     output_path = asset_dir / clip_file_name
-                    if preset is PackageExportPreset.FULL_AV:
+                    if preset in (PackageExportPreset.FULL_AV, PackageExportPreset.TRAINING_DATASET):
                         extract_video_clip(source_path, output_path, start_time=clip.start, end_time=clip.end)
                     elif preset is PackageExportPreset.AUDIO_ONLY:
                         extract_audio_clip(source_path, output_path, start_time=clip.start, end_time=clip.end)
+                    created_paths.append(output_path)
                 if options.include_spectrograms and spectrogram_dir and source_path and spectrogram_file_name:
+                    spectrogram_output_path = spectrogram_dir / spectrogram_file_name
                     extract_audio_spectrogram(
                         source_path,
-                        spectrogram_dir / spectrogram_file_name,
+                        spectrogram_output_path,
                         start_time=clip.start,
                         end_time=clip.end,
+                    )
+                    created_paths.append(spectrogram_output_path)
+
+                if preset is PackageExportPreset.TRAINING_DATASET:
+                    job_dataset_rows.append(
+                        build_training_dataset_row(
+                            dataset_ordinal=dataset_ordinal,
+                            job=selection.job,
+                            clip=clip,
+                            file_path=relative_path or "",
+                            media_kind=layout.media_kind,
+                        )
                     )
 
                 job_manifest["clips"].append(
@@ -339,12 +403,20 @@ def build_batch_package_export(
                     }
                 )
 
-            manifest_payload["jobs"].append(job_manifest)
+            if preset is not PackageExportPreset.TRAINING_DATASET:
+                manifest_payload["jobs"].append(job_manifest)
+            else:
+                dataset_rows.extend(job_dataset_rows)
             manifest_payload["jobCount"] += 1
             manifest_payload["clipCount"] += len(selection.clips)
         except Exception as exc:
             first_error = first_error or exc
-            shutil.rmtree(job_dir, ignore_errors=True)
+            if layout.standardized_media_names:
+                del dataset_rows[starting_dataset_count:]
+                for path in reversed(created_paths):
+                    path.unlink(missing_ok=True)
+            else:
+                shutil.rmtree(job_dir, ignore_errors=True)
             warning_payload = _build_batch_export_warning(selection.job, exc)
             manifest_payload["warnings"].append(warning_payload)
             logger.warning(
@@ -357,14 +429,17 @@ def build_batch_package_export(
     manifest_payload["failedJobCount"] = len(manifest_payload["warnings"])
     manifest_payload["warningCount"] = len(manifest_payload["warnings"])
 
-    if not manifest_payload["jobs"]:
+    if manifest_payload["jobCount"] == 0:
         shutil.rmtree(cleanup_root, ignore_errors=True)
         if first_error is not None:
             raise first_error
         raise RuntimeError("The batch clip package could not be built.")
 
-    manifest_path = package_root / "manifest.json"
-    manifest_path.write_bytes(orjson.dumps(manifest_payload, option=orjson.OPT_INDENT_2))
+    metadata_path = package_root / layout.metadata_file_name
+    if preset is PackageExportPreset.TRAINING_DATASET:
+        metadata_path.write_bytes(serialize_jsonl(dataset_rows))
+    else:
+        metadata_path.write_bytes(orjson.dumps(manifest_payload, option=orjson.OPT_INDENT_2))
 
     archive_name = f"{package_root.name}.zip"
     archive_path = cleanup_root / archive_name
@@ -409,6 +484,22 @@ def build_clip_file_name(ordinal: int, clip_id: str, *, extension: str | None = 
     if not extension:
         return None
     return f"clip_{ordinal:03d}__{clip_id}{extension}"
+
+
+def build_export_clip_file_name(
+    ordinal: int,
+    clip_id: str,
+    *,
+    preset: PackageExportPreset,
+    extension: str | None = None,
+) -> str | None:
+    layout = PACKAGE_EXPORT_LAYOUTS[preset]
+    resolved_extension = layout.asset_extension if extension is None else extension
+    if not resolved_extension:
+        return None
+    if layout.standardized_media_names:
+        return f"clip_{ordinal:06d}{resolved_extension}"
+    return build_clip_file_name(ordinal, clip_id, extension=resolved_extension)
 
 
 def build_spectrogram_file_name(ordinal: int, clip_id: str) -> str:
@@ -465,3 +556,39 @@ def _slugify(value: str) -> str:
 
 def _resolve_archive_compression(path: Path) -> int:
     return zipfile.ZIP_STORED if path.suffix.lower() == ".mp4" else zipfile.ZIP_DEFLATED
+
+
+def build_training_dataset_row(
+    *,
+    dataset_ordinal: int,
+    job: JobManifest,
+    clip: ClipRecord,
+    file_path: str,
+    media_kind: str,
+) -> dict[str, object]:
+    return {
+        "id": f"clip_{dataset_ordinal:06d}",
+        "job_id": job.job_id,
+        "clip_id": clip.id,
+        "source_video_id": job.source_video.id,
+        "source_file_name": job.source_video.file_name,
+        "media_type": media_kind,
+        "file_path": file_path,
+        "transcript": clip.text,
+        "timestamps": {
+            "start_seconds": clip.start,
+            "end_seconds": clip.end,
+            "duration_seconds": clip.duration,
+        },
+        "confidence": clip.confidence,
+        "score": clip.score,
+        "quality_label": clip.quality_label,
+        "selection_recommendation": clip.selection_recommendation,
+    }
+
+
+def serialize_jsonl(rows: list[dict[str, object]]) -> bytes:
+    if not rows:
+        return b""
+
+    return b"\n".join(orjson.dumps(row) for row in rows) + b"\n"

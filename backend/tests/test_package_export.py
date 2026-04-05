@@ -276,6 +276,73 @@ def test_package_export_supports_metadata_only_preset(tmp_path: Path) -> None:
     assert manifest_payload["clips"][0]["spectrogramRelativePath"] is None
 
 
+def test_package_export_supports_training_dataset_preset(tmp_path: Path) -> None:
+    with TestClient(app) as client:
+        settings = client.app.state.settings
+        original_storage = settings.storage_dir
+        original_model_cache = settings.model_cache_dir
+        settings.storage_dir = tmp_path / "storage"
+        settings.model_cache_dir = tmp_path / "models"
+
+        try:
+            job_id = "dataset-job"
+            clip_one = build_clip_record(job_id=job_id, clip_id="dataset-job-clip-001", start=0.0, end=0.9, score=94.0)
+            clip_two = build_clip_record(job_id=job_id, clip_id="dataset-job-clip-002", start=1.0, end=1.8, score=87.0)
+            manifest = client.app.state.job_store.create_manifest_for_job(
+                job_id=job_id,
+                file_name="sample.mp4",
+                content_type="video/mp4",
+                size_bytes=2048,
+                relative_path="jobs/dataset-job/source/sample.mp4",
+            )
+            create_sample_video(client.app.state.job_store.source_video_path(manifest))
+            client.app.state.job_store.save_job(
+                manifest.model_copy(
+                    update={
+                        "status": JobStatus.READY,
+                        "progress_phase": ProgressPhase.READY,
+                        "clips": [clip_one, clip_two],
+                        "summary": build_summary([clip_one, clip_two], duration_seconds=2.0, transcript_text="Example transcript"),
+                        "timeline": build_timeline([clip_one, clip_two], duration_seconds=2.0),
+                    }
+                )
+            )
+
+            response = client.post(
+                f"/api/jobs/{job_id}/exports/package",
+                json={"clipIds": [clip_one.id, clip_two.id], "preset": "training-dataset"},
+            )
+        finally:
+            settings.storage_dir = original_storage
+            settings.model_cache_dir = original_model_cache
+
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "application/zip"
+    assert 'filename="clipmine-export-dataset-job-dataset.zip"' in response.headers["content-disposition"]
+
+    archive = zipfile.ZipFile(BytesIO(response.content))
+    archive_names = set(archive.namelist())
+    assert "clipmine-export-dataset-job-dataset/metadata.jsonl" in archive_names
+    assert "clipmine-export-dataset-job-dataset/video/clip_000001.mp4" in archive_names
+    assert "clipmine-export-dataset-job-dataset/video/clip_000002.mp4" in archive_names
+    assert "clipmine-export-dataset-job-dataset/spectrograms/clip_001__dataset-job-clip-001.png" not in archive_names
+
+    metadata_lines = archive.read("clipmine-export-dataset-job-dataset/metadata.jsonl").decode("utf-8").strip().splitlines()
+    assert len(metadata_lines) == 2
+    first_row = orjson.loads(metadata_lines[0])
+    second_row = orjson.loads(metadata_lines[1])
+    assert first_row["file_path"] == "video/clip_000001.mp4"
+    assert first_row["transcript"] == clip_one.text
+    assert first_row["timestamps"] == {
+        "start_seconds": clip_one.start,
+        "end_seconds": clip_one.end,
+        "duration_seconds": clip_one.duration,
+    }
+    assert first_row["confidence"] == clip_one.confidence
+    assert second_row["file_path"] == "video/clip_000002.mp4"
+    assert second_row["clip_id"] == clip_two.id
+
+
 def test_package_export_downloads_remote_s3_source_before_trimming(tmp_path: Path) -> None:
     with TestClient(app) as client:
         settings = client.app.state.settings
@@ -492,6 +559,90 @@ def test_batch_package_export_returns_grouped_zip(tmp_path: Path) -> None:
     assert manifest_payload["jobs"][0]["clips"][0]["spectrogramRelativePath"] == "jobs/job-alpha/spectrograms/clip_001__job-alpha-clip-001.png"
     assert manifest_payload["jobs"][1]["clips"][0]["relativePath"] == "jobs/job-beta/clips/clip_001__job-beta-clip-001.mp4"
     assert manifest_payload["jobs"][1]["clips"][0]["spectrogramRelativePath"] == "jobs/job-beta/spectrograms/clip_001__job-beta-clip-001.png"
+
+
+def test_batch_package_export_supports_training_dataset_preset(tmp_path: Path) -> None:
+    with TestClient(app) as client:
+        settings = client.app.state.settings
+        original_storage = settings.storage_dir
+        original_model_cache = settings.model_cache_dir
+        settings.storage_dir = tmp_path / "storage"
+        settings.model_cache_dir = tmp_path / "models"
+
+        try:
+            alpha_clip = build_clip_record(job_id="job-alpha", clip_id="job-alpha-clip-001", start=0.0, end=0.9, score=93.0)
+            beta_clip = build_clip_record(job_id="job-beta", clip_id="job-beta-clip-001", start=0.1, end=1.0, score=88.0)
+
+            alpha_manifest = client.app.state.job_store.create_manifest_for_job(
+                job_id="job-alpha",
+                file_name="alpha.mp4",
+                content_type="video/mp4",
+                size_bytes=2048,
+                relative_path="jobs/job-alpha/source/alpha.mp4",
+            )
+            beta_manifest = client.app.state.job_store.create_manifest_for_job(
+                job_id="job-beta",
+                file_name="beta.mp4",
+                content_type="video/mp4",
+                size_bytes=2048,
+                relative_path="jobs/job-beta/source/beta.mp4",
+            )
+            create_sample_video(client.app.state.job_store.source_video_path(alpha_manifest))
+            create_sample_video(client.app.state.job_store.source_video_path(beta_manifest))
+            client.app.state.job_store.save_job(
+                alpha_manifest.model_copy(
+                    update={
+                        "status": JobStatus.READY,
+                        "progress_phase": ProgressPhase.READY,
+                        "clips": [alpha_clip],
+                        "summary": build_summary([alpha_clip], duration_seconds=1.0, transcript_text="Alpha transcript"),
+                        "timeline": build_timeline([alpha_clip], duration_seconds=1.0),
+                    }
+                )
+            )
+            client.app.state.job_store.save_job(
+                beta_manifest.model_copy(
+                    update={
+                        "status": JobStatus.READY,
+                        "progress_phase": ProgressPhase.READY,
+                        "clips": [beta_clip],
+                        "summary": build_summary([beta_clip], duration_seconds=1.0, transcript_text="Beta transcript"),
+                        "timeline": build_timeline([beta_clip], duration_seconds=1.0),
+                    }
+                )
+            )
+
+            response = client.post(
+                "/api/exports/batch-package",
+                json={
+                    "batchLabel": "April Batch",
+                    "preset": "training-dataset",
+                    "selections": [
+                        {"jobId": "job-alpha", "clipIds": [alpha_clip.id]},
+                        {"jobId": "job-beta", "clipIds": [beta_clip.id]},
+                    ],
+                },
+            )
+        finally:
+            settings.storage_dir = original_storage
+            settings.model_cache_dir = original_model_cache
+
+    assert response.status_code == 200
+    archive = zipfile.ZipFile(BytesIO(response.content))
+    archive_names = set(archive.namelist())
+    assert "clipmine-batch-export-april-batch-dataset/metadata.jsonl" in archive_names
+    assert "clipmine-batch-export-april-batch-dataset/video/clip_000001.mp4" in archive_names
+    assert "clipmine-batch-export-april-batch-dataset/video/clip_000002.mp4" in archive_names
+    assert "clipmine-batch-export-april-batch-dataset/jobs/job-alpha/clips/clip_001__job-alpha-clip-001.mp4" not in archive_names
+
+    metadata_lines = archive.read("clipmine-batch-export-april-batch-dataset/metadata.jsonl").decode("utf-8").strip().splitlines()
+    assert len(metadata_lines) == 2
+    first_row = orjson.loads(metadata_lines[0])
+    second_row = orjson.loads(metadata_lines[1])
+    assert first_row["job_id"] == "job-alpha"
+    assert first_row["file_path"] == "video/clip_000001.mp4"
+    assert second_row["job_id"] == "job-beta"
+    assert second_row["file_path"] == "video/clip_000002.mp4"
 
 
 def test_batch_package_export_keeps_successful_jobs_when_one_source_is_missing(tmp_path: Path) -> None:

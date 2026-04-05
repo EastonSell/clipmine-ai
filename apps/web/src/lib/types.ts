@@ -154,7 +154,7 @@ export type CandidateMetrics = {
 };
 
 export type SelectionRecommendation = "shortlist" | "review" | "discard";
-export type PackageExportPreset = "full-av" | "audio-only" | "metadata-only";
+export type PackageExportPreset = "full-av" | "audio-only" | "metadata-only" | "training-dataset";
 export type PackageExportAssetOptions = {
   includeSpectrograms: boolean;
 };

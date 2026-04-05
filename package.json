@@ -5,6 +5,7 @@
     "apps/web"
   ],
   "scripts": {
+    "start:app": "node scripts/start-app.mjs",
     "dev:web": "npm_config_cache=/tmp/clipmine-npm-cache npm run dev --workspace apps/web",
     "build:web": "npm_config_cache=/tmp/clipmine-npm-cache npm run build --workspace apps/web",
     "start:web": "npm_config_cache=/tmp/clipmine-npm-cache npm run start --workspace apps/web",

@@ -105,12 +105,12 @@ describe("batch-sessions", () => {
     const storage = createStorage();
     saveBatchSession(
       createBatchSession({
-        batchExportPreset: "audio-only",
+        batchExportPreset: "training-dataset",
       }),
       storage
     );
 
-    expect(loadBatchSession("batch-1", storage)?.batchExportPreset).toBe("audio-only");
+    expect(loadBatchSession("batch-1", storage)?.batchExportPreset).toBe("training-dataset");
   });
 
   it("returns the newest saved session with a completion summary", () => {

@@ -9,6 +9,7 @@ import {
   ChevronsRight,
   Download,
   ExternalLink,
+  FileArchive,
   FileJson2,
   Film,
   RefreshCcw,
@@ -63,6 +64,7 @@ import {
   buildDefaultPackageExportAssetOptions,
   buildBatchPackageRootName,
   buildPackageClipFileName,
+  getPackageMetadataFileName,
   buildPackageSpectrogramFileName,
   getPackageAssetDirectory,
   getPackageExportPresetOption,
@@ -1173,10 +1175,17 @@ export function BatchWorkspace({
                 ) : null}
               </div>
 
-              <div className="grid gap-3 xl:grid-cols-3">
+              <div className="grid gap-3 xl:grid-cols-4">
                 {PACKAGE_EXPORT_PRESET_OPTIONS.map((option) => {
                   const isActive = option.value === selectedPreset;
-                  const Icon = option.value === "full-av" ? Film : option.value === "audio-only" ? Waves : FileJson2;
+                  const Icon =
+                    option.value === "full-av"
+                      ? Film
+                      : option.value === "audio-only"
+                        ? Waves
+                        : option.value === "training-dataset"
+                          ? FileArchive
+                          : FileJson2;
 
                   return (
                     <button
@@ -1186,7 +1195,7 @@ export function BatchWorkspace({
                       onClick={() => {
                         setSelectedPreset(option.value);
                         setAssetOptions(
-                          selectedPreset === "metadata-only"
+                          selectedPreset === "metadata-only" || selectedPreset === "training-dataset"
                             ? buildDefaultPackageExportAssetOptions(option.value)
                             : resolvePackageExportAssetOptions(option.value, assetOptions)
                         );
@@ -1232,7 +1241,9 @@ export function BatchWorkspace({
 {batchPackageTree}
                 </pre>
                 <p className="mt-3 text-sm leading-6 text-[var(--muted)]">
-                  {selectedPreset === "metadata-only"
+                  {selectedPreset === "training-dataset"
+                    ? "The training dataset export flattens eligible clips into video/ with sequential file names and writes one metadata.jsonl row per clip, including the originating job ID."
+                    : selectedPreset === "metadata-only"
                     ? "The batch manifest keeps each clip grouped under its original job without re-encoding any media."
                     : resolvedAssetOptions.includeSpectrograms
                       ? "Each selected clip keeps a stable file name for media plus a matching spectrogram companion inside its job folder so cross-job downloads stay easy to audit."
@@ -1737,6 +1748,10 @@ function getBatchExportActionLabel(clipCount: number, preset: PackageExportPrese
     return `Export ${clipCount} audio ${clipCount === 1 ? "clip" : "clips"}`;
   }
 
+  if (preset === "training-dataset") {
+    return `Export ${clipCount} dataset ${clipCount === 1 ? "clip" : "clips"}`;
+  }
+
   if (preset === "metadata-only") {
     return `Export ${clipCount} manifest ${clipCount === 1 ? "entry" : "entries"}`;
   }
@@ -1753,9 +1768,25 @@ function buildBatchPackageTree(
   const rootName = buildBatchPackageRootName(batchLabel, preset);
   const assetDirectory = getPackageAssetDirectory(preset);
   const spectrogramDirectory = getPackageSpectrogramDirectory(preset, options);
-  const lines = [`${rootName}/`, "  manifest.json"];
+  const metadataFileName = getPackageMetadataFileName(preset);
+  const lines = [`${rootName}/`, `  ${metadataFileName}`];
 
   if ((!assetDirectory && !spectrogramDirectory) || selections.length === 0) {
+    return lines.join("\n");
+  }
+
+  if (preset === "training-dataset" && assetDirectory) {
+    const previewClipIds = selections.flatMap((selection) => selection.clipIds).slice(0, 4);
+    lines.push(`  ${assetDirectory}/`);
+    previewClipIds.forEach((clipId, index) => {
+      lines.push(`    ${buildPackageClipFileName(index + 1, clipId, preset)}`);
+    });
+
+    const extraCount = Math.max(0, selections.flatMap((selection) => selection.clipIds).length - previewClipIds.length);
+    if (extraCount > 0) {
+      lines.push(`    ... ${extraCount} more dataset files`);
+    }
+
     return lines.join("\n");
   }
 

@@ -92,7 +92,8 @@ function isBatchSessionRecord(value: unknown): value is BatchSessionRecord {
     typeof record.batchExportPreset === "undefined" ||
     record.batchExportPreset === "full-av" ||
     record.batchExportPreset === "audio-only" ||
-    record.batchExportPreset === "metadata-only";
+    record.batchExportPreset === "metadata-only" ||
+    record.batchExportPreset === "training-dataset";
   return (
     typeof record.batchId === "string" &&
     typeof record.label === "string" &&

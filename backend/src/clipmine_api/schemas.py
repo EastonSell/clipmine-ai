@@ -42,6 +42,7 @@ class PackageExportPreset(str, Enum):
     FULL_AV = "full-av"
     AUDIO_ONLY = "audio-only"
     METADATA_ONLY = "metadata-only"
+    TRAINING_DATASET = "training-dataset"
 
 
 class SourceVideoRecord(BaseModel):

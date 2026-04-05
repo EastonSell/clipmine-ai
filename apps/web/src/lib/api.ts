@@ -11,6 +11,7 @@ import type {
   UploadPhase,
   UploadProgress,
 } from "./types";
+import { buildDefaultPackageExportAssetOptions } from "./package-export";
 import {
   doesMultipartUploadCheckpointMatchFile,
   getMultipartUploadCheckpointId,
@@ -240,7 +241,7 @@ export async function downloadClipPackage(
   jobId: string,
   clipIds: string[],
   preset: PackageExportPreset = "full-av",
-  options: PackageExportAssetOptions = { includeSpectrograms: preset !== "metadata-only" }
+  options: PackageExportAssetOptions = buildDefaultPackageExportAssetOptions(preset)
 ) {
   let lastError: ApiError | null = null;
 
@@ -293,7 +294,9 @@ export async function downloadBatchClipPackage(
           batchLabel: options.batchLabel,
           preset: options.preset ?? "full-av",
           qualityThreshold: options.qualityThreshold,
-          includeSpectrograms: options.includeSpectrograms ?? (options.preset ?? "full-av") !== "metadata-only",
+          includeSpectrograms:
+            options.includeSpectrograms ??
+            buildDefaultPackageExportAssetOptions(options.preset ?? "full-av").includeSpectrograms,
         }),
       });
     } catch (error) {
