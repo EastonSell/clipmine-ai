@@ -149,6 +149,7 @@ Use [PLAN.md](PLAN.md) for the final release checklist, especially the live back
 
 ## Architecture
 
+- `desktop`: Electron wrapper that launches the existing FastAPI backend and Next.js frontend without changing their app-layer architecture
 - `apps/web`: Next.js 16 App Router frontend with Tailwind, SWR, Framer Motion, and local workspace persistence
 - `backend`: FastAPI processing API with disk-backed jobs and optional S3-compatible source storage
 - `backend/src/clipmine_api/transcription.py`: `faster-whisper` transcription
@@ -207,6 +208,7 @@ Pushes to `main` can trigger a follow-up `docs/readme` asset refresh commit. Aft
 
 ```text
 .
+├── desktop
 ├── apps/web
 ├── backend
 ├── docs/readme
@@ -248,7 +250,27 @@ pip install -e ".[dev]"
 cd ..
 ```
 
-### 4. Run the app
+### 4. Run the desktop app
+
+Single-command desktop launcher:
+
+```bash
+npm run start:desktop
+```
+
+This starts the FastAPI backend in the background, starts or reuses the Next.js frontend, waits for both services to become ready, and opens the app inside an Electron window. Closing the desktop app shuts down any backend or frontend processes that Electron started.
+
+### 5. Build a launcher-ready desktop bundle
+
+Platform-local desktop packaging:
+
+```bash
+npm run dist:desktop
+```
+
+On macOS this produces a launcher-ready `.app` and `.dmg` in `dist/desktop`. On Windows it produces an NSIS installer with Start Menu and desktop shortcut support. The desktop bundle packages the Next.js standalone frontend plus the local `backend/.venv`, so create the backend virtualenv before building.
+
+### 6. Run the browser version if needed
 
 Single-command local launcher:
 
@@ -270,6 +292,9 @@ Open [http://localhost:3000](http://localhost:3000).
 ## Root commands
 
 ```bash
+npm run start:desktop
+npm run build:desktop
+npm run dist:desktop
 npm run start:app
 npm run dev:web
 npm run build:web

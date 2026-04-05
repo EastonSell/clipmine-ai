@@ -1,14 +1,21 @@
 {
   "name": "clipmine-ai",
+  "version": "0.1.0",
+  "description": "ClipMine AI desktop and web workspace",
+  "author": "ClipMine AI",
+  "main": "desktop/main.mjs",
   "private": true,
   "workspaces": [
     "apps/web"
   ],
   "scripts": {
     "start:app": "node scripts/start-app.mjs",
+    "start:desktop": "electron .",
     "dev:web": "npm_config_cache=/tmp/clipmine-npm-cache npm run dev --workspace apps/web",
     "build:web": "npm_config_cache=/tmp/clipmine-npm-cache npm run build --workspace apps/web",
+    "build:desktop": "node scripts/build-desktop.mjs",
     "start:web": "npm_config_cache=/tmp/clipmine-npm-cache npm run start --workspace apps/web",
+    "dist:desktop": "npm run build:desktop && electron-builder",
     "preview:web": "npm run build:web && npm run start:web",
     "lint:web": "npm_config_cache=/tmp/clipmine-npm-cache npm run lint --workspace apps/web",
     "test:web": "npm_config_cache=/tmp/clipmine-npm-cache npm run test --workspace apps/web",
@@ -19,6 +26,64 @@
     "test:api": "cd backend && .venv/bin/python -m pytest"
   },
   "devDependencies": {
-    "@playwright/test": "^1.59.1"
+    "@playwright/test": "^1.59.1",
+    "electron": "^41.1.1",
+    "electron-builder": "^26.8.1"
+  },
+  "build": {
+    "appId": "ai.clipmine.desktop",
+    "productName": "ClipMine AI",
+    "asar": true,
+    "directories": {
+      "buildResources": "desktop/build-resources",
+      "output": "dist/desktop"
+    },
+    "files": [
+      "desktop/**/*",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": ".desktop-build/runtime",
+        "to": "runtime",
+        "filter": [
+          "**/*"
+        ]
+      }
+    ],
+    "mac": {
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "arm64",
+            "x64"
+          ]
+        }
+      ],
+      "category": "public.app-category.video",
+      "icon": "desktop/build-resources/icon.icns"
+    },
+    "dmg": {
+      "icon": "desktop/build-resources/icon.icns"
+    },
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "desktop/build-resources/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "ClipMine AI"
+    }
   }
 }

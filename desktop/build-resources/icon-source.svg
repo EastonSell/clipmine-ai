@@ -1,0 +1,26 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1024" height="1024" rx="232" fill="#08111C"/>
+  <rect x="88" y="88" width="848" height="848" rx="200" fill="url(#backgroundGlow)"/>
+  <rect x="180" y="180" width="664" height="664" rx="164" fill="#07131F" stroke="#FFFFFF" stroke-opacity="0.08" stroke-width="18"/>
+  <path d="M246 596C304 544.667 362 519 420 519C478 519 536 493.333 594 442C652 390.667 710 365 768 365" stroke="url(#wavePrimary)" stroke-width="78" stroke-linecap="round"/>
+  <path d="M246 714C301.333 664.667 356.667 640 412 640C467.333 640 522.667 614 578 562C633.333 510 688.667 484 744 484" stroke="url(#waveSecondary)" stroke-width="46" stroke-linecap="round" opacity="0.95"/>
+  <circle cx="322" cy="430" r="44" fill="#8B5CF6"/>
+  <circle cx="512" cy="326" r="32" fill="#67E8F9"/>
+  <circle cx="702" cy="594" r="38" fill="#22C55E"/>
+  <defs>
+    <linearGradient id="backgroundGlow" x1="132" y1="96" x2="892" y2="928" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#0E2233"/>
+      <stop offset="0.45" stop-color="#102235"/>
+      <stop offset="1" stop-color="#070D16"/>
+    </linearGradient>
+    <linearGradient id="wavePrimary" x1="246" y1="365" x2="768" y2="596" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FB7185"/>
+      <stop offset="0.48" stop-color="#F59E0B"/>
+      <stop offset="1" stop-color="#34D399"/>
+    </linearGradient>
+    <linearGradient id="waveSecondary" x1="246" y1="484" x2="744" y2="714" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#67E8F9"/>
+      <stop offset="1" stop-color="#8B5CF6"/>
+    </linearGradient>
+  </defs>
+</svg>
