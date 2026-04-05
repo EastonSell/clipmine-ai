@@ -60,6 +60,7 @@ class ClipMineLauncher extends EventEmitter {
     this.shuttingDown = false;
     this.stopped = false;
     this.fatalError = null;
+    this.recentLogs = [];
   }
 
   async start() {
@@ -202,7 +203,9 @@ class ClipMineLauncher extends EventEmitter {
       }
 
       const suffix = signal ? `signal ${signal}` : `code ${code ?? 0}`;
-      this.handleFatal(new LauncherError(`${capitalize(label)} exited unexpectedly with ${suffix}.`));
+      const logTail = this.buildLogTail(label);
+      const detail = logTail ? `\n\nRecent ${label} logs:\n${logTail}` : "";
+      this.handleFatal(new LauncherError(`${capitalize(label)} exited unexpectedly with ${suffix}.${detail}`));
     });
 
     return entry;
@@ -239,18 +242,29 @@ class ClipMineLauncher extends EventEmitter {
   }
 
   logOutput(label, stream, chunk) {
-    if (!this.options.logger) {
-      return;
-    }
-
     const message = chunk.toString().trim();
     if (!message) {
       return;
     }
 
     for (const line of message.split(/\r?\n/)) {
-      this.options.logger(`[${label}:${stream}] ${line}`);
+      const entry = `[${label}:${stream}] ${line}`;
+      this.recentLogs.push(entry);
+      if (this.recentLogs.length > 80) {
+        this.recentLogs.shift();
+      }
+
+      if (this.options.logger) {
+        this.options.logger(entry);
+      }
     }
+  }
+
+  buildLogTail(label) {
+    const lines = this.recentLogs
+      .filter((entry) => entry.startsWith(`[${label}:`))
+      .slice(-8);
+    return lines.join("\n");
   }
 }
 

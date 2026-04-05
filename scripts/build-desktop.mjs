@@ -1,6 +1,6 @@
 import { spawn } from "node:child_process";
 import { constants } from "node:fs";
-import { access, cp, mkdir, rm } from "node:fs/promises";
+import { access, chmod, copyFile, cp, lstat, mkdir, readlink, rm, symlink, unlink } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import process from "node:process";
@@ -97,7 +97,47 @@ async function prepareRuntimeBundle() {
   await cp(path.join(repoRoot, "backend", ".venv"), path.join(stagedBackendRoot, ".venv"), {
     recursive: true,
     preserveTimestamps: true,
+    verbatimSymlinks: true,
   });
+  await normalizePackagedVirtualenv(path.join(stagedBackendRoot, ".venv"));
+}
+
+async function normalizePackagedVirtualenv(venvRoot) {
+  if (process.platform === "win32") {
+    return;
+  }
+
+  const binDir = path.join(venvRoot, "bin");
+  const interpreterNames = ["python", "python3"];
+
+  for (const name of interpreterNames) {
+    const interpreterPath = path.join(binDir, name);
+    const stats = await lstat(interpreterPath);
+    if (!stats.isSymbolicLink()) {
+      continue;
+    }
+
+    const target = await readlink(interpreterPath);
+    const targetName = path.basename(target);
+    if (!targetName) {
+      continue;
+    }
+
+    const bundledInterpreterPath = path.join(binDir, targetName);
+    const bundledStats = await lstat(bundledInterpreterPath);
+    if (bundledStats.isSymbolicLink()) {
+      const bundledTarget = await readlink(bundledInterpreterPath);
+      const resolvedBundledTarget = path.isAbsolute(bundledTarget)
+        ? bundledTarget
+        : path.resolve(binDir, bundledTarget);
+      await unlink(bundledInterpreterPath);
+      await copyFile(resolvedBundledTarget, bundledInterpreterPath);
+      await chmod(bundledInterpreterPath, 0o755);
+    }
+
+    await unlink(interpreterPath);
+    await symlink(targetName, interpreterPath);
+  }
 }
 
 async function assertReadable(targetPath, message) {

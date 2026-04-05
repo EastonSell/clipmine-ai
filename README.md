@@ -268,7 +268,7 @@ Platform-local desktop packaging:
 npm run dist:desktop
 ```
 
-On macOS this produces a launcher-ready `.app` and `.dmg` in `dist/desktop`. On Windows it produces an NSIS installer with Start Menu and desktop shortcut support. The desktop bundle packages the Next.js standalone frontend plus the local `backend/.venv`, so create the backend virtualenv before building.
+`npm run dist:desktop` builds for the current machine's OS and CPU architecture only. On macOS it produces a launcher-ready `.app` and one matching-architecture `.dmg` in `dist/desktop`. On Windows it produces an NSIS installer with Start Menu and desktop shortcut support. The desktop bundle packages the Next.js standalone frontend plus the local `backend/.venv`, so create the backend virtualenv before building on the same machine that will produce the installer.
 
 ### 6. Run the browser version if needed
 

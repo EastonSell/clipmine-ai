@@ -15,7 +15,7 @@
     "build:web": "npm_config_cache=/tmp/clipmine-npm-cache npm run build --workspace apps/web",
     "build:desktop": "node scripts/build-desktop.mjs",
     "start:web": "npm_config_cache=/tmp/clipmine-npm-cache npm run start --workspace apps/web",
-    "dist:desktop": "npm run build:desktop && electron-builder",
+    "dist:desktop": "node scripts/dist-desktop.mjs",
     "preview:web": "npm run build:web && npm run start:web",
     "lint:web": "npm_config_cache=/tmp/clipmine-npm-cache npm run lint --workspace apps/web",
     "test:web": "npm_config_cache=/tmp/clipmine-npm-cache npm run test --workspace apps/web",
@@ -53,13 +53,7 @@
     ],
     "mac": {
       "target": [
-        {
-          "target": "dmg",
-          "arch": [
-            "arm64",
-            "x64"
-          ]
-        }
+        "dmg"
       ],
       "category": "public.app-category.video",
       "icon": "desktop/build-resources/icon.icns"
@@ -69,12 +63,7 @@
     },
     "win": {
       "target": [
-        {
-          "target": "nsis",
-          "arch": [
-            "x64"
-          ]
-        }
+        "nsis"
       ],
       "icon": "desktop/build-resources/icon.ico"
     },
