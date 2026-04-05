@@ -10,6 +10,7 @@ import {
   buildDefaultPackageExportAssetOptions,
   buildJobPackageRootName,
   buildPackageClipFileName,
+  getPackageMetadataFileName,
   buildPackageSpectrogramFileName,
   getPackageAssetDirectory,
   getPackageExportPresetOption,
@@ -103,7 +104,7 @@ export function ExportPanel({ job, exportUrl, disabled, selectedClips }: ExportP
         <SectionHeader
           eyebrow="Selected package"
           title="Build a training-ready clip archive"
-          description="Choose how the selected clips leave the workspace, from the default video package to audio-only or manifest-only handoff."
+          description="Choose how the selected clips leave the workspace, from the default video package to an ML-ready dataset zip, audio-only handoff, or manifest-only export."
         />
 
         <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
@@ -113,10 +114,11 @@ export function ExportPanel({ job, exportUrl, disabled, selectedClips }: ExportP
           <PreviewMetric label="Review / discard" value={`${recommendationCounts.review} / ${recommendationCounts.discard}`} />
         </div>
 
-        <div className="mt-6 grid gap-3 xl:grid-cols-3">
+        <div className="mt-6 grid gap-3 xl:grid-cols-4">
           {PACKAGE_EXPORT_PRESET_OPTIONS.map((option) => {
             const isActive = option.value === selectedPreset;
-            const Icon = option.value === "full-av" ? Film : option.value === "audio-only" ? Waves : FileJson2;
+            const Icon =
+              option.value === "full-av" ? Film : option.value === "audio-only" ? Waves : option.value === "training-dataset" ? FileArchive : FileJson2;
 
             return (
               <button
@@ -126,7 +128,7 @@ export function ExportPanel({ job, exportUrl, disabled, selectedClips }: ExportP
                 onClick={() => {
                   setSelectedPreset(option.value);
                   setAssetOptions(
-                    selectedPreset === "metadata-only"
+                    selectedPreset === "metadata-only" || selectedPreset === "training-dataset"
                       ? buildDefaultPackageExportAssetOptions(option.value)
                       : resolvePackageExportAssetOptions(option.value, assetOptions)
                   );
@@ -181,7 +183,9 @@ export function ExportPanel({ job, exportUrl, disabled, selectedClips }: ExportP
               <div className="rounded-[1.25rem] border border-[var(--line)] bg-white/[0.03] px-4 py-4">
                 <div className="metric-label text-[var(--muted)]">{activePreset.listLabel}</div>
                 <p className="mt-3 text-sm leading-6 text-[var(--muted)]">
-                  {selectedPreset === "metadata-only"
+                  {selectedPreset === "training-dataset"
+                    ? "The dataset export writes sequential media file names into video/ and pairs them with one metadata.jsonl row per clip so downstream ML jobs can ingest the archive directly."
+                    : selectedPreset === "metadata-only"
                     ? "The manifest keeps clip IDs, timings, scores, tags, and alignment metadata without re-encoding any media."
                     : resolvedAssetOptions.includeSpectrograms
                       ? "Each selected clip keeps a deterministic file name for media and a matching spectrogram companion so downstream review can join every asset back to one clip ID."
@@ -355,6 +359,7 @@ function buildPackageTree(
   const rootName = buildJobPackageRootName(jobId, preset);
   const folderName = getPackageAssetDirectory(preset);
   const spectrogramFolderName = getPackageSpectrogramDirectory(preset, options);
+  const metadataFileName = getPackageMetadataFileName(preset);
   const previewEntries = clips
     .slice(0, 4)
     .map((clip, index) => buildPackageClipFileName(index + 1, clip.id, preset))
@@ -367,14 +372,18 @@ function buildPackageTree(
     .map((fileName) => `    ${fileName}`);
   const extraCount = Math.max(0, clips.length - previewEntries.length);
   const extraSpectrogramCount = Math.max(0, clips.length - spectrogramEntries.length);
-  const lines = [`${rootName}/`, "  manifest.json"];
+  const lines = [`${rootName}/`, `  ${metadataFileName}`];
 
   if (folderName && previewEntries.length > 0) {
     lines.push(`  ${folderName}/`, ...previewEntries);
   }
 
   if (folderName && extraCount > 0) {
-    lines.push(`    ... ${extraCount} more ${preset === "audio-only" ? "audio" : "clip"} files`);
+    lines.push(
+      `    ... ${extraCount} more ${
+        preset === "audio-only" ? "audio" : preset === "training-dataset" ? "dataset" : "clip"
+      } files`
+    );
   }
 
   if (spectrogramFolderName && spectrogramEntries.length > 0) {

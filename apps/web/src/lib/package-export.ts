@@ -41,6 +41,17 @@ export const PACKAGE_EXPORT_PRESET_OPTIONS: PackageExportPresetOption[] = [
     listLabel: "Audio files and manifest",
   },
   {
+    value: "training-dataset",
+    title: "Training dataset",
+    description:
+      "Export a flat ML-ready zip with sequential clip names, a dedicated video folder, and one JSONL row per clip for ingestion.",
+    accent: "video/ + metadata.jsonl",
+    buttonLabel: "Export training dataset",
+    batchButtonLabel: "Export training dataset",
+    treeLabel: "Dataset media and metadata",
+    listLabel: "Dataset records",
+  },
+  {
     value: "metadata-only",
     title: "Metadata-only package",
     description: "Keep the selected clip manifest without bundling media files when downstream tooling already has source access.",
@@ -58,7 +69,7 @@ export function getPackageExportPresetOption(preset: PackageExportPreset) {
 
 export function buildDefaultPackageExportAssetOptions(preset: PackageExportPreset): PackageExportAssetOptions {
   return {
-    includeSpectrograms: preset !== "metadata-only",
+    includeSpectrograms: preset === "full-av" || preset === "audio-only",
   };
 }
 
@@ -67,7 +78,7 @@ export function resolvePackageExportAssetOptions(
   options?: Partial<PackageExportAssetOptions>
 ): PackageExportAssetOptions {
   const defaults = buildDefaultPackageExportAssetOptions(preset);
-  if (preset === "metadata-only") {
+  if (preset === "metadata-only" || preset === "training-dataset") {
     return { includeSpectrograms: false };
   }
 
@@ -81,17 +92,27 @@ export function getPackageExportIncludeItems(
   options?: Partial<PackageExportAssetOptions>
 ): PackageExportIncludeItem[] {
   const resolvedOptions = resolvePackageExportAssetOptions(preset, options);
-  const mediaLabel = preset === "audio-only" ? "Mono wav clip files" : "Trimmed clip media";
+  const mediaLabel =
+    preset === "audio-only"
+      ? "Mono wav clip files"
+      : preset === "training-dataset"
+        ? "Sequential dataset media"
+        : "Trimmed clip media";
   const mediaDescription =
     preset === "audio-only"
       ? "Exports one mono wav per selected clip with stable file naming."
-      : "Exports one mp4 per selected clip with stable file naming.";
+      : preset === "training-dataset"
+        ? "Exports one mp4 per selected clip inside video/ with sequential names for ML ingestion."
+        : "Exports one mp4 per selected clip with stable file naming.";
 
   return [
     {
       id: "manifest",
-      label: "manifest.json",
-      description: "Always included so clip timing, scores, tags, and linkage stay intact.",
+      label: getPackageMetadataFileName(preset),
+      description:
+        preset === "training-dataset"
+          ? "Always included so each JSONL row maps one standardized media file to transcript, timestamps, and confidence."
+          : "Always included so clip timing, scores, tags, and linkage stay intact.",
       checked: true,
       disabled: true,
     },
@@ -111,9 +132,11 @@ export function getPackageExportIncludeItems(
       description:
         preset === "metadata-only"
           ? "Available on full AV and audio-only presets."
+          : preset === "training-dataset"
+            ? "Training dataset export keeps the archive flat and omits spectrogram sidecars."
           : "Adds one spectral reference image per selected clip for faster audio review.",
       checked: resolvedOptions.includeSpectrograms,
-      disabled: preset === "metadata-only",
+      disabled: preset === "metadata-only" || preset === "training-dataset",
     },
   ];
 }
@@ -131,6 +154,10 @@ export function getPackageAssetDirectory(preset: PackageExportPreset) {
     return "audio";
   }
 
+  if (preset === "training-dataset") {
+    return "video";
+  }
+
   if (preset === "metadata-only") {
     return null;
   }
@@ -144,7 +171,15 @@ export function buildPackageClipFileName(ordinal: number, clipId: string, preset
   }
 
   const extension = preset === "audio-only" ? "wav" : "mp4";
+  if (preset === "training-dataset") {
+    return `clip_${String(ordinal).padStart(6, "0")}.${extension}`;
+  }
+
   return `clip_${String(ordinal).padStart(3, "0")}__${clipId}.${extension}`;
+}
+
+export function getPackageMetadataFileName(preset: PackageExportPreset) {
+  return preset === "training-dataset" ? "metadata.jsonl" : "manifest.json";
 }
 
 export function getPackageSpectrogramDirectory(
@@ -164,6 +199,10 @@ export function buildPackageSpectrogramFileName(
 function getPackageArchiveSuffix(preset: PackageExportPreset) {
   if (preset === "audio-only") {
     return "-audio";
+  }
+
+  if (preset === "training-dataset") {
+    return "-dataset";
   }
 
   if (preset === "metadata-only") {

@@ -117,7 +117,12 @@ export function parseBatchSelectedJobId(jobId: string | null | undefined) {
 }
 
 export function parseBatchSelectedPreset(preset: string | null | undefined): PackageExportPreset | null {
-  if (preset === "full-av" || preset === "audio-only" || preset === "metadata-only") {
+  if (
+    preset === "full-av" ||
+    preset === "audio-only" ||
+    preset === "metadata-only" ||
+    preset === "training-dataset"
+  ) {
     return preset;
   }
 

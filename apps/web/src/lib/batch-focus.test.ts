@@ -265,6 +265,7 @@ describe("batch-focus", () => {
     expect(parseBatchSelectedPreset("full-av")).toBe("full-av");
     expect(parseBatchSelectedPreset("audio-only")).toBe("audio-only");
     expect(parseBatchSelectedPreset("metadata-only")).toBe("metadata-only");
+    expect(parseBatchSelectedPreset("training-dataset")).toBe("training-dataset");
     expect(parseBatchSelectedPreset("unknown")).toBeNull();
     expect(parseBatchSelectedPreset(undefined)).toBeNull();
   });

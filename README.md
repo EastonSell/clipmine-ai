@@ -85,11 +85,12 @@ The app now supports both single-source review and batch intake.
 
 - `export.json` for the full machine-readable job payload
 - selected clip package export as a zip archive
-- full AV, audio-only, and metadata-only package presets
+- full AV, audio-only, training-dataset, and metadata-only package presets
 - package-contents checklist in the export surface before download
 - spectrogram PNG companions for full AV and audio-only packages
 - stable naming like `clip_001__<clipId>.mp4`
 - linked `manifest.json` that maps every exported clip file back to clip metadata
+- `metadata.jsonl` training-dataset export with sequential filenames for ML ingestion
 - cross-job batch export above a user-defined quality threshold
 - batch export warning summaries when one selected source is skipped
 
@@ -122,6 +123,16 @@ clipmine-batch-export-<label>/
     <jobId>/clips/clip_002__<clipId>.mp4
     <jobId>/spectrograms/clip_001__<clipId>.png
     <jobId>/spectrograms/clip_002__<clipId>.png
+```
+
+Training dataset layout:
+
+```text
+clipmine-export-<jobId>-dataset/
+  metadata.jsonl
+  video/
+    clip_000001.mp4
+    clip_000002.mp4
 ```
 
 ## Project goals
@@ -239,16 +250,19 @@ cd ..
 
 ### 4. Run the app
 
-Backend:
+Single-command local launcher:
 
 ```bash
-npm run dev:api
+npm run start:app
 ```
 
-Frontend:
+This starts the FastAPI backend and Next.js frontend together, waits for both to be ready, and opens the app in your browser automatically.
+
+If you need to debug each service separately:
 
 ```bash
 npm run dev:web
+npm run dev:api
 ```
 
 Open [http://localhost:3000](http://localhost:3000).
@@ -256,6 +270,7 @@ Open [http://localhost:3000](http://localhost:3000).
 ## Root commands
 
 ```bash
+npm run start:app
 npm run dev:web
 npm run build:web
 npm run start:web

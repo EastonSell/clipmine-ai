@@ -282,6 +282,32 @@ describe("api upload helpers", () => {
     );
   });
 
+  it("defaults training-dataset package downloads to no spectrograms", async () => {
+    const fetchMock = vi.fn().mockResolvedValueOnce(
+      new Response(new Blob(["zip"]), {
+        status: 200,
+        headers: {
+          "Content-Disposition": 'attachment; filename="clipmine-export-job-dataset.zip"',
+        },
+      })
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    await downloadClipPackage("job-123", ["clip-1"], "training-dataset");
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "http://localhost:8000/api/jobs/job-123/exports/package",
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify({
+          clipIds: ["clip-1"],
+          preset: "training-dataset",
+          includeSpectrograms: false,
+        }),
+      })
+    );
+  });
+
   it("decodes skipped-job warning summaries from batch package downloads", async () => {
     const warningSummary = {
       preset: "full-av",
